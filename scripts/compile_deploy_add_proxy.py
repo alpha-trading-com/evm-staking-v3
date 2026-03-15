@@ -75,6 +75,7 @@ def step_add_proxy(contract_address: str) -> None:
     from bittensor.core.chain_data.proxy import ProxyType
 
     wallet = bt.Wallet(name="proxy")
+    wallet.unlock_coldkey()
     subtensor = bt.Subtensor(network="finney")
     real_ss58 = wallet.coldkey.ss58_address
 
