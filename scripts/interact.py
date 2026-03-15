@@ -136,7 +136,6 @@ CONTRACT_ABI = [
     },
     {
         "inputs": [
-            {"internalType": "bytes32", "name": "proxiedAccount", "type": "bytes32"},
             {"internalType": "bytes", "name": "encodedTransferCall", "type": "bytes"}
         ],
         "name": "pullFromProxiedAccount",
@@ -145,10 +144,7 @@ CONTRACT_ABI = [
         "type": "function"
     },
     {
-        "inputs": [
-            {"internalType": "bytes32", "name": "proxiedAccount", "type": "bytes32"},
-            {"internalType": "uint256", "name": "amount", "type": "uint256"}
-        ],
+        "inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}],
         "name": "transferToProxiedAccount",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -564,11 +560,11 @@ def move_stake(w3, account, contract_address, origin_hotkey, destination_hotkey,
     return receipt
 
 
-def pull_from_proxied_account(w3, account, contract_address, proxied_account, encoded_transfer_call):
+def pull_from_proxied_account(w3, account, contract_address, encoded_transfer_call):
     """
-    Pull all TAO from a proxied account into this contract using the Proxy precompile.
+    Pull all TAO from the allowed proxied account into this contract using the Proxy precompile.
 
-    The proxied account must have added this contract as a proxy (delegate) with Any type.
+    The allowedProxiedAccount (constant in contract) must have added this contract as a proxy with Any type.
     encoded_transfer_call must be SCALE-encoded Balances::transfer_all(dest=contract_account_id, keep_alive=true).
     Build it off-chain (e.g. with subxt or scalecodec).
     """
@@ -583,32 +579,17 @@ def pull_from_proxied_account(w3, account, contract_address, proxied_account, en
     except Exception as e:
         print(f"⚠️  Warning: Could not verify ownership: {e}")
 
-    # proxied_account: SS58 or 32-byte hex
-    if isinstance(proxied_account, str):
-        if proxied_account.startswith("0x") or all(c in "0123456789abcdefABCDEF" for c in proxied_account.replace("0x", "")):
-            proxied_bytes = bytes.fromhex(proxied_account.replace("0x", ""))
-            if len(proxied_bytes) != 32:
-                raise ValueError("proxied_account hex must be 32 bytes (64 hex chars)")
-        else:
-            proxied_bytes = ss58_to_bytes32(proxied_account)
-    else:
-        proxied_bytes = proxied_account
-
     # encoded_transfer_call: hex string or bytes
     if isinstance(encoded_transfer_call, str):
         encoded_call = bytes.fromhex(encoded_transfer_call.replace("0x", ""))
     else:
         encoded_call = encoded_transfer_call
 
-    print("Pull from proxied account (Proxy precompile)")
-    print(f"  Proxied account (bytes32): 0x{proxied_bytes.hex()}")
+    print("Pull from allowed proxied account (Proxy precompile)")
     print(f"  Encoded transfer_all call: {len(encoded_call)} bytes")
-    print("  Call executes transfer_all(dest=this contract, keep_alive=true) on behalf of the proxied account.")
+    print("  Call executes transfer_all(dest=this contract, keep_alive=true) on behalf of allowedProxiedAccount.")
 
-    tx = contract.functions.pullFromProxiedAccount(
-        proxied_bytes,
-        encoded_call
-    ).build_transaction({
+    tx = contract.functions.pullFromProxiedAccount(encoded_call).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 200000,
@@ -630,9 +611,9 @@ def pull_from_proxied_account(w3, account, contract_address, proxied_account, en
     return receipt
 
 
-def transfer_to_proxied_account(w3, account, contract_address, proxied_account, amount_wei):
+def transfer_to_proxied_account(w3, account, contract_address, amount_wei):
     """
-    Transfer a specific amount of TAO from this contract to a destination account (bytes32).
+    Transfer a specific amount of TAO from this contract to the allowed proxied account (constant in contract).
     Uses balance transfer precompile (0x800). Amount in wei.
     """
     contract = get_contract(w3, contract_address)
@@ -644,24 +625,14 @@ def transfer_to_proxied_account(w3, account, contract_address, proxied_account, 
     except Exception as e:
         print(f"⚠️  Warning: Could not verify ownership: {e}")
 
-    if isinstance(proxied_account, str):
-        if proxied_account.startswith("0x") or all(c in "0123456789abcdefABCDEF" for c in proxied_account.replace("0x", "")):
-            proxied_bytes = bytes.fromhex(proxied_account.replace("0x", ""))
-            if len(proxied_bytes) != 32:
-                raise ValueError("proxied_account hex must be 32 bytes (64 hex chars)")
-        else:
-            proxied_bytes = ss58_to_bytes32(proxied_account)
-    else:
-        proxied_bytes = proxied_account
-
     balance_wei = w3.eth.get_balance(contract_address)
     if amount_wei > balance_wei:
         raise ValueError(f"Insufficient contract balance: have {balance_wei} wei, need {amount_wei} wei")
 
     amount_tao = Web3.from_wei(amount_wei, "ether")
-    print(f"Transfer {amount_tao} TAO ({amount_wei} wei) to 0x{proxied_bytes.hex()}")
+    print(f"Transfer {amount_tao} TAO ({amount_wei} wei) to allowedProxiedAccount")
 
-    tx = contract.functions.transferToProxiedAccount(proxied_bytes, amount_wei).build_transaction({
+    tx = contract.functions.transferToProxiedAccount(amount_wei).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 150000,
@@ -821,8 +792,6 @@ def main():
                        help='Limit price for stakeLimit')
     parser.add_argument('--allow-partial', action='store_true',
                        help='Allow partial fill for stakeLimit')
-    parser.add_argument('--proxied-account', type=str, dest='proxied_account',
-                       help='Proxied account for pullFromProxiedAccount: SS58 or 32-byte hex')
     parser.add_argument('--encoded-call', type=str, dest='encoded_call',
                        help='SCALE-encoded transfer_all call (hex) for pullFromProxiedAccount')
     parser.add_argument('--contract', type=str, help='Contract address (overrides deployment.json)')
@@ -938,19 +907,15 @@ def main():
         withdraw(w3, account, contract_address, amount_wei)
 
     elif args.action == 'pullFromProxiedAccount':
-        if not args.proxied_account or not args.encoded_call:
-            parser.error("pullFromProxiedAccount requires --proxied-account and --encoded-call")
-        pull_from_proxied_account(
-            w3, account, contract_address,
-            args.proxied_account,
-            args.encoded_call
-        )
+        if not args.encoded_call:
+            parser.error("pullFromProxiedAccount requires --encoded-call")
+        pull_from_proxied_account(w3, account, contract_address, args.encoded_call)
 
     elif args.action == 'transferToProxiedAccount':
-        if not args.proxied_account or args.amount is None:
-            parser.error("transferToProxiedAccount requires --proxied-account and --amount")
+        if args.amount is None:
+            parser.error("transferToProxiedAccount requires --amount")
         amount_wei = int(args.amount * 10**18)
-        transfer_to_proxied_account(w3, account, contract_address, args.proxied_account, amount_wei)
+        transfer_to_proxied_account(w3, account, contract_address, amount_wei)
 
 if __name__ == '__main__':
     main()

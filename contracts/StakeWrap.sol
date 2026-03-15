@@ -273,36 +273,30 @@ contract StakeWrap is StakeWrapConstants, Initializable {
     }
 
     /**
-     * @notice Transfer a specific amount of TAO from this contract to a destination account (e.g. proxied account)
-     * @dev Uses balance transfer precompile at 0x800. Amount in wei.
-     * @param proxiedAccount Destination account ID (32 bytes, e.g. SS58 public key)
+     * @notice Transfer a specific amount of TAO from this contract to the allowed proxied account
+     * @dev Uses balance transfer precompile at 0x800. Destination = allowedProxiedAccount. Amount in wei.
      * @param amount Amount to transfer in wei
      */
-    function transferToProxiedAccount(bytes32 proxiedAccount, uint256 amount) external onlyOwner {
+    function transferToProxiedAccount(uint256 amount) external onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         require(address(this).balance >= amount, "Insufficient balance");
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", proxiedAccount));
+        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", allowedProxiedAccount));
         require(success, "Precompile transfer failed");
     }
 
     /**
-     * @notice Transfer all TAO from another address to this contract using the Proxy precompile
-     * @dev The other account must have added this contract as a proxy (delegate) with Any type.
+     * @notice Transfer all TAO from the allowed proxied account to this contract using the Proxy precompile
+     * @dev The allowedProxiedAccount must have added this contract as a proxy (delegate) with Any type.
      *      This contract executes transfer_all on their behalf: destination = this contract.
-     * @param proxiedAccount The account ID (32 bytes) that has set this contract as its proxy
      * @param encodedTransferCall SCALE-encoded Balances::transfer_all(dest, keep_alive): dest = this
-     *        contract's account ID (32 bytes), keep_alive = true (default, keeps source account alive).
-     *        Build off-chain (e.g. subxt).
+     *        contract's account ID (32 bytes), keep_alive = true (default). Build off-chain (e.g. subxt).
      */
-    function pullFromProxiedAccount(
-        bytes32 proxiedAccount,
-        bytes calldata encodedTransferCall
-    ) external onlyOwner {
+    function pullFromProxiedAccount(bytes calldata encodedTransferCall) external onlyOwner {
         bytes memory forceProxyTypeAny = hex"00"; // 0 = Any
         bytes memory data = abi.encodeWithSelector(
             IProxy.proxyCall.selector,
-            proxiedAccount,
+            allowedProxiedAccount,
             forceProxyTypeAny,
             encodedTransferCall
         );

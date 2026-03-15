@@ -119,12 +119,10 @@ python3 scripts/interact.py withdraw --amount 1.0
 
 ## Transfer to proxied account
 
-Send a specific amount of TAO from the contract to a destination account (e.g. a proxied account). Amount in **TAO**. Only owner. Destination: SS58 or 32-byte hex.
+Send a specific amount of TAO from the contract to the **allowed proxied account** (constant `allowedProxiedAccount` in the contract). Amount in **TAO**. Only owner.
 
 ```bash
-python3 scripts/interact.py transferToProxiedAccount \
-  --proxied-account 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 \
-  --amount 0.5
+python3 scripts/interact.py transferToProxiedAccount --amount 0.5
 ```
 
 ---
@@ -147,19 +145,17 @@ python3 scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dEN
 
 ### 2. Call pullFromProxiedAccount
 
+Uses the contract constant **allowedProxiedAccount** as the source account. Encode `transfer_all` with **dest** = this contract’s SS58.
+
 ```bash
 ENCODED=$(python3 scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7)
-python3 scripts/interact.py pullFromProxiedAccount \
-  --proxied-account 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 \
-  --encoded-call "$ENCODED"
+python3 scripts/interact.py pullFromProxiedAccount --encoded-call "$ENCODED"
 ```
 
 With explicit hex encoded call:
 
 ```bash
-python3 scripts/interact.py pullFromProxiedAccount \
-  --proxied-account 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 \
-  --encoded-call 0x0404...
+python3 scripts/interact.py pullFromProxiedAccount --encoded-call 0x0404...
 ```
 
 ---
