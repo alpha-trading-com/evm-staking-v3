@@ -54,6 +54,31 @@ def get_contract(w3, contract_address, abi=None):
     return w3.eth.contract(address=contract_address, abi=abi)
 
 
+def _print_failure_resolution(w3, contract, contract_address, account, dest_bytes32, contract_ss58):
+    """Print why Proxy likely failed and how to fix it."""
+    print("", file=sys.stderr)
+    print("--- Why it failed ---", file=sys.stderr)
+    print("The revert is from the Proxy precompile: the 'real' account (allowedProxiedAccount)", file=sys.stderr)
+    print("must have added this contract as a proxy with type Transfer.", file=sys.stderr)
+    try:
+        allowed_proxied_bytes32 = contract.functions.allowedProxiedAccount().call()
+        allowed_hex = "0x" + allowed_proxied_bytes32.hex()
+        print(f"  allowedProxiedAccount (bytes32): {allowed_hex}", file=sys.stderr)
+    except Exception:
+        allowed_hex = None
+    print("", file=sys.stderr)
+    print("--- How to resolve ---", file=sys.stderr)
+    print("1. From the wallet that is allowedProxiedAccount (the account that holds the TAO to pull),", file=sys.stderr)
+    print("   add this contract as a proxy with type Transfer.", file=sys.stderr)
+    print("2. The delegate to add must be this contract's SS58 (Bittensor mapping):", file=sys.stderr)
+    print(f"   Delegate SS58: {contract_ss58}", file=sys.stderr)
+    print("3. In Polkadot.js/btcli: Developer → Extrinsics → proxy → addProxy", file=sys.stderr)
+    print("   - delegate = the SS58 above", file=sys.stderr)
+    print("   - proxyType = Transfer", file=sys.stderr)
+    print("   - delay = 0", file=sys.stderr)
+    print("4. Re-run this test.", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Test pullFromProxiedAccount")
     parser.add_argument("--contract", type=str, help="Contract address (default: from deployment.json)")
@@ -110,7 +135,7 @@ def main():
     if receipt is None:
         sys.exit(1)
     if receipt.status != 1:
-        print("Tx failed (status != 1).", file=sys.stderr)
+        _print_failure_resolution(w3, contract, contract_address, account, dest_bytes32, contract_ss58)
         sys.exit(1)
 
     balance_after_wei = w3.eth.get_balance(contract_address)

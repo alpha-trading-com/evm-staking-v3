@@ -13,11 +13,11 @@ import "./IAlpha.sol";
 contract StakeWrap is StakeWrapConstants {
     address public owner;
 
-    // Balances::transfer_all encoding (Substrate pallet/call indices)
+    // Balances::transfer_all encoding (Substrate pallet/call indices; verify against chain metadata)
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
     uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
-    // ProxyType::Transfer - coldkey must add this contract as proxy with Transfer type
-    uint8 internal constant PROXY_TYPE_TRANSFER = 10;
+    /// @dev ProxyType variant index for Transfer. Must match Subtensor runtime enum order (Bittensor SDK: Any=0, Owner=1, ..., Transfer=7).
+    uint8 internal constant PROXY_TYPE_TRANSFER = 7;
 
     constructor() {
         owner = msg.sender;
