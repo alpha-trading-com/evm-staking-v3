@@ -12,3 +12,6 @@ python3 scripts/interact.py stake \
   --hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
   --netuid 1 \
   --amount 0.05
+
+
+  python3 scripts/interact.py subnetPrice --netuid 1
