@@ -4,3 +4,4 @@ npm run deploy:upgradeable
 
 proxy_address: 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
 transfer_all: 050400c91b7975efd0fb28cb85b2b667ba35a6374a759c8d888dc3cbc439d75c0086a001
+python3 scripts/interact.py pullFromProxiedAccount --encoded-call 050400c91b7975efd0fb28cb85b2b667ba35a6374a759c8d888dc3cbc439d75c0086a001
