@@ -133,6 +133,16 @@ CONTRACT_ABI = [
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
+    },
+    {
+        "inputs": [
+            {"internalType": "bytes32", "name": "proxiedAccount", "type": "bytes32"},
+            {"internalType": "bytes", "name": "encodedTransferCall", "type": "bytes"}
+        ],
+        "name": "pullFromProxiedAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     }
 ]
 
@@ -544,6 +554,71 @@ def move_stake(w3, account, contract_address, origin_hotkey, destination_hotkey,
     return receipt
 
 
+def pull_from_proxied_account(w3, account, contract_address, proxied_account, encoded_transfer_call):
+    """
+    Pull all TAO from a proxied account into this contract using the Proxy precompile.
+
+    The proxied account must have added this contract as a proxy (delegate) with Any type.
+    encoded_transfer_call must be SCALE-encoded Balances::transfer_all(dest=contract_account_id, keep_alive=true).
+    Build it off-chain (e.g. with subxt or scalecodec).
+    """
+    contract = get_contract(w3, contract_address)
+
+    # Verify ownership
+    try:
+        owner = contract.functions.owner().call()
+        if owner.lower() != account.address.lower():
+            print("❌ ERROR: You are not the contract owner!")
+            return None
+    except Exception as e:
+        print(f"⚠️  Warning: Could not verify ownership: {e}")
+
+    # proxied_account: SS58 or 32-byte hex
+    if isinstance(proxied_account, str):
+        if proxied_account.startswith("0x") or all(c in "0123456789abcdefABCDEF" for c in proxied_account.replace("0x", "")):
+            proxied_bytes = bytes.fromhex(proxied_account.replace("0x", ""))
+            if len(proxied_bytes) != 32:
+                raise ValueError("proxied_account hex must be 32 bytes (64 hex chars)")
+        else:
+            proxied_bytes = ss58_to_bytes32(proxied_account)
+    else:
+        proxied_bytes = proxied_account
+
+    # encoded_transfer_call: hex string or bytes
+    if isinstance(encoded_transfer_call, str):
+        encoded_call = bytes.fromhex(encoded_transfer_call.replace("0x", ""))
+    else:
+        encoded_call = encoded_transfer_call
+
+    print("Pull from proxied account (Proxy precompile)")
+    print(f"  Proxied account (bytes32): 0x{proxied_bytes.hex()}")
+    print(f"  Encoded transfer_all call: {len(encoded_call)} bytes")
+    print("  Call executes transfer_all(dest=this contract, keep_alive=true) on behalf of the proxied account.")
+
+    tx = contract.functions.pullFromProxiedAccount(
+        proxied_bytes,
+        encoded_call
+    ).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 200000,
+        "gasPrice": w3.eth.gas_price,
+    })
+
+    signed_txn = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+    print(f"Transaction hash: {tx_hash.hex()}")
+
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Transaction confirmed in block: {receipt.blockNumber}")
+
+    if receipt.status == 0:
+        print("❌ Transaction failed!")
+        return receipt
+
+    print("✅ pullFromProxiedAccount succeeded.")
+    return receipt
+
 
 def withdraw(w3, account, contract_address, amount):
     """Withdraw TAO from the contract."""
@@ -676,7 +751,7 @@ def withdraw(w3, account, contract_address, amount):
 
 def main():
     parser = argparse.ArgumentParser(description='Interact with StakeWrap contract')
-    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance'],
+    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'pullFromProxiedAccount'],
                        help='Action to perform')
     parser.add_argument('--hotkey', type=str, help='Hotkey (SS58 or 32 bytes hex string)')
     parser.add_argument('--origin-hotkey', type=str, help='Origin hotkey for moveStake (SS58 or 32 bytes hex string)')
@@ -689,6 +764,10 @@ def main():
                        help='Limit price for stakeLimit')
     parser.add_argument('--allow-partial', action='store_true',
                        help='Allow partial fill for stakeLimit')
+    parser.add_argument('--proxied-account', type=str, dest='proxied_account',
+                       help='Proxied account for pullFromProxiedAccount: SS58 or 32-byte hex')
+    parser.add_argument('--encoded-call', type=str, dest='encoded_call',
+                       help='SCALE-encoded transfer_all call (hex) for pullFromProxiedAccount')
     parser.add_argument('--contract', type=str, help='Contract address (overrides deployment.json)')
     
     args = parser.parse_args()
@@ -800,6 +879,15 @@ def main():
         # Convert TAO to wei
         amount_wei = int(args.amount * 10**18)
         withdraw(w3, account, contract_address, amount_wei)
+
+    elif args.action == 'pullFromProxiedAccount':
+        if not args.proxied_account or not args.encoded_call:
+            parser.error("pullFromProxiedAccount requires --proxied-account and --encoded-call")
+        pull_from_proxied_account(
+            w3, account, contract_address,
+            args.proxied_account,
+            args.encoded_call
+        )
 
 if __name__ == '__main__':
     main()

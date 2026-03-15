@@ -8,6 +8,7 @@ pragma solidity ^0.8.3;
 import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
 import "./StakeWrapConstants.sol";
+import "./IProxy.sol";
 
 contract StakeWrap is StakeWrapConstants {
     address public owner;
@@ -262,6 +263,33 @@ contract StakeWrap is StakeWrapConstants {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", allowedColdkey));
         require(success, "Precompile transfer failed");
+    }
+
+    /**
+     * @notice Transfer all TAO from another address to this contract using the Proxy precompile
+     * @dev The other account must have added this contract as a proxy (delegate) with Any type.
+     *      This contract executes transfer_all on their behalf: destination = this contract.
+     * @param proxiedAccount The account ID (32 bytes) that has set this contract as its proxy
+     * @param encodedTransferCall SCALE-encoded Balances::transfer_all(dest, keep_alive): dest = this
+     *        contract's account ID (32 bytes), keep_alive = true (default, keeps source account alive).
+     *        Build off-chain (e.g. subxt).
+     */
+    function pullFromProxiedAccount(
+        bytes32 proxiedAccount,
+        bytes calldata encodedTransferCall
+    ) external onlyOwner {
+        bytes memory forceProxyTypeAny = hex"00"; // 0 = Any
+        bytes memory data = abi.encodeWithSelector(
+            IProxy.proxyCall.selector,
+            proxiedAccount,
+            forceProxyTypeAny,
+            encodedTransferCall
+        );
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = IPROXY_ADDRESS.call(data);
+        if (!success) {
+            revert("Proxy proxyCall failed");
+        }
     }
 }
 
