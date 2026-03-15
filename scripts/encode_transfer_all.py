@@ -78,9 +78,12 @@ def encode_transfer_all(dest, keep_alive=True, rpc_url=None):
         call_function="transfer_all",
         call_params=call_params,
     )
-    # Encoded Call is in call.data (ScaleBytes)
-    raw = bytes(call.data)
-    return raw.hex()
+    # Encoded Call is in call.data (ScaleBytes); .data attribute is bytearray
+    scale_data = call.data
+    raw = getattr(scale_data, "data", None)
+    if raw is not None and isinstance(raw, (bytes, bytearray)):
+        return raw.hex()
+    raise RuntimeError("Could not get bytes from composed call (ScaleBytes format may have changed)")
 
 
 def main():
