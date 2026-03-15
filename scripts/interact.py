@@ -135,9 +135,7 @@ CONTRACT_ABI = [
         "type": "function"
     },
     {
-        "inputs": [
-            {"internalType": "bytes", "name": "encodedTransferCall", "type": "bytes"}
-        ],
+        "inputs": [],
         "name": "pullFromProxiedAccount",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -567,17 +565,13 @@ def move_stake(w3, account, contract_address, origin_hotkey, destination_hotkey,
     return receipt
 
 
-def pull_from_proxied_account(w3, account, contract_address, encoded_transfer_call):
+def pull_from_proxied_account(w3, account, contract_address):
     """
-    Pull all TAO from the allowed proxied account into this contract using the Proxy precompile.
-
-    The allowedProxiedAccount (constant in contract) must have added this contract as a proxy with Any type.
-    encoded_transfer_call must be SCALE-encoded Balances::transfer_all(dest=contract_account_id, keep_alive=true).
-    Build it off-chain (e.g. with subxt or scalecodec).
+    Pull all TAO from the allowed proxied account into this contract (Proxy precompile, type Transfer).
+    Contract encodes transfer_all(dest=this, keep_alive=true) internally.
     """
     contract = get_contract(w3, contract_address)
 
-    # Verify ownership
     try:
         owner = contract.functions.owner().call()
         if owner.lower() != account.address.lower():
@@ -586,17 +580,9 @@ def pull_from_proxied_account(w3, account, contract_address, encoded_transfer_ca
     except Exception as e:
         print(f"⚠️  Warning: Could not verify ownership: {e}")
 
-    # encoded_transfer_call: hex string or bytes
-    if isinstance(encoded_transfer_call, str):
-        encoded_call = bytes.fromhex(encoded_transfer_call.replace("0x", ""))
-    else:
-        encoded_call = encoded_transfer_call
+    print("Pull from allowed proxied account (Proxy precompile, dest=this contract, keep_alive=true)")
 
-    print("Pull from allowed proxied account (Proxy precompile)")
-    print(f"  Encoded transfer_all call: {len(encoded_call)} bytes")
-    print("  Call executes transfer_all(dest=this contract, keep_alive=true) on behalf of allowedProxiedAccount.")
-
-    tx = contract.functions.pullFromProxiedAccount(encoded_call).build_transaction({
+    tx = contract.functions.pullFromProxiedAccount().build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 200000,
@@ -799,8 +785,6 @@ def main():
                        help='Limit price for stakeLimit')
     parser.add_argument('--allow-partial', action='store_true',
                        help='Allow partial fill for stakeLimit')
-    parser.add_argument('--encoded-call', type=str, dest='encoded_call',
-                       help='SCALE-encoded transfer_all call (hex) for pullFromProxiedAccount')
     parser.add_argument('--contract', type=str, help='Contract address (overrides deployment.json)')
     
     args = parser.parse_args()
@@ -921,9 +905,7 @@ def main():
         withdraw(w3, account, contract_address, amount_wei)
 
     elif args.action == 'pullFromProxiedAccount':
-        if not args.encoded_call:
-            parser.error("pullFromProxiedAccount requires --encoded-call")
-        pull_from_proxied_account(w3, account, contract_address, args.encoded_call)
+        pull_from_proxied_account(w3, account, contract_address)
 
     elif args.action == 'transferToProxiedAccount':
         if args.amount is None:

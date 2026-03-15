@@ -13,6 +13,12 @@ import "./IAlpha.sol";
 contract StakeWrap is StakeWrapConstants {
     address public owner;
 
+    // Balances::transfer_all encoding (Substrate pallet/call indices)
+    uint8 internal constant BALANCES_PALLET_INDEX = 5;
+    uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
+    // ProxyType::Transfer - coldkey must add this contract as proxy with Transfer type
+    uint8 internal constant PROXY_TYPE_TRANSFER = 10;
+
     constructor() {
         owner = msg.sender;
     }
@@ -279,25 +285,52 @@ contract StakeWrap is StakeWrapConstants {
     }
 
     /**
-     * @notice Transfer all TAO from the allowed proxied account to this contract using the Proxy precompile
-     * @dev The allowedProxiedAccount must have added this contract as a proxy (delegate) with Any type.
-     *      This contract executes transfer_all on their behalf: destination = this contract.
-     * @param encodedTransferCall SCALE-encoded Balances::transfer_all(dest, keep_alive): dest = this
-     *        contract's account ID (32 bytes), keep_alive = true (default). Build off-chain (e.g. subxt).
+     * @notice Transfer all TAO from the allowed proxied account to this contract (Proxy precompile, type Transfer).
+     * @dev allowedProxiedAccount must have added this contract as proxy with Transfer type.
+     *      Encodes Balances::transfer_all(dest=this contract, keep_alive=true) and calls Proxy::proxyCall.
      */
-    function pullFromProxiedAccount(bytes calldata encodedTransferCall) external onlyOwner {
-        bytes memory forceProxyTypeAny = hex"00"; // 0 = Any
+    function pullFromProxiedAccount() external onlyOwner {
+        bytes32 dest = _contractAccountId();
+        bytes memory call = _encodeTransferAll(dest, true);
+        _proxyTransferAll(allowedProxiedAccount, call);
+    }
+
+    // (removed pullFromProxiedAccountEncoded per instructions)
+
+    /// @dev Proxy::proxyCall(real, ProxyType::Transfer, call)
+    function _proxyTransferAll(bytes32 real, bytes memory call) internal {
+        bytes memory forceProxyType = new bytes(1);
+        forceProxyType[0] = bytes1(PROXY_TYPE_TRANSFER);
         bytes memory data = abi.encodeWithSelector(
             IProxy.proxyCall.selector,
-            allowedProxiedAccount,
-            forceProxyTypeAny,
-            encodedTransferCall
+            real,
+            forceProxyType,
+            call
         );
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = IPROXY_ADDRESS.call(data);
-        if (!success) {
-            revert("Proxy proxyCall failed");
+        require(success, "Proxy proxyCall failed");
+    }
+
+    /// @dev This contract's 32-byte account ID (12 zero bytes + 20-byte address)
+    function _contractAccountId() internal view returns (bytes32) {
+        return bytes32(uint256(uint160(address(this))));
+    }
+
+    /**
+     * @dev SCALE-encodes RuntimeCall::Balances(transfer_all(dest, keep_alive)).
+     *      Layout: [pallet_index][call_index][MultiAddress::Id=0][dest 32 bytes][keep_alive 1 byte]
+     */
+    function _encodeTransferAll(bytes32 dest, bool keepAlive) internal pure returns (bytes memory) {
+        bytes memory payload = new bytes(36);
+        payload[0] = bytes1(BALANCES_PALLET_INDEX);
+        payload[1] = bytes1(TRANSFER_ALL_CALL_INDEX);
+        payload[2] = 0x00; // MultiAddress::Id
+        assembly {
+            mstore(add(add(payload, 32), 3), dest)
         }
+        payload[35] = keepAlive ? bytes1(0x01) : bytes1(0x00);
+        return payload;
     }
 
     /**

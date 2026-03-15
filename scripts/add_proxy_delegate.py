@@ -7,12 +7,12 @@ def main():
     subtensor = bt.Subtensor()
 
     real_account = bt.Wallet(name="proxy")
-    delegate_address = "5GcPeHLZ3PiTb3rbnqNJiqp5kaoBr5WcYy2UsuNTVutN6vp7"
+    delegate_address = "5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht"
 
     response = subtensor.add_proxy(
         wallet=real_account,
         delegate_ss58=delegate_address,
-        proxy_type=ProxyType.Any,
+        proxy_type=ProxyType.Transfer,
         delay=0,
     )
 

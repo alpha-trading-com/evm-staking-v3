@@ -135,9 +135,9 @@ python3 scripts/interact.py transferToProxiedAccount --amount 0.5
 
 ---
 
-## Add contract as proxy (type Any)
+## Add contract as proxy (type Transfer)
 
-Before the contract can use **pullFromProxiedAccount**, the **coldkey** (the allowedProxiedAccount, e.g. `5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3`) must add the contract as a proxy with type **Any** on the Subtensor chain.
+Before the contract can use **pullFromProxiedAccount**, the **coldkey** (allowedProxiedAccount) must add the contract as a proxy with type **Transfer** on the Subtensor chain.
 
 **Option A – script (recommended)**  
 Set the coldkey mnemonic or seed, then run:
@@ -158,42 +158,20 @@ python3 scripts/add_proxy_delegate.py --dry-run
 ```
 
 **Option B – Polkadot.js**  
-Connect to the Bittensor/Subtensor network (e.g. finney), select the coldkey wallet, then: **Developer → Extrinsics → proxy → addProxy**. Set delegate to the contract’s SS58 (e.g. from `python3 scripts/address_convert.py 0x<contract_evm_address>`), proxy type **Any**, delay **0**, sign and submit.
+Connect to the Bittensor/Subtensor network (e.g. finney), select the coldkey wallet, then: **Developer → Extrinsics → proxy → addProxy**. Set delegate to the contract’s SS58 (e.g. from `python3 scripts/address_convert.py 0x<contract_evm_address>`), proxy type **Transfer**, delay **0**, sign and submit.
 
 ---
 
 ## Pull from proxied account
 
-Transfer all TAO from an account that has set this contract as its proxy into the contract. Requires a SCALE-encoded `balances.transferAll(dest, keepAlive)` call.
+Transfer all TAO from the allowed proxied account into the contract (Proxy type **Transfer**).
 
-### 1. Encode the transfer_all call
+The contract encodes `transfer_all(dest=this, keep_alive=true)` internally. No arguments.
 
-`--dest` is the destination SS58 address (e.g. this contract’s SS58). Default `keep_alive=true`.
-
-```bash
-# Output hex for --encoded-call (default keep_alive=true)
-python3 scripts/encode_transfer_all.py --dest 5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht
-
-# keep_alive=false
-python3 scripts/encode_transfer_all.py --dest 5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht --no-keep-alive
-```
-
-### 2. Call pullFromProxiedAccount
-
-Uses the contract constant **allowedProxiedAccount** as the source account. Encode `transfer_all` with **dest** = this contract’s SS58.
 
 ```bash
-ENCODED=$(python3 scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7)
-python3 scripts/interact.py pullFromProxiedAccount --encoded-call "$ENCODED"
+python3 scripts/interact.py pullFromProxiedAccount
 ```
-
-With explicit hex encoded call:
-
-```bash
-python3 scripts/interact.py pullFromProxiedAccount --encoded-call 0x0404...
-```
-
----
 
 ## Using a different contract
 
@@ -206,27 +184,31 @@ python3 scripts/interact.py stake --hotkey 5F3s... --netuid 1 --amount 1.0 --con
 
 ---
 
-## Upgradeable deployment
+## Full deploy (compile + deploy + add proxy)
 
-To deploy an **upgradeable** StakeWrap (implementation + proxy), use the Hardhat script. The proxy address is what you use in `deployment.json` and with `interact.py`.
+One script runs: compile → deploy → add contract as proxy (Transfer) for the proxy wallet:
 
-**Deploy (first time):**
+```bash
+# Requires: PRIVATE_KEY in .env (for deploy); proxy wallet at ~/.bittensor/wallets (will prompt for password)
+python3 scripts/compile_deploy_add_proxy.py
+
+# Custom wallet name/path (the coldkey that adds the contract as proxy)
+python3 scripts/compile_deploy_add_proxy.py --wallet-name proxy --wallet-path ~/.bittensor/wallets
+
+# Only add proxy (use existing deployment.json)
+python3 scripts/compile_deploy_add_proxy.py --skip-compile --skip-deploy
+```
+
+---
+
+## Deployment
+
+Deploy StakeWrap (single contract, no proxy):
 
 ```bash
 # Set PRIVATE_KEY (and optionally RPC_URL) in .env, then:
 npm run compile
-npm run deploy:upgradeable
+npm run deploy
 ```
 
-This writes `deployment.json` with `contract_address` = proxy and `implementation_address` = implementation. Use the proxy address everywhere.
-
-**Upgrade to a new implementation:**
-
-After changing the StakeWrap contract (e.g. new logic), deploy the new implementation and point the proxy at it:
-
-```bash
-npm run compile
-npm run upgrade
-```
-
-Only the account that was set as proxy admin (the deployer) can run `upgrade`. `deployment.json` is updated with the new `implementation_address`.
+This writes `deployment.json` with `contract_address`. Use that address with `interact.py`.
