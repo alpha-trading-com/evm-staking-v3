@@ -135,6 +135,33 @@ python3 scripts/interact.py transferToProxiedAccount --amount 0.5
 
 ---
 
+## Add contract as proxy (type Any)
+
+Before the contract can use **pullFromProxiedAccount**, the **coldkey** (the allowedProxiedAccount, e.g. `5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3`) must add the contract as a proxy with type **Any** on the Subtensor chain.
+
+**Option A – script (recommended)**  
+Set the coldkey mnemonic or seed, then run:
+
+```bash
+# One-time: set coldkey (use mnemonic or seed, not both)
+export COLDKEY_MNEMONIC="word1 word2 ..."
+# or: export COLDKEY_SEED="0x..."
+
+# Default: contract from deployment.json, coldkey 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
+python3 scripts/add_proxy_delegate.py
+
+# Override contract or coldkey
+python3 scripts/add_proxy_delegate.py --contract 0x3c62... --coldkey-ss58 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
+
+# Dry run (no submit)
+python3 scripts/add_proxy_delegate.py --dry-run
+```
+
+**Option B – Polkadot.js**  
+Connect to the Bittensor/Subtensor network (e.g. finney), select the coldkey wallet, then: **Developer → Extrinsics → proxy → addProxy**. Set delegate to the contract’s SS58 (e.g. from `python3 scripts/address_convert.py 0x<contract_evm_address>`), proxy type **Any**, delay **0**, sign and submit.
+
+---
+
 ## Pull from proxied account
 
 Transfer all TAO from an account that has set this contract as its proxy into the contract. Requires a SCALE-encoded `balances.transferAll(dest, keepAlive)` call.
