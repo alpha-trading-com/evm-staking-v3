@@ -117,6 +117,18 @@ python3 scripts/interact.py withdraw --amount 1.0
 
 ---
 
+## Transfer to proxied account
+
+Send a specific amount of TAO from the contract to a destination account (e.g. a proxied account). Amount in **TAO**. Only owner. Destination: SS58 or 32-byte hex.
+
+```bash
+python3 scripts/interact.py transferToProxiedAccount \
+  --proxied-account 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 \
+  --amount 0.5
+```
+
+---
+
 ## Pull from proxied account
 
 Transfer all TAO from an account that has set this contract as its proxy into the contract. Requires a SCALE-encoded `balances.transferAll(dest, keepAlive)` call.

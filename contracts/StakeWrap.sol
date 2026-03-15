@@ -273,6 +273,20 @@ contract StakeWrap is StakeWrapConstants, Initializable {
     }
 
     /**
+     * @notice Transfer a specific amount of TAO from this contract to a destination account (e.g. proxied account)
+     * @dev Uses balance transfer precompile at 0x800. Amount in wei.
+     * @param proxiedAccount Destination account ID (32 bytes, e.g. SS58 public key)
+     * @param amount Amount to transfer in wei
+     */
+    function transferToProxiedAccount(bytes32 proxiedAccount, uint256 amount) external onlyOwner {
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient balance");
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", proxiedAccount));
+        require(success, "Precompile transfer failed");
+    }
+
+    /**
      * @notice Transfer all TAO from another address to this contract using the Proxy precompile
      * @dev The other account must have added this contract as a proxy (delegate) with Any type.
      *      This contract executes transfer_all on their behalf: destination = this contract.

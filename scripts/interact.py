@@ -143,6 +143,16 @@ CONTRACT_ABI = [
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
+    },
+    {
+        "inputs": [
+            {"internalType": "bytes32", "name": "proxiedAccount", "type": "bytes32"},
+            {"internalType": "uint256", "name": "amount", "type": "uint256"}
+        ],
+        "name": "transferToProxiedAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     }
 ]
 
@@ -620,6 +630,53 @@ def pull_from_proxied_account(w3, account, contract_address, proxied_account, en
     return receipt
 
 
+def transfer_to_proxied_account(w3, account, contract_address, proxied_account, amount_wei):
+    """
+    Transfer a specific amount of TAO from this contract to a destination account (bytes32).
+    Uses balance transfer precompile (0x800). Amount in wei.
+    """
+    contract = get_contract(w3, contract_address)
+    try:
+        owner = contract.functions.owner().call()
+        if owner.lower() != account.address.lower():
+            print("❌ ERROR: You are not the contract owner!")
+            return None
+    except Exception as e:
+        print(f"⚠️  Warning: Could not verify ownership: {e}")
+
+    if isinstance(proxied_account, str):
+        if proxied_account.startswith("0x") or all(c in "0123456789abcdefABCDEF" for c in proxied_account.replace("0x", "")):
+            proxied_bytes = bytes.fromhex(proxied_account.replace("0x", ""))
+            if len(proxied_bytes) != 32:
+                raise ValueError("proxied_account hex must be 32 bytes (64 hex chars)")
+        else:
+            proxied_bytes = ss58_to_bytes32(proxied_account)
+    else:
+        proxied_bytes = proxied_account
+
+    balance_wei = w3.eth.get_balance(contract_address)
+    if amount_wei > balance_wei:
+        raise ValueError(f"Insufficient contract balance: have {balance_wei} wei, need {amount_wei} wei")
+
+    amount_tao = Web3.from_wei(amount_wei, "ether")
+    print(f"Transfer {amount_tao} TAO ({amount_wei} wei) to 0x{proxied_bytes.hex()}")
+
+    tx = contract.functions.transferToProxiedAccount(proxied_bytes, amount_wei).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 150000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed_txn = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+    print(f"Transaction hash: {tx_hash.hex()}")
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Transaction confirmed in block: {receipt.blockNumber}")
+    if receipt.status != 0:
+        print("✅ transferToProxiedAccount succeeded.")
+    return receipt
+
+
 def withdraw(w3, account, contract_address, amount):
     """Withdraw TAO from the contract."""
     # Load full ABI from artifacts to ensure we have the correct function signatures
@@ -751,7 +808,7 @@ def withdraw(w3, account, contract_address, amount):
 
 def main():
     parser = argparse.ArgumentParser(description='Interact with StakeWrap contract')
-    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'pullFromProxiedAccount'],
+    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'pullFromProxiedAccount', 'transferToProxiedAccount'],
                        help='Action to perform')
     parser.add_argument('--hotkey', type=str, help='Hotkey (SS58 or 32 bytes hex string)')
     parser.add_argument('--origin-hotkey', type=str, help='Origin hotkey for moveStake (SS58 or 32 bytes hex string)')
@@ -888,6 +945,12 @@ def main():
             args.proxied_account,
             args.encoded_call
         )
+
+    elif args.action == 'transferToProxiedAccount':
+        if not args.proxied_account or args.amount is None:
+            parser.error("transferToProxiedAccount requires --proxied-account and --amount")
+        amount_wei = int(args.amount * 10**18)
+        transfer_to_proxied_account(w3, account, contract_address, args.proxied_account, amount_wei)
 
 if __name__ == '__main__':
     main()
