@@ -172,10 +172,10 @@ Transfer all TAO from an account that has set this contract as its proxy into th
 
 ```bash
 # Output hex for --encoded-call (default keep_alive=true)
-python3 scripts/encode_transfer_all.py --dest 5GcPeHLZ3PiTb3rbnqNJiqp5kaoBr5WcYy2UsuNTVutN6vp7
+python3 scripts/encode_transfer_all.py --dest 5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht
 
 # keep_alive=false
-python3 scripts/encode_transfer_all.py --dest 5GcPeHLZ3PiTb3rbnqNJiqp5kaoBr5WcYy2UsuNTVutN6vp7 --no-keep-alive
+python3 scripts/encode_transfer_all.py --dest 5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht --no-keep-alive
 ```
 
 ### 2. Call pullFromProxiedAccount
