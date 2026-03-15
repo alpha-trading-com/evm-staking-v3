@@ -1,0 +1,162 @@
+# interact.py – Example commands
+
+Use the deployed StakeWrap contract. Requires `PRIVATE_KEY` in `.env` (or environment). Contract address is read from `deployment.json` unless overridden with `--contract`.
+
+---
+
+## Setup
+
+```bash
+# Optional: override RPC (default: https://test.finney.opentensor.ai/)
+export RPC_URL=https://test.finney.opentensor.ai/
+
+# Optional: use a specific contract instead of deployment.json
+# Add: --contract 0xYourContractAddress
+```
+
+---
+
+## Read-only
+
+### Check owner
+
+```bash
+python3 scripts/interact.py owner
+```
+
+### Check contract balance (TAO in wei)
+
+```bash
+python3 scripts/interact.py balance
+```
+
+---
+
+## Staking
+
+### Stake TAO to a hotkey
+
+Amount in **TAO** (converted to rao internally). Hotkey: SS58 or 32-byte hex.
+
+```bash
+python3 scripts/interact.py stake \
+  --hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
+  --netuid 1 \
+  --amount 1.0
+```
+
+### Stake with limit price
+
+```bash
+python3 scripts/interact.py stakeLimit \
+  --hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
+  --netuid 1 \
+  --limit-price 1000000 \
+  --amount 0.5 \
+  --allow-partial
+```
+
+### Unstake (remove stake) – amount in **ALPHA** (not TAO)
+
+```bash
+python3 scripts/interact.py removeStake \
+  --hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
+  --netuid 1 \
+  --amount 1.0
+```
+
+### Unstake with limit price – amount in **ALPHA**
+
+```bash
+python3 scripts/interact.py removeStakeLimit \
+  --hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
+  --netuid 1 \
+  --limit-price 1000000 \
+  --amount 0.5 \
+  --allow-partial
+```
+
+---
+
+## Transfer & move stake
+
+### Transfer stake to the contract’s allowed coldkey
+
+Amount in **TAO** (rao). Only the predefined allowed coldkey can receive.
+
+```bash
+python3 scripts/interact.py transferStake \
+  --hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
+  --origin-netuid 1 \
+  --destination-netuid 1 \
+  --amount 0.5
+```
+
+### Move stake between hotkeys
+
+Amount in **TAO** (rao).
+
+```bash
+python3 scripts/interact.py moveStake \
+  --origin-hotkey 5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX \
+  --destination-hotkey 5FHneW46xGXgs5mUivUemYskMwEeHktR6R4gLZ4R5YqJq8f \
+  --origin-netuid 1 \
+  --destination-netuid 1 \
+  --amount 0.25
+```
+
+---
+
+## Withdraw
+
+Send TAO from the contract to the allowed coldkey (balance transfer precompile). Amount in **TAO**. Only owner.
+
+```bash
+python3 scripts/interact.py withdraw --amount 1.0
+```
+
+---
+
+## Pull from proxied account
+
+Transfer all TAO from an account that has set this contract as its proxy into the contract. Requires a SCALE-encoded `balances.transferAll(dest, keepAlive)` call.
+
+### 1. Encode the transfer_all call
+
+`--dest` is the destination SS58 address (e.g. this contract’s SS58). Default `keep_alive=true`.
+
+```bash
+# Output hex for --encoded-call (default keep_alive=true)
+python3 scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7
+
+# keep_alive=false
+python3 scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 --no-keep-alive
+```
+
+### 2. Call pullFromProxiedAccount
+
+```bash
+ENCODED=$(python3 scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7)
+python3 scripts/interact.py pullFromProxiedAccount \
+  --proxied-account 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 \
+  --encoded-call "$ENCODED"
+```
+
+With explicit hex encoded call:
+
+```bash
+python3 scripts/interact.py pullFromProxiedAccount \
+  --proxied-account 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7 \
+  --encoded-call 0x0404...
+```
+
+---
+
+## Using a different contract
+
+Append `--contract <address>` to any command to use that contract instead of the one in `deployment.json`:
+
+```bash
+python3 scripts/interact.py balance --contract 0x1234567890123456789012345678901234567890
+python3 scripts/interact.py stake --hotkey 5F3s... --netuid 1 --amount 1.0 --contract 0x1234...
+```

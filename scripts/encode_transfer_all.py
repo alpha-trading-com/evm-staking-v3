@@ -3,15 +3,14 @@
 Encode balances.transferAll(dest, keepAlive) as SCALE bytes for use with
 pullFromProxiedAccount --encoded-call.
 
-dest = destination of the transfer (this contract's Substrate account ID).
-Use the contract's 32-byte account ID (hex) or its SS58 if the chain maps it.
+dest = destination of the transfer (this contract's SS58 address).
 
 Example (bash):
-  ENCODED=$(python scripts/encode_transfer_all.py --dest 0x<contract_32byte_account_id>)
+  ENCODED=$(python scripts/encode_transfer_all.py --dest 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7)
   python scripts/interact.py pullFromProxiedAccount --proxied-account <proxied_ss58> --encoded-call "$ENCODED"
 
 With keepAlive=false (as in Polkadot.js "No"):
-  python scripts/encode_transfer_all.py --dest 0x... --no-keep-alive
+  python scripts/encode_transfer_all.py --dest 5HCT4... --no-keep-alive
 """
 
 import argparse
@@ -28,17 +27,9 @@ except ImportError:
     pass
 
 
-def _dest_to_account_id(dest):
-    """Convert dest (SS58 or 0x hex 32 bytes) to 32-byte account ID."""
-    if isinstance(dest, bytes) and len(dest) == 32:
-        return dest
-    s = dest.strip()
-    if s.startswith("0x") or all(c in "0123456789abcdefABCDEF" for c in s.replace("0x", "")):
-        b = bytes.fromhex(s.replace("0x", ""))
-        if len(b) != 32:
-            raise ValueError("dest hex must be 32 bytes (64 hex characters)")
-        return b
-    # SS58
+def _ss58_to_account_id(ss58_address):
+    """Convert SS58 address string to 32-byte account ID."""
+    s = ss58_address.strip()
     try:
         import bittensor as bt
         return bytes(bt.utils.ss58_address_to_bytes(s))
@@ -51,14 +42,14 @@ def _dest_to_account_id(dest):
             return bytes(decoded[1:33])  # 1 byte prefix + 32 bytes account
         raise ValueError("SS58 decoded length too short")
     except Exception as e:
-        raise ValueError(f"dest must be SS58 or 32-byte hex: {e}") from e
+        raise ValueError(f"Invalid SS58 address: {e}") from e
 
 
 def encode_transfer_all(dest, keep_alive=True, rpc_url=None):
     """
     Encode Balances::transfer_all(dest, keep_alive) as SCALE bytes (hex).
 
-    dest: SS58 address or 32-byte hex (0x...) for the destination account (e.g. contract's account ID).
+    dest: SS58 address string for the destination account (e.g. contract's SS58).
     keep_alive: True = keep sender alive (default); False = allow reaping.
     rpc_url: Optional. If not set, uses RPC_URL env or Bittensor finney network.
     """
@@ -74,7 +65,7 @@ def encode_transfer_all(dest, keep_alive=True, rpc_url=None):
         rpc = "wss://" + rpc
 
     substrate = SubstrateInterface(url=rpc)
-    account_id = _dest_to_account_id(dest)
+    account_id = _ss58_to_account_id(dest)
 
     # MultiAddress::Id(AccountId) - dest as 0x-prefixed hex (32 bytes)
     call_params = {
@@ -99,7 +90,7 @@ def main():
     parser.add_argument(
         "--dest",
         required=True,
-        help="Destination account: SS58 address or 32-byte hex (0x...)",
+        help="Destination account: SS58 address string (e.g. contract's SS58)",
     )
     parser.add_argument(
         "--no-keep-alive",
