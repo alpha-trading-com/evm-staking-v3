@@ -3,3 +3,5 @@ npm run deploy:upgradeable
 
 npm run compile
 npm run deploy:upgradeable
+
+proxy_address: 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
