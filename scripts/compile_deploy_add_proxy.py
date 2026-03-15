@@ -32,25 +32,9 @@ try:
 except ImportError:
     pass
 
-
-def eth_to_ss58(eth_address: str, prefix: int = 42) -> str:
-    """Convert 20-byte EVM address to SS58 (Bittensor/Substrate)."""
-    import base58
-    import hashlib
-    if eth_address.startswith("0x") or eth_address.startswith("0X"):
-        eth_address = eth_address[2:]
-    raw = bytes.fromhex(eth_address)
-    if len(raw) != 20:
-        raise ValueError(f"EVM address must be 20 bytes, got {len(raw)}")
-    if prefix < 64:
-        payload = bytes([prefix]) + raw
-    else:
-        payload = bytes([
-            ((prefix & 0xFC) >> 2) | 0x40,
-            ((prefix & 0x03) << 6) | ((prefix >> 8) & 0x3F),
-        ]) + raw
-    checksum = hashlib.blake2b(b"SS58PRE" + payload, digest_size=64).digest()[:2]
-    return base58.b58encode(payload + checksum).decode("utf-8")
+# Use same H160→SS58 conversion as address_convert.py (evm: prefix + Blake2b-256)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts"))
+from address_convert import h160_to_ss58
 
 
 def step_compile() -> None:
@@ -83,7 +67,7 @@ def step_deploy() -> str:
 
 def step_add_proxy(contract_address: str) -> None:
     print("[3/3] Adding contract as proxy (Transfer) for proxy wallet...")
-    contract_ss58 = eth_to_ss58(contract_address)
+    contract_ss58 = h160_to_ss58(contract_address)
     print(f"      Contract EVM:  {contract_address}")
     print(f"      Contract SS58: {contract_ss58}")
 

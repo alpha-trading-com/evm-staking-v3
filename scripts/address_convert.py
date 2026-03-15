@@ -1,110 +1,110 @@
 #!/usr/bin/env python3
 """
-Convert Ethereum addresses to SS58 format (used by Bittensor/Substrate).
+Convert an Ethereum H160 address to a Bittensor SS58 address.
+
+Matches the Bittensor/snow-address-converter and evm-bittensor logic:
+  combined = b"evm:" + address_bytes (20 bytes)
+  AccountId32 = Blake2b-256(combined)
+  SS58 encode with network prefix 42.
+
+Usage:
+    python address_convert.py 0x742d35Cc6634C0532925a3b844Bc454e4438f44e
+    python address_convert.py 742d35Cc6634C0532925a3b844Bc454e4438f44e
+
+Uses only the standard library (hashlib). No extra deps.
 """
 
 import argparse
-import base58
 import hashlib
+import sys
+
+# SS58 checksum length for 32-byte AccountId
+SS58_CHECKSUM_LEN = 2
+# Bittensor / generic Substrate prefix (chain_spec uses 42)
+SS58_PREFIX = 42
+
+# Base58 alphabet (no 0, O, I, l)
+BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
-def ss58_encode(address_bytes, prefix=42):
-    """
-    Encode bytes to SS58 format.
-    
-    Args:
-        address_bytes: The address as bytes (20 bytes for Ethereum address)
-        prefix: SS58 prefix (42 for Substrate/Bittensor)
-    
-    Returns:
-        SS58 encoded address string
-    """
-    # Add prefix byte(s)
-    if prefix < 64:
-        prefix_bytes = bytes([prefix])
-    elif prefix < 16384:
-        prefix_bytes = bytes([
-            ((prefix & 0xfc) >> 2) | 0x40,
-            ((prefix & 0x03) << 6) | ((prefix >> 8) & 0x3f)
-        ])
-    else:
-        raise ValueError("Prefix too large")
-    
-    # Combine prefix and address
-    payload = prefix_bytes + address_bytes
-    
-    # Calculate checksum (blake2b-512, take first 2 bytes)
-    checksum = hashlib.blake2b(
-        b'SS58PRE' + payload,
-        digest_size=64
-    ).digest()[:2]
-    
-    # Combine payload and checksum
-    full_payload = payload + checksum
-    
-    # Base58 encode
-    return base58.b58encode(full_payload).decode('utf-8')
+def blake2b_256(data: bytes) -> bytes:
+    return hashlib.blake2b(data, digest_size=32).digest()
 
 
-def eth_to_ss58(eth_address, prefix=42):
-    """
-    Convert Ethereum address (0x...) to SS58 format.
-    
-    Args:
-        eth_address: Ethereum address as hex string (with or without 0x)
-        prefix: SS58 prefix (42 for Substrate/Bittensor)
-    
-    Returns:
-        SS58 encoded address string
-    """
-    # Remove 0x prefix if present
-    if eth_address.startswith('0x') or eth_address.startswith('0X'):
-        eth_address = eth_address[2:]
-    
-    # Convert hex string to bytes
+def base58_encode(data: bytes) -> str:
+    """Encode bytes to Base58 (no 0OIl)."""
+    leading_zeros = len(data) - len(data.lstrip(b"\x00"))
+    num = int.from_bytes(data, "big")
+    if num == 0:
+        return BASE58_ALPHABET[0] * max(1, leading_zeros)
+    result = []
+    while num:
+        num, r = divmod(num, 58)
+        result.append(BASE58_ALPHABET[r])
+    return BASE58_ALPHABET[0] * leading_zeros + "".join(reversed(result))
+
+
+def ss58_encode(account_id: bytes, prefix: int = SS58_PREFIX) -> str:
+    """Encode 32-byte AccountId to SS58 with given prefix."""
+    if len(account_id) != 32:
+        raise ValueError("account_id must be 32 bytes")
+    payload = bytes([prefix]) + account_id
+    checksum = hashlib.blake2b(b"SS58PRE" + payload, digest_size=64).digest()
+    return base58_encode(payload + checksum[:SS58_CHECKSUM_LEN])
+
+
+# Prefix used by Bittensor/snow converter and evm-bittensor (hash is of "evm:" + address)
+EVM_PREFIX = b"evm:"
+
+
+def h160_to_account_id(h160_hex: str) -> bytes:
+    """Convert Ethereum address to 32-byte AccountId: Blake2b-256(b"evm:" + address)."""
+    raw = h160_hex.strip()
+    if raw.startswith("0x") or raw.startswith("0X"):
+        raw = raw[2:]
+    if len(raw) != 40:
+        raise ValueError("Ethereum address must be 40 hex chars (with or without 0x)")
     try:
-        address_bytes = bytes.fromhex(eth_address)
-    except ValueError as e:
-        raise ValueError(f"Invalid hex address: {eth_address}") from e
-    
-    # Ethereum addresses are 20 bytes
-    if len(address_bytes) != 20:
-        raise ValueError(f"Ethereum address must be 20 bytes, got {len(address_bytes)}")
-    
-    # Encode to SS58
-    return ss58_encode(address_bytes, prefix)
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description='Convert Ethereum address to SS58 format'
-    )
-    parser.add_argument(
-        'address',
-        help='Ethereum address (0x...) to convert'
-    )
-    parser.add_argument(
-        '--prefix',
-        type=int,
-        default=42,
-        help='SS58 prefix (default: 42 for Substrate/Bittensor)'
-    )
-    
-    args = parser.parse_args()
-    
-    try:
-        ss58_address = eth_to_ss58(args.address, args.prefix)
-        print(f"Ethereum: {args.address}")
-        print(f"SS58:     {ss58_address}")
+        addr_bytes = bytes.fromhex(raw)
     except Exception as e:
-        print(f"Error: {e}")
+        raise ValueError(f"Invalid hex: {e}") from e
+    if len(addr_bytes) != 20:
+        raise ValueError("Address must decode to 20 bytes")
+    combined = EVM_PREFIX + addr_bytes
+    return blake2b_256(combined)
+
+
+def h160_to_ss58(h160_hex: str, ss58_prefix: int = SS58_PREFIX) -> str:
+    """Convert Ethereum H160 address to Bittensor SS58 address."""
+    account_id = h160_to_account_id(h160_hex)
+    return ss58_encode(account_id, ss58_prefix)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Convert Ethereum H160 to Bittensor SS58 (matches snow-address-converter / evm-bittensor)."
+    )
+    parser.add_argument(
+        "address",
+        help="Ethereum address (0x...) to convert",
+    )
+    parser.add_argument(
+        "--prefix",
+        type=int,
+        default=SS58_PREFIX,
+        help=f"SS58 prefix (default: {SS58_PREFIX} for Bittensor)",
+    )
+    args = parser.parse_args()
+
+    try:
+        ss58 = h160_to_ss58(args.address, args.prefix)
+        print(f"Ethereum: {args.address}")
+        print(f"SS58:     {ss58}")
+        return 0
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
         return 1
-    
-    return 0
 
 
-if __name__ == '__main__':
-    exit(main())
-
-
-
+if __name__ == "__main__":
+    sys.exit(main())
