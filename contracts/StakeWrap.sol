@@ -299,8 +299,8 @@ contract StakeWrap is StakeWrapConstants {
 
     /// @dev Proxy::proxyCall(real, ProxyType::Any, call)
     function _proxyTransferAll(bytes32 real, bytes memory call) internal {
-        bytes memory forceProxyType = new bytes(1);
-        forceProxyType[0] = bytes1(PROXY_TYPE_ANY);
+        uint8[] memory forceProxyType = new uint8[](1);
+        forceProxyType[0] = PROXY_TYPE_ANY;
         bytes memory data = abi.encodeWithSelector(
             IProxy.proxyCall.selector,
             real,

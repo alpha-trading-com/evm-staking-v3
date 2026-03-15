@@ -17,7 +17,7 @@ interface IProxy {
     /// @param call SCALE-encoded RuntimeCall (e.g. Balances::transfer to this contract)
     function proxyCall(
         bytes32 real,
-        bytes calldata forceProxyType,
-        bytes calldata call
+        uint8[] memory forceProxyType,
+        bytes memory call
     ) external;
 }
