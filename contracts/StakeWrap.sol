@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0
 //
 // This example demonstrates calling of IStaking precompile
-// from another smart contract
-
+// from another smart contract.
+// Upgradeable: use initializer instead of constructor; deploy behind a proxy.
 pragma solidity ^0.8.3;
 
 import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
 import "./StakeWrapConstants.sol";
 import "./IProxy.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract StakeWrap is StakeWrapConstants {
+contract StakeWrap is StakeWrapConstants, Initializable {
     address public owner;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
+        _disableInitializers();
+        owner = msg.sender; // for direct (non-proxy) deploy; ignored when used behind proxy
+    }
+
+    function initialize() public initializer {
         owner = msg.sender;
     }
 

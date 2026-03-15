@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "deploy:upgradeable": "hardhat run scripts/deploy-upgradeable.js --network finney",
+    "upgrade": "hardhat run scripts/upgrade.js --network finney"
   },
   "keywords": [
     "bittensor",
@@ -18,6 +20,9 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "hardhat": "^2.19.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.6",
+    "@openzeppelin/contracts-upgradeable": "^4.9.6"
   }
 }
-

@@ -15,10 +15,11 @@ module.exports = {
     hardhat: {
       chainId: 1337,
     },
-    // Add your network configurations here
-    // localhost: {
-    //   url: "http://127.0.0.1:8545",
-    // },
+    finney: {
+      url: process.env.RPC_URL || "https://test.finney.opentensor.ai/",
+      chainId: process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID, 10) : undefined,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
   },
   paths: {
     sources: "./contracts",

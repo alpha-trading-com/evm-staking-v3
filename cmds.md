@@ -160,3 +160,30 @@ Append `--contract <address>` to any command to use that contract instead of the
 python3 scripts/interact.py balance --contract 0x1234567890123456789012345678901234567890
 python3 scripts/interact.py stake --hotkey 5F3s... --netuid 1 --amount 1.0 --contract 0x1234...
 ```
+
+---
+
+## Upgradeable deployment
+
+To deploy an **upgradeable** StakeWrap (implementation + proxy), use the Hardhat script. The proxy address is what you use in `deployment.json` and with `interact.py`.
+
+**Deploy (first time):**
+
+```bash
+# Set PRIVATE_KEY (and optionally RPC_URL) in .env, then:
+npm run compile
+npm run deploy:upgradeable
+```
+
+This writes `deployment.json` with `contract_address` = proxy and `implementation_address` = implementation. Use the proxy address everywhere.
+
+**Upgrade to a new implementation:**
+
+After changing the StakeWrap contract (e.g. new logic), deploy the new implementation and point the proxy at it:
+
+```bash
+npm run compile
+npm run upgrade
+```
+
+Only the account that was set as proxy admin (the deployer) can run `upgrade`. `deployment.json` is updated with the new `implementation_address`.
