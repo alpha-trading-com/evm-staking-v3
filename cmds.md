@@ -30,6 +30,14 @@ python3 scripts/interact.py owner
 python3 scripts/interact.py balance
 ```
 
+### Get subnet price (alpha price for a netuid)
+
+Uses the Alpha precompile (0x808). Returns current alpha price in rao per alpha (scaled by 1e9).
+
+```bash
+python3 scripts/interact.py subnetPrice --netuid 1
+```
+
 ---
 
 ## Staking

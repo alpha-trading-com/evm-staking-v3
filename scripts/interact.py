@@ -149,6 +149,13 @@ CONTRACT_ABI = [
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256", "name": "netuid", "type": "uint256"}],
+        "name": "getSubnetPrice",
+        "outputs": [{"internalType": "uint256", "name": "price", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
     }
 ]
 
@@ -779,7 +786,7 @@ def withdraw(w3, account, contract_address, amount):
 
 def main():
     parser = argparse.ArgumentParser(description='Interact with StakeWrap contract')
-    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'pullFromProxiedAccount', 'transferToProxiedAccount'],
+    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'pullFromProxiedAccount', 'transferToProxiedAccount', 'subnetPrice'],
                        help='Action to perform')
     parser.add_argument('--hotkey', type=str, help='Hotkey (SS58 or 32 bytes hex string)')
     parser.add_argument('--origin-hotkey', type=str, help='Origin hotkey for moveStake (SS58 or 32 bytes hex string)')
@@ -840,6 +847,13 @@ def main():
         balance_tao = Web3.from_wei(balance_wei, 'ether')
         print(f"Contract balance: {balance_tao} TAO ({balance_wei} wei)")
         print(f"Note: Balance is in wei (10^18). Staking/unstaking amounts use rao (10^9).")
+
+    elif args.action == 'subnetPrice':
+        if args.netuid is None:
+            parser.error("subnetPrice requires --netuid")
+        contract = get_contract(w3, contract_address)
+        price = contract.functions.getSubnetPrice(args.netuid).call()
+        print(f"Subnet {args.netuid} alpha price (rao per alpha, 1e9 scale): {price}")
     
     elif args.action == 'stake':
         if not all([args.hotkey, args.netuid is not None, args.amount is not None]):

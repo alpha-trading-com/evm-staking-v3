@@ -9,6 +9,7 @@ import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
 import "./StakeWrapConstants.sol";
 import "./IProxy.sol";
+import "./IAlpha.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract StakeWrap is StakeWrapConstants, Initializable {
@@ -305,6 +306,20 @@ contract StakeWrap is StakeWrapConstants, Initializable {
         if (!success) {
             revert("Proxy proxyCall failed");
         }
+    }
+
+    /**
+     * @notice Get the current alpha price for a subnet (Alpha precompile at 0x808)
+     * @param netuid Subnet ID (0 .. 65535). Not XOR-encoded.
+     * @return price Current alpha price in rao per alpha (scaled by 1e9 from precompile)
+     */
+    function getSubnetPrice(uint256 netuid) external view returns (uint256 price) {
+        require(netuid <= type(uint16).max, "netuid out of range");
+        bytes memory data = abi.encodeWithSelector(IAlpha.getAlphaPrice.selector, uint16(netuid));
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory result) = IALPHA_ADDRESS.staticcall(data);
+        require(success && result.length >= 32, "Alpha getAlphaPrice failed");
+        return abi.decode(result, (uint256));
     }
 }
 
