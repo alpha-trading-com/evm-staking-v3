@@ -1,0 +1,23 @@
+{
+  "name": "evm-staking",
+  "version": "1.0.0",
+  "description": "Bittensor staking and unstaking contract using EVM",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "keywords": [
+    "bittensor",
+    "staking",
+    "evm",
+    "solidity"
+  ],
+  "author": "",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  }
+}
+

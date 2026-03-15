@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StakeWrap Control</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --success: #22c55e;
+      --error: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem;
+      line-height: 1.6;
+    }
+    h1 { font-size: 1.75rem; margin: 0 0 0.5rem 0; }
+    h2 { font-size: 1.25rem; margin: 0 0 1rem 0; }
+    .container { max-width: 100%; margin: 0 auto; }
+    .main-split { display: flex; gap: 1.5rem; align-items: flex-start; }
+    .main-left { flex: 1; min-width: 0; }
+    .main-left h2 { font-size: 1.25rem; margin: 0 0 1rem 0; }
+    .stake-info-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+    .main-right { flex: 1; min-width: 0; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .tabs button {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 0.5rem 1rem;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tabs button:hover { background: var(--surface); color: var(--text); }
+    .tabs button.active { background: var(--accent); color: #fff; }
+    section.panel { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+    section.panel.active { display: block; }
+    label { display: block; margin-top: 1rem; color: var(--muted); font-size: 0.9rem; font-weight: 500; }
+    label:first-of-type { margin-top: 0; }
+    input, textarea, select {
+      width: 100%;
+      max-width: 32rem;
+      padding: 0.6rem;
+      margin-top: 0.25rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    input[type="checkbox"] { width: auto; margin-right: 0.5rem; }
+    button.submit {
+      margin-top: 1.5rem;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 0.7rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+    button.submit:hover { opacity: 0.9; }
+    button.submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result { margin-top: 1rem; padding: 1rem; border-radius: 8px; font-size: 0.9rem; }
+    .result.ok { background: rgba(34, 197, 94, 0.15); border: 1px solid var(--success); color: var(--success); }
+    .result.err { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--error); color: var(--error); }
+    .result pre { margin: 0.5rem 0 0 0; white-space: pre-wrap; word-break: break-all; }
+    small.hint { color: var(--muted); display: block; margin-top: 0.25rem; font-size: 0.85rem; }
+    .refresh-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 0.75rem; }
+    .refresh-btn:hover { background: var(--border); }
+    .stake-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .stake-table th, .stake-table td { padding: 0.6rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .stake-table th { background: var(--bg); color: var(--muted); font-weight: 600; }
+    .stake-table tr:hover { background: rgba(59, 130, 246, 0.1); }
+    .unstake-btn { background: var(--accent); border: none; color: #fff; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .unstake-btn:hover { opacity: 0.9; }
+    .unstake-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loading { color: var(--muted); font-style: italic; }
+    .wallet-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .wallet-footer-title { font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+    .wallet-footer-content { font-size: 0.85rem; line-height: 1.8; color: var(--muted); font-family: monospace; }
+    .wallet-footer-content div { margin-bottom: 0.25rem; }
+    .subnet-buttons { margin-top: 1rem; }
+    .subnet-buttons-title { font-size: 0.95rem; font-weight: 600; color: var(--muted); margin-bottom: 0.5rem; }
+    .subnet-grid { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .subnet-btn {
+      min-width: 2rem; padding: 0.35rem 0.5rem;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 4px; cursor: pointer;
+      font-size: 0.8rem; font-variant-numeric: tabular-nums;
+    }
+    .subnet-btn:hover { background: var(--border); color: var(--text); }
+    .subnet-btn.active-subnet { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .amount-input-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.25rem; }
+    .amount-input-row input { flex: 1; min-width: 10rem; margin-top: 0; }
+    .amount-presets-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .amount-preset-btn {
+      padding: 0.4rem 0.75rem; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 4px; cursor: pointer; font-size: 0.85rem;
+    }
+    .amount-preset-btn:hover { background: var(--border); }
+    @media (max-width: 1200px) {
+      .main-split { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-split">
+      <div class="main-left">
+        <div class="stake-info-panel">
+          <h2 style="margin-top: 0;">Stake Info</h2>
+          <button type="button" class="refresh-btn" onclick="loadStakeInfo()">Refresh</button>
+          <div id="stake-info-container">
+            <div class="loading">Loading stake info...</div>
+          </div>
+          <div class="subnet-buttons">
+            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Stake Limit / Unstake / Unstake Limit)</div>
+            <div class="subnet-grid" id="subnet-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="main-right">
+        <h1>🔐 StakeWrap Control</h1>
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">
+          Control stake, stake limit, unstake, unstake limit, transfer stake, move stake, and withdraw operations via UI.
+          Powered by FastAPI + uvicorn.
+        </p>
+
+        <div class="tabs" id="tabs"></div>
+
+    <section class="panel active" id="panel-stake">
+      <h2>Stake (addStake)</h2>
+      <label>Amount (TAO)</label>
+      <div class="amount-input-row">
+        <input id="stake-amount" type="number" step="any" placeholder="e.g. 0.1" />
+        <div class="amount-presets-row">
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(30)">30</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(50)">50</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(100)">100</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(150)">150</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(200)">200</button>
+        </div>
+      </div>
+      <small class="hint">Amount will be converted to rao (1 TAO = 10^9 rao)</small>
+      <label>Netuid</label>
+      <input id="stake-netuid" type="number" value="1" />
+      <label>Hotkey (SS58 or 0x...)</label>
+      <input id="stake-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button class="submit" onclick="postStake()">Submit Stake</button>
+      <div id="stake-result"></div>
+    </section>
+
+    <section class="panel" id="panel-stake-limit">
+      <h2>Stake Limit (addStakeLimit)</h2>
+      <label>TAO Amount</label>
+      <div class="amount-input-row">
+        <input id="sl-amount" type="number" step="any" placeholder="e.g. 60" />
+        <div class="amount-presets-row">
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(30)">30</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(50)">50</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(100)">100</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(150)">150</button>
+          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(200)">200</button>
+        </div>
+      </div>
+      <label>Network ID</label>
+      <input id="sl-netuid" type="number" value="1" />
+      <label>Rate Tolerance</label>
+      <input id="sl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" />
+      <small class="hint">This value will be ignored when "Use Minimum Tolerance" is checked</small>
+      <label style="margin-top: 0.5rem;">
+        <input id="sl-use-min" type="checkbox" /> Use Minimum Tolerance
+      </label>
+      <label style="margin-top: 0.5rem;">
+        <input id="sl-partial" type="checkbox" /> Allow Partial Staking
+      </label>
+      <label>Hotkey (Validator Hotkey)</label>
+      <input id="sl-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button class="submit" onclick="postStakeLimit()">Stake</button>
+      <button type="button" class="refresh-btn" style="margin-left: 0.5rem;" onclick="calcMinToleranceStake()">Calculate Min Tolerance</button>
+      <div id="sl-result"></div>
+    </section>
+
+    <section class="panel" id="panel-remove">
+      <h2>Unstake (removeStake)</h2>
+      <small class="hint">Amount is in raw alpha units (integer). Same convention as CLI.</small>
+      <label>Amount (integer, alpha raw units)</label>
+      <input id="rs-amount" type="number" placeholder="e.g. 100000000" />
+      <label>Netuid</label>
+      <input id="rs-netuid" type="number" value="1" />
+      <label>Hotkey</label>
+      <input id="rs-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button class="submit" onclick="postRemoveStake()">Submit Unstake</button>
+      <div id="rs-result"></div>
+    </section>
+
+    <section class="panel" id="panel-remove-limit">
+      <h2>Unstake Limit (removeStakeLimit)</h2>
+      <label>Amount (integer, alpha raw units)</label>
+      <input id="rsl-amount" type="number" placeholder="e.g. 100000000" />
+      <small class="hint">Amount is in raw alpha units (same as CLI: int(amount*1e9))</small>
+      <label>Network ID</label>
+      <input id="rsl-netuid" type="number" value="1" />
+      <label>Rate Tolerance</label>
+      <input id="rsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" />
+      <small class="hint">Ignored when "Use Minimum Tolerance" is checked</small>
+      <label style="margin-top: 0.5rem;">
+        <input id="rsl-use-min" type="checkbox" /> Use Minimum Tolerance
+      </label>
+      <label style="margin-top: 0.5rem;">
+        <input id="rsl-partial" type="checkbox" /> Allow partial fill
+      </label>
+      <label>Hotkey</label>
+      <input id="rsl-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button class="submit" onclick="postRemoveStakeLimit()">Unstake</button>
+      <button type="button" class="refresh-btn" style="margin-left: 0.5rem;" onclick="calcMinToleranceUnstake()">Calculate Min Tolerance</button>
+      <div id="rsl-result"></div>
+    </section>
+
+    <section class="panel" id="panel-transfer">
+      <h2>Transfer Stake</h2>
+      <small class="hint">Transfer stake to the predefined allowed coldkey only.</small>
+      <label>Amount (TAO)</label>
+      <input id="ts-amount" type="number" step="any" placeholder="e.g. 0.1" />
+      <label>Origin Netuid</label>
+      <input id="ts-origin" type="number" value="1" />
+      <label>Destination Netuid</label>
+      <input id="ts-dest" type="number" value="1" />
+      <label>Hotkey</label>
+      <input id="ts-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button class="submit" onclick="postTransferStake()">Submit Transfer Stake</button>
+      <div id="ts-result"></div>
+    </section>
+
+    <section class="panel" id="panel-move">
+      <h2>Move Stake</h2>
+      <small class="hint">Move stake between different hotkeys. Leave amount empty to move all (alpha).</small>
+      <label>Amount (TAO)</label>
+      <input id="ms-amount" type="number" step="any" placeholder="e.g. 0.1 (empty = all)" />
+      <label>Origin Netuid</label>
+      <input id="ms-origin" type="number" value="1" />
+      <label>Destination Netuid</label>
+      <input id="ms-dest" type="number" value="1" />
+      <label>Origin Hotkey</label>
+      <input id="ms-origin-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <label>Destination Hotkey</label>
+      <input id="ms-dest-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button class="submit" onclick="postMoveStake()">Submit Move Stake</button>
+      <div id="ms-result"></div>
+    </section>
+
+    <section class="panel" id="panel-withdraw">
+      <h2>Withdraw TAO</h2>
+      <small class="hint">Withdraw TAO from the contract (owner only).</small>
+      <label>Amount (TAO)</label>
+      <input id="wd-amount" type="number" step="any" placeholder="e.g. 0.1" />
+      <button class="submit" onclick="postWithdraw()">Submit Withdraw</button>
+      <div id="wd-result"></div>
+    </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Persistence START ---
+
+    // List of all input/checkbox element ids to persist
+    const PERSISTED_FIELDS = [
+      // Stake
+      "stake-hotkey", "stake-netuid", "stake-amount",
+      // Stake Limit
+      "sl-hotkey", "sl-netuid", "sl-amount", "sl-tolerance", "sl-use-min", "sl-partial",
+      // Remove Stake
+      "rs-hotkey", "rs-netuid", "rs-amount",
+      // Remove Stake Limit
+      "rsl-hotkey", "rsl-netuid", "rsl-amount", "rsl-tolerance", "rsl-use-min", "rsl-partial",
+      // Transfer Stake
+      "ts-hotkey", "ts-origin", "ts-dest", "ts-amount",
+      // Move Stake
+      "ms-origin-hotkey", "ms-dest-hotkey", "ms-origin", "ms-dest", "ms-amount",
+      // Withdraw
+      "wd-amount"
+    ];
+
+    const TAB_INDEX_KEY = "stakewrap_ui_tab_index";
+
+    function isCheckbox(id) {
+      const el = document.getElementById(id);
+      return el && el.type === "checkbox";
+    }
+    function getFieldValue(id) {
+      const el = document.getElementById(id);
+      if (!el) return undefined;
+      if (el.type === "checkbox") return el.checked;
+      return el.value;
+    }
+    function setFieldValue(id, val) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.type === "checkbox") {
+        el.checked = Boolean(val);
+      } else if (val !== undefined) {
+        el.value = val;
+      }
+    }
+    // Save all fields to localStorage
+    function persistAllInputs() {
+      let data = {};
+      for (const id of PERSISTED_FIELDS) {
+        data[id] = getFieldValue(id);
+      }
+      localStorage.setItem("stakewrap_ui_inputs", JSON.stringify(data));
+    }
+    // Restore all fields from localStorage
+    function restoreAllInputs() {
+      let data;
+      try {
+        data = JSON.parse(localStorage.getItem("stakewrap_ui_inputs") || "{}");
+      } catch {
+        data = {};
+      }
+      for (const id of PERSISTED_FIELDS) {
+        if (data.hasOwnProperty(id)) setFieldValue(id, data[id]);
+      }
+    }
+
+    // Attach listeners to each field for instant save
+    function setupFieldPersistence() {
+      for (const id of PERSISTED_FIELDS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        // Listen for events that change the value
+        el.addEventListener(el.type === "checkbox" ? "change" : "input", persistAllInputs);
+      }
+    }
+
+    // Subnet ID buttons: 0..127 — clicking sets network id for stake, stake limit, unstake, unstake limit
+    const SUBNET_NETWORK_IDS = ['stake-netuid', 'sl-netuid', 'rs-netuid', 'rsl-netuid'];
+    function setTaoAmount(amount) {
+      const val = String(amount);
+      const stakeEl = document.getElementById('stake-amount');
+      const slEl = document.getElementById('sl-amount');
+      if (stakeEl) stakeEl.value = val;
+      if (slEl) slEl.value = val;
+      persistAllInputs();
+    }
+    function setNetworkIdFromSubnet(subnetId) {
+      const val = String(subnetId);
+      SUBNET_NETWORK_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.value = val; }
+      });
+      persistAllInputs();
+      document.querySelectorAll('.subnet-btn').forEach(btn => btn.classList.remove('active-subnet'));
+      const activeBtn = document.querySelector('.subnet-btn[data-subnet-id="' + subnetId + '"]');
+      if (activeBtn) activeBtn.classList.add('active-subnet');
+    }
+    function initSubnetButtons() {
+      const grid = document.getElementById('subnet-grid');
+      if (!grid) return;
+      for (let i = 0; i < 128; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'subnet-btn';
+        btn.dataset.subnetId = i;
+        btn.textContent = i;
+        btn.onclick = () => setNetworkIdFromSubnet(i);
+        grid.appendChild(btn);
+      }
+      // Mark current network id as active if it matches a subnet 0..127
+      const current = parseInt(document.getElementById('stake-netuid').value, 10);
+      if (!isNaN(current) && current >= 0 && current < 128) {
+        const activeBtn = document.querySelector('.subnet-btn[data-subnet-id="' + current + '"]');
+        if (activeBtn) activeBtn.classList.add('active-subnet');
+      }
+    }
+
+    // Restore persisted values as soon as DOM loads
+    document.addEventListener("DOMContentLoaded", () => {
+      restoreAllInputs();
+      setupFieldPersistence();
+      restoreActiveTab(); // new for tab persist
+      initSubnetButtons();
+      loadStakeInfo(); // Load stake info on page load
+    });
+
+    // --- Persistence END ---
+
+    const tabIds = [
+      { id: 'stake', label: 'Stake' },
+      { id: 'stake-limit', label: 'Stake Limit' },
+      { id: 'remove', label: 'Unstake' },
+      { id: 'remove-limit', label: 'Unstake Limit' },
+      { id: 'transfer', label: 'Transfer Stake' },
+      { id: 'move', label: 'Move Stake' },
+      { id: 'withdraw', label: 'Withdraw' },
+    ];
+
+    // For tab persist, keep references to the tab buttons
+    let tabButtons = [];
+
+    // Helper to activate a tab by index
+    function activateTabByIndex(idx) {
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('section.panel').forEach(x => x.classList.remove('active'));
+      if (typeof idx === "number" && idx >= 0 && idx < tabButtons.length) {
+        tabButtons[idx].classList.add('active');
+        document.getElementById(tabButtons[idx].dataset.panel).classList.add('active');
+        localStorage.setItem(TAB_INDEX_KEY, idx);
+      }
+    }
+
+    function restoreActiveTab() {
+      const savedIdx = parseInt(localStorage.getItem(TAB_INDEX_KEY), 10);
+      if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < tabButtons.length) {
+        activateTabByIndex(savedIdx);
+      }
+    }
+
+    tabIds.forEach((t, i) => {
+      const b = document.createElement('button');
+      b.textContent = t.label;
+      b.dataset.panel = 'panel-' + t.id;
+      if (i === 0) b.classList.add('active');
+      b.onclick = () => {
+        activateTabByIndex(i);
+      };
+      document.getElementById('tabs').appendChild(b);
+      tabButtons.push(b);
+    });
+
+    // After all buttons are created, restore the tab if present in localStorage
+    // (Otherwise, default is first tab, just as before)
+    // (Moved the restoreActiveTab call above to after DOMContentLoaded!)
+
+    function showResult(elId, ok, text) {
+      const el = document.getElementById(elId);
+      el.className = 'result ' + (ok ? 'ok' : 'err');
+      el.innerHTML = ok ? '✅ Success<pre>' + text + '</pre>' : '❌ Error: ' + text;
+    }
+
+    async function postJson(url, body, resultId) {
+      showResult(resultId, false, 'Submitting...');
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json();
+        if (j.ok) showResult(resultId, true, JSON.stringify(j.receipt, null, 2));
+        else showResult(resultId, false, j.error || JSON.stringify(j));
+      } catch (e) {
+        showResult(resultId, false, String(e));
+      }
+    }
+
+    function postStake() {
+      postJson('/api/stake', {
+        hotkey: document.getElementById('stake-hotkey').value.trim(),
+        netuid: parseInt(document.getElementById('stake-netuid').value, 10),
+        amount_tao: parseFloat(document.getElementById('stake-amount').value),
+      }, 'stake-result');
+    }
+    function postStakeLimit() {
+      postJson('/api/stake-limit', {
+        hotkey: document.getElementById('sl-hotkey').value.trim(),
+        netuid: parseInt(document.getElementById('sl-netuid').value, 10),
+        amount_tao: parseFloat(document.getElementById('sl-amount').value),
+        rate_tolerance: parseFloat(document.getElementById('sl-tolerance').value),
+        use_min_tolerance: document.getElementById('sl-use-min').checked,
+        allow_partial: document.getElementById('sl-partial').checked,
+      }, 'sl-result');
+    }
+    async function calcMinToleranceStake() {
+      const amount = parseFloat(document.getElementById('sl-amount').value);
+      const netuid = parseInt(document.getElementById('sl-netuid').value, 10);
+      if (!amount || !netuid) {
+        showResult('sl-result', false, 'Please enter TAO amount and Network ID');
+        return;
+      }
+      showResult('sl-result', false, 'Calculating...');
+      try {
+        const r = await fetch('/api/calc-min-tolerance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tao_amount: amount, netuid, operation: 'stake' }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          showResult('sl-result', true, `Min tolerance limit price: ${j.limit_price} rao/alpha`);
+        } else {
+          showResult('sl-result', false, j.error);
+        }
+      } catch (e) {
+        showResult('sl-result', false, String(e));
+      }
+    }
+    function postRemoveStake() {
+      const amountValue = document.getElementById('rs-amount').value.trim();
+      const amount = amountValue === '' ? null : parseInt(amountValue, 10);
+      postJson('/api/remove-stake', {
+        hotkey: document.getElementById('rs-hotkey').value.trim(),
+        netuid: parseInt(document.getElementById('rs-netuid').value, 10),
+        amount: amount,
+      }, 'rs-result');
+    }
+    function postRemoveStakeLimit() {
+      postJson('/api/remove-stake-limit', {
+        hotkey: document.getElementById('rsl-hotkey').value.trim(),
+        netuid: parseInt(document.getElementById('rsl-netuid').value, 10),
+        amount: parseInt(document.getElementById('rsl-amount').value, 10),
+        rate_tolerance: parseFloat(document.getElementById('rsl-tolerance').value),
+        use_min_tolerance: document.getElementById('rsl-use-min').checked,
+        allow_partial: document.getElementById('rsl-partial').checked,
+      }, 'rsl-result');
+    }
+    async function calcMinToleranceUnstake() {
+      const amount = parseInt(document.getElementById('rsl-amount').value, 10);
+      const netuid = parseInt(document.getElementById('rsl-netuid').value, 10);
+      if (!amount || !netuid) {
+        showResult('rsl-result', false, 'Please enter amount and Network ID');
+        return;
+      }
+      const amount_tao = amount / 1e9;  // Convert alpha raw to TAO
+      showResult('rsl-result', false, 'Calculating...');
+      try {
+        const r = await fetch('/api/calc-min-tolerance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tao_amount: amount_tao, netuid, operation: 'unstake' }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          showResult('rsl-result', true, `Min tolerance limit price: ${j.limit_price} rao/alpha`);
+        } else {
+          showResult('rsl-result', false, j.error);
+        }
+      } catch (e) {
+        showResult('rsl-result', false, String(e));
+      }
+    }
+    function postTransferStake() {
+      postJson('/api/transfer-stake', {
+        hotkey: document.getElementById('ts-hotkey').value.trim(),
+        origin_netuid: parseInt(document.getElementById('ts-origin').value, 10),
+        destination_netuid: parseInt(document.getElementById('ts-dest').value, 10),
+        amount_tao: parseFloat(document.getElementById('ts-amount').value),
+      }, 'ts-result');
+    }
+    function postMoveStake() {
+      const amountVal = document.getElementById('ms-amount').value.trim();
+      postJson('/api/move-stake', {
+        origin_hotkey: document.getElementById('ms-origin-hotkey').value.trim(),
+        destination_hotkey: document.getElementById('ms-dest-hotkey').value.trim(),
+        origin_netuid: parseInt(document.getElementById('ms-origin').value, 10),
+        destination_netuid: parseInt(document.getElementById('ms-dest').value, 10),
+        amount_tao: amountVal === '' ? null : parseFloat(amountVal),
+      }, 'ms-result');
+    }
+    function postWithdraw() {
+      postJson('/api/withdraw', {
+        amount_tao: parseFloat(document.getElementById('wd-amount').value),
+      }, 'wd-result');
+    }
+
+    async function loadStakeInfo() {
+      const container = document.getElementById('stake-info-container');
+      container.innerHTML = '<div class="loading">Loading stake info...</div>';
+      
+      try {
+        const r = await fetch('/api/stake-info');
+        const j = await r.json();
+        
+        if (!j.ok) {
+          container.innerHTML = '<div class="result err">Error: ' + (j.error || 'Failed to load stake info') + '</div>';
+          return;
+        }
+        
+        if (!j.stakes || j.stakes.length === 0) {
+          let html = '<div class="result" style="background: rgba(139, 156, 179, 0.15); border: 1px solid var(--muted); color: var(--muted); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">No stakes found for coldkey: ' + j.coldkey + '</div>';
+          
+          // Still show wallet info even if no stakes
+          html += '<div class="wallet-footer">';
+          html += '<div class="wallet-footer-title">Wallet:</div>';
+          html += '<div class="wallet-footer-content">';
+          html += '<div><strong>Coldkey SS58:</strong> ' + j.coldkey + '</div>';
+          html += '<div><strong>Free Balance:</strong> τ' + (j.free_balance_tao || 0).toFixed(9) + '</div>';
+          html += '<div><strong>Total Staked Value:</strong> τ' + (j.total_staked_value_tao || 0).toFixed(9) + '</div>';
+          html += '<div><strong>Total Value:</strong> τ' + (j.total_value_tao || j.free_balance_tao || 0).toFixed(9) + '</div>';
+          html += '</div>';
+          html += '</div>';
+          
+          container.innerHTML = html;
+          return;
+        }
+        
+        let html = '<table class="stake-table"><thead><tr>';
+        html += '<th>NetUID</th>';
+        html += '<th>Value (TAO)</th>';
+        html += '<th>Stake (Alpha)</th>';
+        html += '<th>Price</th>';
+        html += '<th>Hotkey</th>';
+        html += '<th>Action</th>';
+        html += '</tr></thead><tbody>';
+        
+        for (const stake of j.stakes) {
+          const hotkeyEscaped = stake.hotkey_ss58.replace(/'/g, "\\'");
+          html += '<tr>';
+          html += '<td>' + stake.netuid + '</td>';
+          html += '<td>' + stake.value_tao.toFixed(2) + '</td>';
+          html += '<td>' + stake.stake_alpha_tao.toFixed(2) + '</td>';
+          html += '<td>' + stake.price_tao.toFixed(4) + '</td>';
+          html += '<td style="font-size: 0.75rem; word-break: break-all; max-width: 200px;">' + stake.hotkey_ss58 + '</td>';
+          html += '<td><button class="unstake-btn" onclick="unstakeFromTable(' + stake.netuid + ', \'' + hotkeyEscaped + '\', ' + stake.stake_alpha_rao + ')">Unstake</button></td>';
+          html += '</tr>';
+        }
+        
+        html += '</tbody></table>';
+        
+        // Add wallet info footer
+        html += '<div class="wallet-footer">';
+        html += '<div class="wallet-footer-title">Wallet:</div>';
+        html += '<div class="wallet-footer-content">';
+        html += '<div><strong>Coldkey SS58:</strong> ' + j.coldkey + '</div>';
+        html += '<div><strong>Free Balance:</strong> τ' + j.free_balance_tao.toFixed(9) + '</div>';
+        html += '<div><strong>Total Staked Value:</strong> τ' + j.total_staked_value_tao.toFixed(9) + '</div>';
+        html += '<div><strong>Total Value:</strong> τ' + j.total_value_tao.toFixed(9) + '</div>';
+        html += '</div>';
+        html += '</div>';
+        
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<div class="result err">Error: ' + String(e) + '</div>';
+      }
+    }
+
+    function unstakeFromTable(netuid, hotkey, amountAlphaRao) {
+      // Switch to Unstake tab (index 2)
+      activateTabByIndex(2);
+      
+      // Fill the form fields
+      document.getElementById('rs-netuid').value = netuid;
+      document.getElementById('rs-hotkey').value = hotkey;
+      // Leave amount empty to unstake all
+      document.getElementById('rs-amount').value = '';
+      
+      // Submit the unstake
+      postRemoveStake();
+    }
+  </script>
+</body>
+</html>
