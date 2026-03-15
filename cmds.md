@@ -133,6 +133,13 @@ Send a specific amount of TAO from the contract to the **allowed proxied account
 python3 scripts/interact.py transferToProxiedAccount --amount 0.5
 ```
 
+**Withdraw full contract balance to proxy (allowedProxiedAccount):**
+
+```bash
+python3 scripts/withdraw_all_to_proxy.py
+python3 scripts/withdraw_all_to_proxy.py --contract 0xYourContractAddress
+```
+
 ---
 
 ## Add contract as proxy (type Transfer)
