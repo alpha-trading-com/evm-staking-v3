@@ -285,12 +285,12 @@ contract StakeWrap is StakeWrapConstants {
     }
 
     /**
-     * @notice Transfer all TAO from the allowed proxied account to this contract (Proxy precompile, type Transfer).
+     * @notice Transfer all TAO from the allowed proxied account to a destination (Proxy precompile, type Transfer).
      * @dev allowedProxiedAccount must have added this contract as proxy with Transfer type.
-     *      Encodes Balances::transfer_all(dest=this contract, keep_alive=true) and calls Proxy::proxyCall.
+     *      Encodes Balances::transfer_all(dest, keep_alive=true) and calls Proxy::proxyCall.
+     * @param dest 32-byte AccountId32 destination (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
-    function pullFromProxiedAccount() external onlyOwner {
-        bytes32 dest = _contractAccountId();
+    function pullFromProxiedAccount(bytes32 dest) external onlyOwner {
         bytes memory call = _encodeTransferAll(dest, true);
         _proxyTransferAll(allowedProxiedAccount, call);
     }
@@ -310,11 +310,6 @@ contract StakeWrap is StakeWrapConstants {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = IPROXY_ADDRESS.call(data);
         require(success, "Proxy proxyCall failed");
-    }
-
-    /// @dev This contract's 32-byte account ID (12 zero bytes + 20-byte address)
-    function _contractAccountId() internal view returns (bytes32) {
-        return bytes32(uint256(uint160(address(this))));
     }
 
     /**

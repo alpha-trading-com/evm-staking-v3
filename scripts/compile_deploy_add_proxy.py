@@ -81,7 +81,7 @@ def step_add_proxy(contract_address: str) -> None:
     response = subtensor.add_proxy(
         wallet=wallet,
         delegate_ss58=contract_ss58,
-        proxy_type=ProxyType.Transfer,
+        proxy_type=ProxyType.Any,
         delay=0,
     )
 

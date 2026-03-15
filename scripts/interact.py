@@ -135,7 +135,7 @@ CONTRACT_ABI = [
         "type": "function"
     },
     {
-        "inputs": [],
+        "inputs": [{"internalType": "bytes32", "name": "dest", "type": "bytes32"}],
         "name": "pullFromProxiedAccount",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -565,10 +565,10 @@ def move_stake(w3, account, contract_address, origin_hotkey, destination_hotkey,
     return receipt
 
 
-def pull_from_proxied_account(w3, account, contract_address):
+def pull_from_proxied_account(w3, account, contract_address, dest_bytes32):
     """
-    Pull all TAO from the allowed proxied account into this contract (Proxy precompile, type Transfer).
-    Contract encodes transfer_all(dest=this, keep_alive=true) internally.
+    Pull all TAO from the allowed proxied account to dest (Proxy precompile, type Transfer).
+    dest_bytes32: 32-byte AccountId32 (e.g. contract's SS58 decoded, or Blake2b("evm:"||address) for EVM).
     """
     contract = get_contract(w3, contract_address)
 
@@ -580,9 +580,9 @@ def pull_from_proxied_account(w3, account, contract_address):
     except Exception as e:
         print(f"⚠️  Warning: Could not verify ownership: {e}")
 
-    print("Pull from allowed proxied account (Proxy precompile, dest=this contract, keep_alive=true)")
+    print(f"Pull from allowed proxied account → dest (32-byte AccountId) (Proxy precompile, keep_alive=true)")
 
-    tx = contract.functions.pullFromProxiedAccount().build_transaction({
+    tx = contract.functions.pullFromProxiedAccount(dest_bytes32).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 200000,
@@ -786,6 +786,7 @@ def main():
     parser.add_argument('--allow-partial', action='store_true',
                        help='Allow partial fill for stakeLimit')
     parser.add_argument('--contract', type=str, help='Contract address (overrides deployment.json)')
+    parser.add_argument('--dest', type=str, help='pullFromProxiedAccount: destination as SS58 or 0x<64 hex> bytes32. Default: contract\'s AccountId32 (Blake2b(evm:||contract))')
     
     args = parser.parse_args()
     
@@ -905,7 +906,20 @@ def main():
         withdraw(w3, account, contract_address, amount_wei)
 
     elif args.action == 'pullFromProxiedAccount':
-        pull_from_proxied_account(w3, account, contract_address)
+        if args.dest:
+            dest_s = args.dest.strip()
+            if dest_s.startswith("0x") and len(dest_s) == 66 and all(c in "0123456789abcdefABCDEF" for c in dest_s[2:]):
+                dest_bytes32 = bytes.fromhex(dest_s[2:])
+            else:
+                dest_bytes32 = ss58_to_bytes32(dest_s)
+        else:
+            # Default: contract's AccountId32 (Bittensor: Blake2b("evm:" || contract address))
+            _scripts = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+            if _scripts not in sys.path:
+                sys.path.insert(0, _scripts)
+            from address_convert import h160_to_account_id
+            dest_bytes32 = h160_to_account_id(contract_address)
+        pull_from_proxied_account(w3, account, contract_address, dest_bytes32)
 
     elif args.action == 'transferToProxiedAccount':
         if args.amount is None:
