@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-One-shot: compile contract, deploy contract, add contract's SS58 as proxy (Transfer) for the proxy wallet.
+One-shot: compile contract, deploy contract, add contract's SS58 as proxy (Any) for the proxy wallet.
 
 Steps:
   1. Compile smart contract (npm run compile)
   2. Deploy smart contract (python scripts/deploy.py) — requires PRIVATE_KEY, writes deployment.json
-  3. Add contract's SS58 as proxy (type Transfer) from the proxy wallet — may prompt for wallet password
+  3. Remove all existing proxies for the proxy wallet, then add contract's SS58 as proxy (type Any) — may prompt for wallet password
 
 Requires:
   - PRIVATE_KEY in .env (for deploy)
@@ -66,7 +66,7 @@ def step_deploy() -> str:
 
 
 def step_add_proxy(contract_address: str) -> None:
-    print("[3/3] Adding contract as proxy (Transfer) for proxy wallet...")
+    print("[3/3] Adding contract as proxy (Any) for proxy wallet...")
     contract_ss58 = h160_to_ss58(contract_address)
     print(f"      Contract EVM:  {contract_address}")
     print(f"      Contract SS58: {contract_ss58}")
@@ -76,8 +76,22 @@ def step_add_proxy(contract_address: str) -> None:
 
     wallet = bt.Wallet(name="proxy")
     subtensor = bt.Subtensor(network="finney")
+    real_ss58 = wallet.coldkey.ss58_address
 
-    # Unlock and add proxy (may prompt for password)
+    # Remove all existing proxies first (may prompt for password)
+    proxies_list, _ = subtensor.get_proxies_for_real_account(real_ss58)
+    if proxies_list:
+        print(f"      Removing {len(proxies_list)} existing proxy/ies...")
+        remove_resp = subtensor.remove_proxies(wallet=wallet)
+        if not getattr(remove_resp, "success", True):
+            msg = getattr(remove_resp, "message", str(remove_resp))
+            print(f"      ERROR: remove_proxies failed: {msg}", file=sys.stderr)
+            sys.exit(1)
+        print("      All proxies removed.")
+    else:
+        print("      No existing proxies.")
+
+    # Add contract as proxy (may prompt for password)
     response = subtensor.add_proxy(
         wallet=wallet,
         delegate_ss58=contract_ss58,
@@ -89,7 +103,7 @@ def step_add_proxy(contract_address: str) -> None:
         msg = getattr(response, "message", str(response))
         print(f"      ERROR: add_proxy failed: {msg}", file=sys.stderr)
         sys.exit(1)
-    print("      Proxy added (Transfer). Done.\n")
+    print("      Proxy added (Any). Done.\n")
 
 
 def main():

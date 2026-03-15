@@ -16,8 +16,8 @@ contract StakeWrap is StakeWrapConstants {
     // Balances::transfer_all encoding (Substrate pallet/call indices; verify against chain metadata)
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
     uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
-    /// @dev ProxyType variant index for Transfer. Must match Subtensor runtime enum order (Bittensor SDK: Any=0, Owner=1, ..., Transfer=7).
-    uint8 internal constant PROXY_TYPE_TRANSFER = 7;
+    /// @dev Proxy type for proxyCall: 0 = Any (can do all things, including transfer_all). Matches add_proxy_delegate.py (ProxyType.Any).
+    uint8 internal constant PROXY_TYPE_ANY = 0;
 
     constructor() {
         owner = msg.sender;
@@ -285,8 +285,8 @@ contract StakeWrap is StakeWrapConstants {
     }
 
     /**
-     * @notice Transfer all TAO from the allowed proxied account to a destination (Proxy precompile, type Transfer).
-     * @dev allowedProxiedAccount must have added this contract as proxy with Transfer type.
+     * @notice Transfer all TAO from the allowed proxied account to a destination (Proxy precompile, type Any).
+     * @dev allowedProxiedAccount must have added this contract as proxy (e.g. type Any).
      *      Encodes Balances::transfer_all(dest, keep_alive=true) and calls Proxy::proxyCall.
      * @param dest 32-byte AccountId32 destination (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
@@ -297,10 +297,10 @@ contract StakeWrap is StakeWrapConstants {
 
     // (removed pullFromProxiedAccountEncoded per instructions)
 
-    /// @dev Proxy::proxyCall(real, ProxyType::Transfer, call)
+    /// @dev Proxy::proxyCall(real, ProxyType::Any, call)
     function _proxyTransferAll(bytes32 real, bytes memory call) internal {
         bytes memory forceProxyType = new bytes(1);
-        forceProxyType[0] = bytes1(PROXY_TYPE_TRANSFER);
+        forceProxyType[0] = bytes1(PROXY_TYPE_ANY);
         bytes memory data = abi.encodeWithSelector(
             IProxy.proxyCall.selector,
             real,
