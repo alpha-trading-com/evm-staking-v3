@@ -7,14 +7,11 @@ pragma solidity ^0.8.3;
 
 import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
+import "./StakeWrapConstants.sol";
 
-contract StakeWrap {
+contract StakeWrap is StakeWrapConstants {
     address public owner;
-    // Predefined SS58 coldkey address: 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7
-    bytes32 public constant allowedColdkey = 0xe3154da4f09419591350683863465fe94568b34952c139e0fc2119c1ab64bdf9;
-    // XOR key for obfuscating uint256 parameters
-    uint256 private constant XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef;
-    
+
     constructor() {
         owner = msg.sender;
     }
