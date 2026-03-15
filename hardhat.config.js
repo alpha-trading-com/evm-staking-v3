@@ -1,4 +1,21 @@
 require("@nomicfoundation/hardhat-toolbox");
+const fs = require("fs");
+const path = require("path");
+// Load .env without requiring the dotenv package
+const envPath = path.resolve(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+  const lines = fs.readFileSync(envPath, "utf8").split("\n");
+  for (const line of lines) {
+    const m = line.match(/^\s*([^#=]+)=(.*)$/);
+    if (m) {
+      const key = m[1].trim();
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+        val = val.slice(1, -1);
+      if (!process.env[key]) process.env[key] = val;
+    }
+  }
+}
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
