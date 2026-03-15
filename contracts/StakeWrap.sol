@@ -17,7 +17,7 @@ contract StakeWrap is StakeWrapConstants, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
-        owner = msg.sender; // for direct (non-proxy) deploy; ignored when used behind proxy
+        owner = msg.sender; // for direct (non-proxy) deploy only; proxy uses initialize()
     }
 
     function initialize() public initializer {

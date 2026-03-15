@@ -1,0 +1,5 @@
+npm run compile
+npm run deploy:upgradeable
+
+npm run compile
+npm run deploy:upgradeable
