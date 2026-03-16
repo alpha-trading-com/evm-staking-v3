@@ -14,10 +14,10 @@ interface IProxy {
     /// @notice Execute a call on behalf of the real account (the account that set this contract as proxy).
     /// @param real The real account ID (32 bytes, e.g. SS58 public key)
     /// @param forceProxyType Optional: restrict to this proxy type (e.g. [0] for Any). Empty to use delegation type.
-    /// @param call SCALE-encoded RuntimeCall (e.g. Balances::transfer to this contract)
+    /// @param call SCALE-encoded RuntimeCall as uint8[] (must match precompile: proxyCall(bytes32,uint8[],uint8[]))
     function proxyCall(
         bytes32 real,
         uint8[] memory forceProxyType,
-        bytes memory call
+        uint8[] memory call
     ) external;
 }

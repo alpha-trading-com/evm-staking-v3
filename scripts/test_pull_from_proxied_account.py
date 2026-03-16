@@ -83,6 +83,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test pullFromProxiedAccount")
     parser.add_argument("--contract", type=str, help="Contract address (default: from deployment.json)")
     parser.add_argument("--dry-run", action="store_true", help="Only run pre-checks, do not send tx")
+    parser.add_argument("--skip-verify", action="store_true", help="Skip pre-flight check (real account has contract as Transfer proxy)")
     args = parser.parse_args()
 
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
@@ -127,11 +128,20 @@ def main():
 
     # Dest = contract's SS58 address (decode to bytes32 for pullFromProxiedAccount(dest))
     from address_convert import h160_to_ss58
-    from interact import pull_from_proxied_account, ss58_to_bytes32
+    from interact import pull_from_proxied_account, verify_proxy_for_pull, ss58_to_bytes32
     contract_ss58 = h160_to_ss58(contract_address)
     dest_bytes32 = ss58_to_bytes32(contract_ss58)
     print(f"Dest: contract SS58: {contract_ss58}")
-    receipt = pull_from_proxied_account(w3, account, contract_address, dest_bytes32)
+
+    if not args.skip_verify:
+        ok, err = verify_proxy_for_pull(contract, contract_address, contract_ss58)
+        if not ok:
+            print("Error: Pre-flight check failed.", file=sys.stderr)
+            print(err, file=sys.stderr)
+            sys.exit(1)
+        print("OK: Real account has contract as Transfer proxy.")
+
+    receipt = pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=True)
     if receipt is None:
         sys.exit(1)
     if receipt.status != 1:

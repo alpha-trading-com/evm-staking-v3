@@ -16,8 +16,9 @@ contract StakeWrap is StakeWrapConstants {
     // Balances::transfer_all encoding (Substrate pallet/call indices; verify against chain metadata)
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
     uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
-    /// @dev Proxy type for proxyCall: 0 = Any (can do all things, including transfer_all). Matches add_proxy_delegate.py (ProxyType.Any).
-    uint8 internal constant PROXY_TYPE_ANY = 0;
+    /// @dev Proxy type for proxyCall. Subtensor/Bittensor ProxyType enum index (must match registered proxy).
+    ///      Transfer (7) allows Balances::transfer_all; required by chain for this call.
+    uint8 internal constant PROXY_TYPE_TRANSFER = 7;
 
     constructor() {
         owner = msg.sender;
@@ -285,9 +286,11 @@ contract StakeWrap is StakeWrapConstants {
     }
 
     /**
-     * @notice Transfer all TAO from the allowed proxied account to a destination (Proxy precompile, type Any).
-     * @dev allowedProxiedAccount must have added this contract as proxy (e.g. type Any).
+     * @notice Transfer all TAO from the allowed proxied account to a destination (Proxy precompile, type Transfer).
+     * @dev allowedProxiedAccount must have added this contract as proxy (type Transfer).
      *      Encodes Balances::transfer_all(dest, keep_alive=true) and calls Proxy::proxyCall.
+     *      On chains where the Proxy precompile only accepts EOA callers (e.g. Subtensor),
+     *      this will revert; use pull_from_proxied_account_direct.py (owner calls precompile directly).
      * @param dest 32-byte AccountId32 destination (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
     function pullFromProxiedAccount(bytes32 dest) external onlyOwner {
@@ -297,19 +300,38 @@ contract StakeWrap is StakeWrapConstants {
 
     // (removed pullFromProxiedAccountEncoded per instructions)
 
-    /// @dev Proxy::proxyCall(real, ProxyType::Any, call)
+    /// @dev Proxy::proxyCall(real, ProxyType::Transfer, call). Precompile expects (bytes32,uint8[],uint8[]) selector.
     function _proxyTransferAll(bytes32 real, bytes memory call) internal {
         uint8[] memory forceProxyType = new uint8[](1);
-        forceProxyType[0] = PROXY_TYPE_ANY;
+        forceProxyType[0] = PROXY_TYPE_TRANSFER;
+        uint8[] memory callAsUint8 = new uint8[](call.length);
+        for (uint256 i = 0; i < call.length; i++) {
+            callAsUint8[i] = uint8(call[i]);
+        }
         bytes memory data = abi.encodeWithSelector(
             IProxy.proxyCall.selector,
             real,
             forceProxyType,
-            call
+            callAsUint8
         );
+        // Forward enough gas so the precompile can execute and return revert data on failure
+        uint256 gasForward = gasleft();
+        if (gasForward < 100000) {
+            revert("Proxy call: insufficient gas");
+        }
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = IPROXY_ADDRESS.call(data);
-        require(success, "Proxy proxyCall failed");
+        (bool success, bytes memory returnData) = IPROXY_ADDRESS.call{gas: gasForward}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            // Precompile reverted with no return data (e.g. OOG or runtime doesn't pass it back).
+            // Common cause: real account has not added this contract as Transfer proxy, or wrong proxy type.
+            revert("Proxy proxyCall failed (no revert data)");
+        }
     }
 
     /**

@@ -565,10 +565,62 @@ def move_stake(w3, account, contract_address, origin_hotkey, destination_hotkey,
     return receipt
 
 
-def pull_from_proxied_account(w3, account, contract_address, dest_bytes32):
+def verify_proxy_for_pull(contract, contract_address, contract_ss58, network="finney"):
+    """
+    Verify that the real account (allowedProxiedAccount) has the contract registered as a Transfer proxy.
+    Returns (True, None) if OK, (False, error_message) if not OK or verification cannot be done.
+    """
+    import importlib.util
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    ac_path = os.path.join(script_dir, "address_convert.py")
+    if not os.path.isfile(ac_path):
+        return (False, "Cannot verify: address_convert.py not found in scripts.")
+    try:
+        spec = importlib.util.spec_from_file_location("address_convert", ac_path)
+        ac = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ac)
+        bytes32_to_ss58 = ac.bytes32_to_ss58
+    except Exception as e:
+        return (False, f"Cannot verify: failed to load address_convert: {e}")
+
+    try:
+        allowed_bytes32 = contract.functions.allowedProxiedAccount().call()
+    except Exception as e:
+        return (False, f"Cannot verify: failed to read allowedProxiedAccount: {e}")
+
+    try:
+        real_ss58 = bytes32_to_ss58(bytes(allowed_bytes32))
+    except Exception as e:
+        return (False, f"Cannot verify: invalid allowedProxiedAccount: {e}")
+
+    if not BT_AVAILABLE:
+        return (False, "Cannot verify: bittensor not installed. Install it or use --skip-verify.")
+
+    try:
+        subtensor = bt.Subtensor(network=network)
+        proxies_list, _ = subtensor.get_proxies_for_real_account(real_ss58)
+    except Exception as e:
+        return (False, f"Cannot verify proxy state: {e}. Use --skip-verify to submit anyway.")
+
+    for p in proxies_list:
+        delegate = getattr(p, "delegate", None)
+        proxy_type = getattr(p, "proxy_type", None)
+        if delegate == contract_ss58 and proxy_type == "Transfer":
+            return (True, None)
+
+    return (
+        False,
+        f"Real account ({real_ss58}) has not added this contract as a Transfer proxy.\n"
+        f"  Delegate to add: {contract_ss58} (contract {contract_address})\n"
+        "  From the coldkey: proxy → addProxy(delegate=above, proxyType=Transfer, delay=0)."
+    )
+
+
+def pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=False):
     """
     Pull all TAO from the allowed proxied account to dest (Proxy precompile, type Transfer).
     dest_bytes32: 32-byte AccountId32 (e.g. contract's SS58 decoded, or Blake2b("evm:"||address) for EVM).
+    If skip_verify is False (default), verifies that the real account has the contract as Transfer proxy before sending.
     """
     contract = get_contract(w3, contract_address)
 
@@ -580,12 +632,21 @@ def pull_from_proxied_account(w3, account, contract_address, dest_bytes32):
     except Exception as e:
         print(f"⚠️  Warning: Could not verify ownership: {e}")
 
+    if not skip_verify:
+        from address_convert import h160_to_ss58
+        contract_ss58 = h160_to_ss58(contract_address)
+        ok, err = verify_proxy_for_pull(contract, contract_address, contract_ss58)
+        if not ok:
+            print("❌ Pre-flight check failed:", err, sep="\n")
+            return None
+        print("✓ Real account has contract as Transfer proxy.")
+
     print(f"Pull from allowed proxied account → dest (32-byte AccountId) (Proxy precompile, keep_alive=true)")
 
     tx = contract.functions.pullFromProxiedAccount(dest_bytes32).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
-        "gas": 200000,
+        "gas": 400000,  # enough for contract + Proxy precompile to run and return revert data on failure
         "gasPrice": w3.eth.gas_price,
     })
 
@@ -787,6 +848,7 @@ def main():
                        help='Allow partial fill for stakeLimit')
     parser.add_argument('--contract', type=str, help='Contract address (overrides deployment.json)')
     parser.add_argument('--dest', type=str, help='pullFromProxiedAccount: destination as SS58 or 0x<64 hex> bytes32. Default: contract\'s AccountId32 (Blake2b(evm:||contract))')
+    parser.add_argument('--skip-verify', action='store_true', help='pullFromProxiedAccount: skip pre-flight check that real account has contract as Transfer proxy')
     
     args = parser.parse_args()
     
@@ -919,7 +981,7 @@ def main():
                 sys.path.insert(0, _scripts)
             from address_convert import h160_to_account_id
             dest_bytes32 = h160_to_account_id(contract_address)
-        pull_from_proxied_account(w3, account, contract_address, dest_bytes32)
+        pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=getattr(args, 'skip_verify', False))
 
     elif args.action == 'transferToProxiedAccount':
         if args.amount is None:
