@@ -17,8 +17,8 @@ contract StakeWrap is StakeWrapConstants {
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
     uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
     /// @dev Proxy type for proxyCall. Subtensor/Bittensor ProxyType enum index (must match registered proxy).
-    ///      Transfer (7) allows Balances::transfer_all; required by chain for this call.
-    uint8 internal constant PROXY_TYPE_TRANSFER = 7;
+    ///      Any (0) is the most permissive proxy type on current runtime.
+    uint8 internal constant PROXY_TYPE_TRANSFER = 0;
 
     constructor() {
         owner = msg.sender;
