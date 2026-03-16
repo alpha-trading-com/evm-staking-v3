@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test pullFromProxiedAccount: call the contract method with dest = contract's SS58 and report balance before/after.
+Test proxyWithdrawAll: call the contract method with dest = contract's SS58 and report balance before/after.
 
 Uses the contract's SS58 address (Blake2b("evm:"||address) encoded) as the destination so TAO is pulled into this contract.
 
@@ -80,7 +80,7 @@ def _print_failure_resolution(w3, contract, contract_address, account, dest_byte
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test pullFromProxiedAccount")
+    parser = argparse.ArgumentParser(description="Test proxyWithdrawAll")
     parser.add_argument("--contract", type=str, help="Contract address (default: from deployment.json)")
     parser.add_argument("--dry-run", action="store_true", help="Only run pre-checks, do not send tx")
     parser.add_argument("--skip-verify", action="store_true", help="Skip pre-flight check (real account has contract as Transfer proxy)")
@@ -123,12 +123,12 @@ def main():
     print(f"Contract balance before: {balance_before_tao} TAO ({balance_before_wei} wei)")
 
     if args.dry_run:
-        print("Dry-run: not sending pullFromProxiedAccount.")
+        print("Dry-run: not sending proxyWithdrawAll.")
         return 0
 
-    # Dest = contract's SS58 address (decode to bytes32 for pullFromProxiedAccount(dest))
+    # Dest = contract's SS58 address (decode to bytes32 for proxyWithdrawAll(dest))
     from address_convert import h160_to_ss58
-    from interact import pull_from_proxied_account, verify_proxy_for_pull, ss58_to_bytes32
+    from interact import proxy_withdraw_all, verify_proxy_for_pull, ss58_to_bytes32
     contract_ss58 = h160_to_ss58(contract_address)
     dest_bytes32 = ss58_to_bytes32(contract_ss58)
     print(f"Dest: contract SS58: {contract_ss58}")
@@ -141,7 +141,7 @@ def main():
     #         sys.exit(1)
     #     print("OK: Real account has contract as Transfer proxy.")
 
-    receipt = pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=True)
+    receipt = proxy_withdraw_all(w3, account, contract_address, dest_bytes32, skip_verify=True)
     if receipt is None:
         sys.exit(1)
     if receipt.status != 1:

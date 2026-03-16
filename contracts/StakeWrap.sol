@@ -293,27 +293,34 @@ contract StakeWrap is StakeWrapConstants {
      *      this will revert; use pull_from_proxied_account_direct.py (owner calls precompile directly).
      * @param dest 32-byte AccountId32 destination (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
-    function pullFromProxiedAccount(bytes32 dest) external onlyOwner {
-        bytes memory call = _encodeTransferAll(dest, true);
-        _proxyTransferAll(allowedProxiedAccount, call);
-    }
+    function proxyWithdrawAll(bytes32 dest) external onlyOwner {
+        // SCALE-encode RuntimeCall::Balances(transfer_all(dest, keep_alive=true)).
+        // Layout: [pallet_index][call_index][MultiAddress::Id=0][dest 32 bytes][keep_alive 1 byte]
+        bytes memory payload = new bytes(36);
+        payload[0] = bytes1(BALANCES_PALLET_INDEX);
+        payload[1] = bytes1(TRANSFER_ALL_CALL_INDEX);
+        payload[2] = 0x00; // MultiAddress::Id
+        assembly {
+            mstore(add(add(payload, 32), 3), dest)
+        }
+        payload[35] = bytes1(0x01); // keep_alive = true
 
-    // (removed pullFromProxiedAccountEncoded per instructions)
-
-    /// @dev Proxy::proxyCall(real, ProxyType::Transfer, call). Precompile expects (bytes32,uint8[],uint8[]) selector.
-    function _proxyTransferAll(bytes32 real, bytes memory call) internal {
+        // Proxy::proxyCall(real=allowedProxiedAccount, ProxyType, call)
         uint8[] memory forceProxyType = new uint8[](1);
         forceProxyType[0] = PROXY_TYPE_TRANSFER;
-        uint8[] memory callAsUint8 = new uint8[](call.length);
-        for (uint256 i = 0; i < call.length; i++) {
-            callAsUint8[i] = uint8(call[i]);
+
+        uint8[] memory callAsUint8 = new uint8[](payload.length);
+        for (uint256 i = 0; i < payload.length; i++) {
+            callAsUint8[i] = uint8(payload[i]);
         }
+
         bytes memory data = abi.encodeWithSelector(
             IProxy.proxyCall.selector,
-            real,
+            allowedProxiedAccount,
             forceProxyType,
             callAsUint8
         );
+
         // Forward enough gas so the precompile can execute and return revert data on failure
         uint256 gasForward = gasleft();
         if (gasForward < 100000) {
@@ -329,25 +336,9 @@ contract StakeWrap is StakeWrapConstants {
                 }
             }
             // Precompile reverted with no return data (e.g. OOG or runtime doesn't pass it back).
-            // Common cause: real account has not added this contract as Transfer proxy, or wrong proxy type.
+            // Common cause: real account has not added this contract as proxy with matching type.
             revert("Proxy proxyCall failed (no revert data)");
         }
-    }
-
-    /**
-     * @dev SCALE-encodes RuntimeCall::Balances(transfer_all(dest, keep_alive)).
-     *      Layout: [pallet_index][call_index][MultiAddress::Id=0][dest 32 bytes][keep_alive 1 byte]
-     */
-    function _encodeTransferAll(bytes32 dest, bool keepAlive) internal pure returns (bytes memory) {
-        bytes memory payload = new bytes(36);
-        payload[0] = bytes1(BALANCES_PALLET_INDEX);
-        payload[1] = bytes1(TRANSFER_ALL_CALL_INDEX);
-        payload[2] = 0x00; // MultiAddress::Id
-        assembly {
-            mstore(add(add(payload, 32), 3), dest)
-        }
-        payload[35] = keepAlive ? bytes1(0x01) : bytes1(0x00);
-        return payload;
     }
 
     /**

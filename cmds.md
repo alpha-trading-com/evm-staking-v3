@@ -169,15 +169,15 @@ Connect to the Bittensor/Subtensor network (e.g. finney), select the coldkey wal
 
 ---
 
-## Pull from proxied account
+## Withdraw all from proxied account
 
-Transfer all TAO from the allowed proxied account into the contract (Proxy type **Transfer**).
+Transfer all TAO from the allowed proxied account into the contract (Proxy type **Any** or another type that permits `transfer_all`).
 
 The contract encodes `transfer_all(dest=this, keep_alive=true)` internally. No arguments.
 
 
 ```bash
-python3 scripts/interact.py pullFromProxiedAccount
+python3 scripts/interact.py proxyWithdrawAll
 ```
 
 ## Using a different contract

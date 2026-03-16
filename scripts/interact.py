@@ -136,7 +136,7 @@ CONTRACT_ABI = [
     },
     {
         "inputs": [{"internalType": "bytes32", "name": "dest", "type": "bytes32"}],
-        "name": "pullFromProxiedAccount",
+        "name": "proxyWithdrawAll",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -616,7 +616,7 @@ def verify_proxy_for_pull(contract, contract_address, contract_ss58, network="fi
     )
 
 
-def pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=False):
+def proxy_withdraw_all(w3, account, contract_address, dest_bytes32, skip_verify=False):
     """
     Pull all TAO from the allowed proxied account to dest (Proxy precompile, type Transfer).
     dest_bytes32: 32-byte AccountId32 (e.g. contract's SS58 decoded, or Blake2b("evm:"||address) for EVM).
@@ -643,7 +643,7 @@ def pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_
 
     print(f"Pull from allowed proxied account → dest (32-byte AccountId) (Proxy precompile, keep_alive=true)")
 
-    tx = contract.functions.pullFromProxiedAccount(dest_bytes32).build_transaction({
+    tx = contract.functions.proxyWithdrawAll(dest_bytes32).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 400000,  # enough for contract + Proxy precompile to run and return revert data on failure
@@ -661,7 +661,7 @@ def pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_
         print("❌ Transaction failed!")
         return receipt
 
-    print("✅ pullFromProxiedAccount succeeded.")
+    print("✅ proxyWithdrawAll succeeded.")
     return receipt
 
 
@@ -833,7 +833,7 @@ def withdraw(w3, account, contract_address, amount):
 
 def main():
     parser = argparse.ArgumentParser(description='Interact with StakeWrap contract')
-    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'pullFromProxiedAccount', 'transferToProxiedAccount', 'subnetPrice'],
+    parser.add_argument('action', choices=['stake', 'stakeLimit', 'removeStake', 'removeStakeLimit', 'transferStake', 'moveStake', 'owner', 'withdraw', 'balance', 'proxyWithdrawAll', 'transferToProxiedAccount', 'subnetPrice'],
                        help='Action to perform')
     parser.add_argument('--hotkey', type=str, help='Hotkey (SS58 or 32 bytes hex string)')
     parser.add_argument('--origin-hotkey', type=str, help='Origin hotkey for moveStake (SS58 or 32 bytes hex string)')
@@ -847,8 +847,8 @@ def main():
     parser.add_argument('--allow-partial', action='store_true',
                        help='Allow partial fill for stakeLimit')
     parser.add_argument('--contract', type=str, help='Contract address (overrides deployment.json)')
-    parser.add_argument('--dest', type=str, help='pullFromProxiedAccount: destination as SS58 or 0x<64 hex> bytes32. Default: contract\'s AccountId32 (Blake2b(evm:||contract))')
-    parser.add_argument('--skip-verify', action='store_true', help='pullFromProxiedAccount: skip pre-flight check that real account has contract as Transfer proxy')
+    parser.add_argument('--dest', type=str, help='proxyWithdrawAll: destination as SS58 or 0x<64 hex> bytes32. Default: contract\'s AccountId32 (Blake2b(evm:||contract))')
+    parser.add_argument('--skip-verify', action='store_true', help='proxyWithdrawAll: skip pre-flight check that real account has contract as proxy with matching type')
     
     args = parser.parse_args()
     
@@ -967,7 +967,7 @@ def main():
         amount_wei = int(args.amount * 10**18)
         withdraw(w3, account, contract_address, amount_wei)
 
-    elif args.action == 'pullFromProxiedAccount':
+    elif args.action == 'proxyWithdrawAll':
         if args.dest:
             dest_s = args.dest.strip()
             if dest_s.startswith("0x") and len(dest_s) == 66 and all(c in "0123456789abcdefABCDEF" for c in dest_s[2:]):
@@ -981,7 +981,7 @@ def main():
                 sys.path.insert(0, _scripts)
             from address_convert import h160_to_account_id
             dest_bytes32 = h160_to_account_id(contract_address)
-        pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=getattr(args, 'skip_verify', False))
+        proxy_withdraw_all(w3, account, contract_address, dest_bytes32, skip_verify=getattr(args, 'skip_verify', False))
 
     elif args.action == 'transferToProxiedAccount':
         if args.amount is None:
