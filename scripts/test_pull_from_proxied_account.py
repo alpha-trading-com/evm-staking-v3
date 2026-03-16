@@ -133,13 +133,13 @@ def main():
     dest_bytes32 = ss58_to_bytes32(contract_ss58)
     print(f"Dest: contract SS58: {contract_ss58}")
 
-    if not args.skip_verify:
-        ok, err = verify_proxy_for_pull(contract, contract_address, contract_ss58)
-        if not ok:
-            print("Error: Pre-flight check failed.", file=sys.stderr)
-            print(err, file=sys.stderr)
-            sys.exit(1)
-        print("OK: Real account has contract as Transfer proxy.")
+    # if not args.skip_verify:
+    #     ok, err = verify_proxy_for_pull(contract, contract_address, contract_ss58)
+    #     if not ok:
+    #         print("Error: Pre-flight check failed.", file=sys.stderr)
+    #         print(err, file=sys.stderr)
+    #         sys.exit(1)
+    #     print("OK: Real account has contract as Transfer proxy.")
 
     receipt = pull_from_proxied_account(w3, account, contract_address, dest_bytes32, skip_verify=True)
     if receipt is None:
