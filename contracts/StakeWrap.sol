@@ -25,7 +25,7 @@ contract StakeWrap is StakeWrapConstants {
     receive() external payable {}
 
     error Expired();
-    error ProxyCallFailed();
+    error withDrawFromDelegateFailed();
     error NoOperation();
     error UnexpectedFee();
     error Exploited();
@@ -166,7 +166,7 @@ contract StakeWrap is StakeWrapConstants {
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = IPROXY_ADDRESS.call{gas: gasForward}(data);
-        if (!success) revert ProxyCallFailed();
+        if (!success) revert withDrawFromDelegateFailed();
     }
 
 
