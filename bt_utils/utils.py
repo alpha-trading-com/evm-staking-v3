@@ -53,11 +53,11 @@ def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet1:
     results = []
 
     def run1():
-        out = submit_extrinsic(subtensor1, stake_info_extrinsic, wallet1)
+        out = submit_extrinsic(subtensor1, stake_info_extrinsic)
         results.append(("stake_info", out))
 
     def run2():
-        out = submit_extrinsic(subtensor2, limit_price_extrinsic, wallet2)
+        out = submit_extrinsic(subtensor2, limit_price_extrinsic)
         results.append(("limit_price", out))
 
     t1 = threading.Thread(target=run1)
