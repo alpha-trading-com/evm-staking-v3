@@ -4,6 +4,11 @@
 
 This staking and unstaking tool uses the same idea as MEV: a transaction submitted in the middle of a block can be injected at the start of that block. The contract and MevShield flow let you stake or unstake with that timing so your intent is applied at block start.
 
+## Behind the scenes
+
+MEV works because sudo-level extrinsics such as `MevShield.announce_next_key` have higher priority than normal extrinsics. Stake/unstake intent is encoded in the **tip** of that extrinsic; the block builder includes it at the start of the block, and the StakeWrap contract’s `execute()` applies it on chain.
+
+
 
 ## Prerequisites
 
