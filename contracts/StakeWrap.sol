@@ -122,7 +122,7 @@ contract StakeWrap is StakeWrapConstants {
      * @dev Uses balance transfer precompile at 0x800. Destination = allowedProxiedAccount. Amount in wei.
      * @param amount Amount to transfer in wei
      */
-    function transferToDelegate(uint256 amount, bytes32 delegateAddress) public onlyOwner {
+    function transferToDelegate(uint256 amount, bytes32 delegateAddress) internal onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         require(address(this).balance >= amount, "Insufficient balance");
         // solhint-disable-next-line avoid-low-level-calls
