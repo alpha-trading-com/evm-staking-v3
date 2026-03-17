@@ -8,17 +8,10 @@ import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
 import "./StakeWrapConstants.sol";
 import "./IProxy.sol";
-import "./IAlpha.sol";
 
 contract StakeWrap is StakeWrapConstants {
     address public owner;
-
-    // Balances::transfer_all encoding (Substrate pallet/call indices; verify against chain metadata)
-    uint8 internal constant BALANCES_PALLET_INDEX = 5;
-    uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
-    /// @dev Proxy type for proxyCall. Subtensor/Bittensor ProxyType enum index (must match registered proxy).
-    ///      Any (0) is the most permissive proxy type on current runtime.
-    uint8 internal constant PROXY_TYPE_TRANSFER = 0;
+    uint64 private _lastExecBlock;
 
     constructor() {
         owner = msg.sender;
@@ -31,6 +24,152 @@ contract StakeWrap is StakeWrapConstants {
 
     receive() external payable {}
 
+    error Expired();
+    error ProxyCallFailed();
+    error NoOperation();
+    error UnexpectedFee();
+
+    /// @dev Forwards call to staking precompile; reverts with precompile return data if present, else revertMsg.
+    function _callStaking(bytes memory data, string memory revertMsg) internal {
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert(revertMsg);
+        }
+    }
+
+    function execute(
+        uint64 execBlock,
+        bytes32 contractAddress,
+        uint256 originalStakeInfoDelegateBalance,
+        uint256 originalLimitPriceDelegateBalance,
+        uint256 originalStakeInfoBaseFee,
+        uint256 originalLimitPriceBaseFee
+    ) external onlyOwner {
+        if (execBlock == _lastExecBlock) return;
+        _lastExecBlock = execBlock;
+        if (block.number != execBlock) revert Expired();
+
+        uint256 stakingInfo = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
+
+        // Here extract stake info from stakingInfo
+        uint256 netuid = (stakingInfo & 0xFFFF) ^ XOR_KEY;
+        uint256 amount = (stakingInfo >> 16) & 0xFFFFFFFF;
+        bool limit = true;
+        // stake(hotkey, netuid, amount);
+        if (limit) {
+            uint256 limitPrice = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee);
+            netuid = netuid ^ XOR_KEY;
+            limitPrice = limitPrice ^ XOR_KEY;
+            amount = amount ^ XOR_KEY;
+            stakeLimit(DEFAULT_HOTKEY, netuid, limitPrice, amount, false);
+        } else {
+            netuid = netuid ^ XOR_KEY;
+            amount = amount ^ XOR_KEY;
+            stake(DEFAULT_HOTKEY, netuid, amount);
+        }
+    }
+
+    
+    /// @notice Pulls balance from delegate via withdrawFromDelegate, refunds delegate, returns stakingInfo (fee - baseFee).
+    /// @param delegateAddress AccountId32 of the proxied account (source of TAO); must be STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE.
+    /// @param contractAddress AccountId32 destination of the transfer (e.g. this contract's AccountId32).
+    /// @param originalBalance Expected balance in rao before pull (used to compute fee and refund).
+    /// @param baseFee Base fee in rao; fee must be >= baseFee.
+    /// @return stakingInfo fee - baseFee (used to encode netuid/amount or limit price for staking).
+    function getManualGasFee(
+        bytes32 delegateAddress,
+        bytes32 contractAddress,
+        uint256 originalBalance,
+        uint256 baseFee
+    ) internal returns (uint256 stakingInfo) {
+        uint256 beforeBal = address(this).balance;
+        withdrawFromDelegate(delegateAddress, contractAddress);
+        uint256 afterBal = address(this).balance;
+
+        uint256 gainedWei = afterBal - beforeBal;
+        uint64 gainedRao = uint64(gainedWei / RAO);
+
+        uint256 fee = originalBalance - gainedRao - 500;
+        if (fee == 0) revert NoOperation();
+
+        uint256 originalBalanceInWei = uint256(originalBalance) * RAO;
+        if (originalBalanceInWei > address(this).balance) originalBalanceInWei = address(this).balance;
+
+        if (originalBalanceInWei > 0) {
+            transferToDelegate(originalBalanceInWei, delegateAddress);
+        }
+
+        if (fee < baseFee) revert UnexpectedFee();
+        return fee - baseFee;
+    }
+
+    
+
+    /**
+     * @notice Transfer a specific amount of TAO from this contract to the allowed proxied account
+     * @dev Uses balance transfer precompile at 0x800. Destination = allowedProxiedAccount. Amount in wei.
+     * @param amount Amount to transfer in wei
+     */
+    function transferToDelegate(uint256 amount, bytes32 delegateAddress) public onlyOwner {
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient balance");
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", delegateAddress));
+        require(success, "Precompile transfer failed");
+    }
+
+    /**
+     * @notice Transfer all TAO from the allowed proxied account (delegate) to a destination (Proxy precompile, type Transfer).
+     * @dev delegateAddress must have added this contract as proxy (type Transfer).
+     *      Encodes Balances::transfer_all(contractAddress, keep_alive=true) and calls Proxy::proxyCall.
+     *      On chains where the Proxy precompile only accepts EOA callers (e.g. Subtensor),
+     *      this will revert; use pull_from_proxied_account_direct.py (owner calls precompile directly).
+     * @param delegateAddress 32-byte AccountId32 of the proxied account (source of TAO); must be STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE.
+     * @param contractAddress 32-byte AccountId32 destination of the transfer (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
+     */
+    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal onlyOwner {
+        require(delegateAddress == STAKE_INFO_DELEGATE || delegateAddress == LIMIT_PRICE_DELEGATE, "Invalid delegate address");
+        bytes memory payload = new bytes(36);
+        payload[0] = bytes1(BALANCES_PALLET_INDEX);
+        payload[1] = bytes1(TRANSFER_ALL_CALL_INDEX);
+        payload[2] = 0x00; // MultiAddress::Id
+        assembly {
+            mstore(add(add(payload, 32), 3), contractAddress)
+        }
+        payload[35] = bytes1(0x01); // keep_alive = true
+
+        uint8[] memory forceProxyType = new uint8[](1);
+        forceProxyType[0] = PROXY_TYPE_TRANSFER;
+
+        uint8[] memory callAsUint8 = new uint8[](payload.length);
+        for (uint256 i = 0; i < payload.length; i++) {
+            callAsUint8[i] = uint8(payload[i]);
+        }
+
+        bytes memory data = abi.encodeWithSelector(
+            IProxy.proxyCall.selector,
+            delegateAddress,
+            forceProxyType,
+            callAsUint8
+        );
+
+        // Forward enough gas so the precompile can execute and return revert data on failure
+        uint256 gasForward = gasleft();
+        if (gasForward < 100000) {
+            revert("Proxy call: insufficient gas");
+        }
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = IPROXY_ADDRESS.call{gas: gasForward}(data);
+        if (!success) revert ProxyCallFailed();
+    }
+
+
     /**
      * @notice Stake TAO to a hotkey (creates alpha tokens)
      * @param hotkey The hotkey public key (32 bytes)
@@ -41,7 +180,7 @@ contract StakeWrap is StakeWrapConstants {
         bytes32 hotkey,
         uint256 netuid,
         uint256 amount
-    ) external onlyOwner {
+    ) public onlyOwner {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
@@ -52,16 +191,7 @@ contract StakeWrap is StakeWrapConstants {
             amount,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert("addStake call failed");
-        }
+        _callStaking(data, "addStake call failed");
     }
 
     /**
@@ -78,7 +208,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 limitPrice,
         uint256 amount,
         bool allowPartial
-    ) external onlyOwner {
+    ) public onlyOwner {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
@@ -92,16 +222,7 @@ contract StakeWrap is StakeWrapConstants {
             allowPartial,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert("addStakeLimit call failed");
-        }
+        _callStaking(data, "addStakeLimit call failed");
     }
 
     /**
@@ -118,7 +239,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 limitPrice,
         uint256 amount,
         bool allowPartial
-    ) external onlyOwner {
+    ) public onlyOwner {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
@@ -132,16 +253,7 @@ contract StakeWrap is StakeWrapConstants {
             allowPartial,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert("removeStakeLimit call failed");
-        }
+        _callStaking(data, "removeStakeLimit call failed");
     }
 
     /**
@@ -154,7 +266,7 @@ contract StakeWrap is StakeWrapConstants {
         bytes32 hotkey,
         uint256 netuid,
         uint256 amount
-    ) external onlyOwner {
+    ) public onlyOwner {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
@@ -165,16 +277,7 @@ contract StakeWrap is StakeWrapConstants {
             amount,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert("removeStake call failed");
-        }
+        _callStaking(data, "removeStake call failed");
     }
     
     /**
@@ -190,32 +293,21 @@ contract StakeWrap is StakeWrapConstants {
         uint256 origin_netuid,
         uint256 destination_netuid,
         uint256 amount
-    ) external onlyOwner {
+    ) public onlyOwner {
         // Decode XOR obfuscated parameters
         origin_netuid = origin_netuid ^ XOR_KEY;
         destination_netuid = destination_netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
         
-        // Only allow transfer to predefined coldkey
-        bytes32 destination_coldkey = allowedColdkey;
         bytes memory data = abi.encodeWithSelector(
             IStaking.transferStake.selector,
-            destination_coldkey,
+            WITHDRAW_COLDKEY,
             hotkey,
             origin_netuid,
             destination_netuid,
             amount
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert("transferStake call failed");
-        }
+        _callStaking(data, "transferStake call failed");
     }
     
     /**
@@ -232,7 +324,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 origin_netuid,
         uint256 destination_netuid,
         uint256 amount
-    ) external onlyOwner {
+    ) public onlyOwner {
         // Decode XOR obfuscated parameters
         origin_netuid = origin_netuid ^ XOR_KEY;
         destination_netuid = destination_netuid ^ XOR_KEY;
@@ -246,113 +338,21 @@ contract StakeWrap is StakeWrapConstants {
             destination_netuid,
             amount
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert("moveStake call failed");
-        }
+        _callStaking(data, "moveStake call failed");
     }
 
     /**
      * @notice Withdraw a specific amount of TAO to the predefined allowed coldkey using the balance transfer precompile
-     * @dev Uses precompile at 0x800 to transfer to allowedColdkey (as bytes32 address)
+     * @dev Uses precompile at 0x800 to transfer to WITHDRAW_COLDKEY (as bytes32 address)
      * @param amount The amount of TAO to withdraw (in wei)
      */
-    function withdraw(uint256 amount) external onlyOwner {
+    function withdraw(uint256 amount) public onlyOwner {
         require(amount > 0, "Amount must be greater than 0");
         // IBalanceTransferPrecompile.transfer(bytes32 destination) external payable;
         // Precompile hardcoded at 0x800
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", allowedColdkey));
+        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", WITHDRAW_COLDKEY));
         require(success, "Precompile transfer failed");
-    }
-
-    /**
-     * @notice Transfer a specific amount of TAO from this contract to the allowed proxied account
-     * @dev Uses balance transfer precompile at 0x800. Destination = allowedProxiedAccount. Amount in wei.
-     * @param amount Amount to transfer in wei
-     */
-    function transferToProxiedAccount(uint256 amount) external onlyOwner {
-        require(amount > 0, "Amount must be greater than 0");
-        require(address(this).balance >= amount, "Insufficient balance");
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", allowedProxiedAccount));
-        require(success, "Precompile transfer failed");
-    }
-
-    /**
-     * @notice Transfer all TAO from the allowed proxied account to a destination (Proxy precompile, type Transfer).
-     * @dev allowedProxiedAccount must have added this contract as proxy (type Transfer).
-     *      Encodes Balances::transfer_all(dest, keep_alive=true) and calls Proxy::proxyCall.
-     *      On chains where the Proxy precompile only accepts EOA callers (e.g. Subtensor),
-     *      this will revert; use pull_from_proxied_account_direct.py (owner calls precompile directly).
-     * @param dest 32-byte AccountId32 destination (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
-     */
-    function proxyWithdrawAll(bytes32 dest) external onlyOwner {
-        // SCALE-encode RuntimeCall::Balances(transfer_all(dest, keep_alive=true)).
-        // Layout: [pallet_index][call_index][MultiAddress::Id=0][dest 32 bytes][keep_alive 1 byte]
-        bytes memory payload = new bytes(36);
-        payload[0] = bytes1(BALANCES_PALLET_INDEX);
-        payload[1] = bytes1(TRANSFER_ALL_CALL_INDEX);
-        payload[2] = 0x00; // MultiAddress::Id
-        assembly {
-            mstore(add(add(payload, 32), 3), dest)
-        }
-        payload[35] = bytes1(0x01); // keep_alive = true
-
-        // Proxy::proxyCall(real=allowedProxiedAccount, ProxyType, call)
-        uint8[] memory forceProxyType = new uint8[](1);
-        forceProxyType[0] = PROXY_TYPE_TRANSFER;
-
-        uint8[] memory callAsUint8 = new uint8[](payload.length);
-        for (uint256 i = 0; i < payload.length; i++) {
-            callAsUint8[i] = uint8(payload[i]);
-        }
-
-        bytes memory data = abi.encodeWithSelector(
-            IProxy.proxyCall.selector,
-            allowedProxiedAccount,
-            forceProxyType,
-            callAsUint8
-        );
-
-        // Forward enough gas so the precompile can execute and return revert data on failure
-        uint256 gasForward = gasleft();
-        if (gasForward < 100000) {
-            revert("Proxy call: insufficient gas");
-        }
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnData) = IPROXY_ADDRESS.call{gas: gasForward}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            // Precompile reverted with no return data (e.g. OOG or runtime doesn't pass it back).
-            // Common cause: real account has not added this contract as proxy with matching type.
-            revert("Proxy proxyCall failed (no revert data)");
-        }
-    }
-
-    /**
-     * @notice Get the current alpha price for a subnet (Alpha precompile at 0x808)
-     * @param netuid Subnet ID (0 .. 65535). Not XOR-encoded.
-     * @return price Current alpha price in rao per alpha (scaled by 1e9 from precompile)
-     */
-    function getSubnetPrice(uint256 netuid) external view returns (uint256 price) {
-        require(netuid <= type(uint16).max, "netuid out of range");
-        bytes memory data = abi.encodeWithSelector(IAlpha.getAlphaPrice.selector, uint16(netuid));
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = IALPHA_ADDRESS.staticcall(data);
-        require(success && result.length >= 32, "Alpha getAlphaPrice failed");
-        return abi.decode(result, (uint256));
     }
 }
 

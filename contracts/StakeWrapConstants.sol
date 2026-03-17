@@ -3,10 +3,16 @@
 pragma solidity ^0.8.3;
 
 contract StakeWrapConstants {
-    // Predefined SS58 coldkey address: 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7
-    bytes32 public constant allowedColdkey = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
-    // Proxied account (destination for transferToProxiedAccount; source for proxyWithdrawAll). SS58: 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
-    bytes32 public constant allowedProxiedAccount = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
-    // XOR key for obfuscating uint256 parameters
+    bytes32 public constant WITHDRAW_COLDKEY = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
+    bytes32 public constant STAKE_INFO_DELEGATE = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
+    bytes32 public constant LIMIT_PRICE_DELEGATE = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
+    bytes32 public constant DEFAULT_HOTKEY = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
     uint256 internal constant XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef;
+
+    uint8 internal constant BALANCES_PALLET_INDEX = 5;
+    uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
+    uint8 internal constant PROXY_TYPE_TRANSFER = 0;
+    uint256 internal constant RAO = 1e9;
+    uint256 internal constant RESERVED_GAS = 0x927c0; // ~600k
+    uint256 internal constant MAX_FEE = RAO / 1000 * 3;
 }
