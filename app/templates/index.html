@@ -128,7 +128,7 @@
             <div class="loading">Loading stake info...</div>
           </div>
           <div class="subnet-buttons">
-            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Stake Limit / Unstake / Unstake Limit / Fast Stake / Fast Stake Limit / Fast Unstake)</div>
+            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Stake Limit / Unstake / Unstake Limit / Fast Stake / Fast Stake Limit / Fast Unstake / Fast Stake+Unstake)</div>
             <div class="subnet-grid" id="subnet-grid"></div>
           </div>
         </div>
@@ -311,6 +311,19 @@
       <button class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
       <div id="fu-result"></div>
     </section>
+    
+    <section class="panel" id="panel-fast-stake-and-unstake">
+      <h2>Fast Stake + Unstake</h2>
+      <small class="hint">First fast stake via MevShield, then unstake via EVM (StakeWrap.removeStake).</small>
+      <label>Amount (TAO)</label>
+      <input id="fsu-amount" type="number" step="any" placeholder="e.g. 0.1" />
+      <label>Limit price (integer, optional)</label>
+      <input id="fsu-limit-price" type="number" placeholder="e.g. 10000 (leave empty for market)" />
+      <label>Netuid</label>
+      <input id="fsu-netuid" type="number" value="1" />
+      <button class="submit" onclick="postFastStakeAndUnstake()">Submit Fast Stake + Unstake</button>
+      <div id="fsu-result"></div>
+    </section>
       </div>
     </div>
   </div>
@@ -328,8 +341,9 @@
       "rs-hotkey", "rs-netuid", "rs-amount",
       // Remove Stake Limit
       "rsl-hotkey", "rsl-netuid", "rsl-amount", "rsl-tolerance", "rsl-use-min", "rsl-partial",
-      // Fast Stake / Fast Stake Limit / Fast Unstake
+      // Fast Stake / Fast Stake Limit / Fast Unstake / Fast Stake+Unstake
       "fs-amount", "fs-netuid", "fsl-amount", "fsl-limit-price", "fsl-netuid", "fu-netuid",
+      "fsu-amount", "fsu-limit-price", "fsu-netuid",
       // Transfer Stake
       "ts-hotkey", "ts-origin", "ts-dest", "ts-amount",
       // Move Stake
@@ -390,8 +404,8 @@
       }
     }
 
-    // Subnet ID buttons: 0..127 — clicking sets network id for stake, stake limit, unstake, unstake limit
-    const SUBNET_NETWORK_IDS = ['stake-netuid', 'sl-netuid', 'rs-netuid', 'rsl-netuid', 'fs-netuid', 'fsl-netuid', 'fu-netuid'];
+    // Subnet ID buttons: 0..127 — clicking sets network id for stake, stake limit, unstake, unstake limit, and all fast operations
+    const SUBNET_NETWORK_IDS = ['stake-netuid', 'sl-netuid', 'rs-netuid', 'rsl-netuid', 'fs-netuid', 'fsl-netuid', 'fu-netuid', 'fsu-netuid'];
     function setTaoAmount(amount) {
       const val = String(amount);
       const stakeEl = document.getElementById('stake-amount');
@@ -453,6 +467,7 @@
       { id: 'fast-stake', label: 'Fast Stake' },
       { id: 'fast-stake-limit', label: 'Fast Stake Limit' },
       { id: 'fast-unstake', label: 'Fast Unstake' },
+      { id: 'fast-stake-and-unstake', label: 'Fast Stake+Unstake' },
     ];
 
     // For tab persist, keep references to the tab buttons
@@ -644,6 +659,15 @@
       postJson('/api/fast-unstake', {
         netuid: parseInt(document.getElementById('fu-netuid').value, 10),
       }, 'fu-result');
+    }
+    function postFastStakeAndUnstake() {
+      const limitVal = document.getElementById('fsu-limit-price').value.trim();
+      const limitPrice = limitVal === '' ? null : parseInt(limitVal, 10);
+      postJson('/api/fast-stake-and-unstake', {
+        netuid: parseInt(document.getElementById('fsu-netuid').value, 10),
+        amount_tao: parseFloat(document.getElementById('fsu-amount').value),
+        limit_price: limitPrice,
+      }, 'fsu-result');
     }
 
     async function loadStakeInfo() {
