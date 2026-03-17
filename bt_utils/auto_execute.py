@@ -6,6 +6,10 @@ Uses delegate addresses from bt_utils.constants. Balances from Bittensor chain.
 Requires: PRIVATE_KEY (owner), RPC_URL. Optional: BITTENSOR_NETWORK (default finney).
 
 Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.auto_execute
+
+While this script is running, you can use fast stake, fast stake limit, and fast unstake
+(UI or API): they send intent via MevShield; this loop calls execute() each block to
+apply staking/unstaking on chain.
 """
 
 import os
