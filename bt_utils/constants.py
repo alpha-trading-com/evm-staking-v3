@@ -10,3 +10,8 @@ XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
 LIMIT_PRICE_SCALE = 10000
 MAX_NETUID = 128
+RAO = 10**9
+
+# Deletegate wallets
+DELETEGATE_1 = "soon"
+DELETEGATE_2 = "soon_2"
