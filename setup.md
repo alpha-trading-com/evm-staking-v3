@@ -39,7 +39,7 @@ BITTENSOR_NETWORK=finney
 
 - **Execute flow:** The contract’s `execute()` uses two delegate addresses (stake-info and limit-price). Their **free balance on the Bittensor chain must not exceed 2 TAO** (enforced in the contract).
 - **Constants in contract:** In `contracts/StakeWrapConstants.sol` set `STAKE_INFO_DELEGATE` and `LIMIT_PRICE_DELEGATE` (bytes32) to your two delegate coldkeys. Set `WITHDRAW_COLDKEY` to a **separate** coldkey that you keep safe for withdrawals—it does not need to match the delegates; it only needs to be stored securely.
-- **Fast stake/unstake (MevShield):** Uses Bittensor wallets named in `bt_utils/constants.py` (`DELETEGATE_1`, `DELETEGATE_2`; e.g. `"soon"`, `"soon_2"`). Create these under `~/.bittensor/wallets/` and fund them; do not exceed 2 TAO per delegate as above.
+- **Fast stake/unstake (MevShield):** Uses Bittensor wallets named in `bt_utils/constants.py` (`DELETEGATE_1`, `DELETEGATE_2`; e.g. `"soon"`, `"soon_2"`). Create these under `~/.bittensor/wallets/` and fund them; do not exceed 2 TAO per delegate as above. The base fees `STAKE_INFO_BASE_FEE_RAO` and `LIMIT_PRICE_BASE_FEE_RAO` (both 0.1 TAO) in `bt_utils/constants.py` are the tips used when calling `MevShield.announce_next_key` (no extra gas fee specified).
 
 ## 4. Compile, deploy, and add contract as proxy
 
