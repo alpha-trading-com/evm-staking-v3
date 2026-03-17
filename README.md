@@ -1,4 +1,9 @@
-# StakeWrap setup
+# StakeWrap setup 
+
+## Introduction
+
+This staking and unstaking tool uses the same idea as MEV: a transaction submitted in the middle of a block can be injected at the start of that block. The contract and MevShield flow let you stake or unstake with that timing so your intent is applied at block start.
+
 
 ## Prerequisites
 
