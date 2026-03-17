@@ -24,7 +24,7 @@ def get_info_extrinsic(subtensor: bt.Subtensor, wallet: bt.Wallet, info: int):
     return extrinsic
 
 
-def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_inclusion: bool = True):
+def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_inclusion: bool = False):
     try:
         receipt = subtensor.substrate.submit_extrinsic(
             extrinsic,
@@ -42,18 +42,36 @@ def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_
 
 
 def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet: bt.Wallet, stake_info: int, limit_price: Optional[int] = None):
+    """Submit stake_info (and optionally limit_price) via MevShield. Returns (success, message)."""
     if limit_price is None:
         stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet, stake_info)
-        return
-    
+        return submit_extrinsic(subtensor1, stake_info_extrinsic)
+
+    stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet, stake_info)
     limit_price_extrinsic = get_info_extrinsic(subtensor2, wallet, limit_price)
 
-    t1 = threading.Thread(target=submit_extrinsic, args=(subtensor1, stake_info_extrinsic))
-    t2 = threading.Thread(target=submit_extrinsic, args=(subtensor2, limit_price_extrinsic))
+    results = []
 
+    def run1():
+        out = submit_extrinsic(subtensor1, stake_info_extrinsic)
+        results.append(("stake_info", out))
+
+    def run2():
+        out = submit_extrinsic(subtensor2, limit_price_extrinsic)
+        results.append(("limit_price", out))
+
+    t1 = threading.Thread(target=run1)
+    t2 = threading.Thread(target=run2)
     t1.start()
     t2.start()
-
     t1.join()
     t2.join()
+
+    ok1 = results[0][1][0] if len(results) > 0 else False
+    ok2 = results[1][1][0] if len(results) > 1 else False
+    msg1 = results[0][1][1] if len(results) > 0 else ""
+    msg2 = results[1][1][1] if len(results) > 1 else ""
+    success = ok1 and ok2
+    message = "ok" if success else f"stake_info={msg1}; limit_price={msg2}"
+    return success, message
 

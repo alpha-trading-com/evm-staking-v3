@@ -6,6 +6,7 @@ Run from repo root:
 
 Or: ./run_server.sh
 """
+import asyncio
 import io
 import os
 import sys
@@ -54,6 +55,7 @@ def _get_contract(w3, contract_address):
 
 # Import tolerance calculation utilities
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
+from bt_utils.fast_stake_unstake import fast_stake, fast_stake_limit, fast_unstake
 
 app = FastAPI(title="StakeWrap Control", version="1.0.0")
 templates = Jinja2Templates(directory=str(_REPO_ROOT / "app" / "templates"))
@@ -175,6 +177,21 @@ class MoveStakeBody(BaseModel):
 
 class WithdrawBody(BaseModel):
     amount_tao: float
+
+
+class FastStakeBody(BaseModel):
+    netuid: int
+    amount_tao: float
+
+
+class FastStakeLimitBody(BaseModel):
+    netuid: int
+    amount_tao: float
+    limit_price: int
+
+
+class FastUnstakeBody(BaseModel):
+    netuid: int
 
 
 @app.post("/api/stake")
@@ -373,6 +390,44 @@ async def api_withdraw(body: WithdrawBody, _: str = Depends(get_current_username
         amount_wei = int(body.amount_tao * 10**18)
         receipt = _run_quiet(withdraw, w3, account, contract_address, amount_wei)
         return {"ok": True, "receipt": _receipt_to_dict(receipt)}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@app.post("/api/fast-stake")
+async def api_fast_stake(body: FastStakeBody, _: str = Depends(get_current_username)):
+    """Fast stake via MevShield (Bittensor extrinsic)."""
+    try:
+        amount_rao = int(body.amount_tao * 10**9)
+        success, message = await asyncio.to_thread(fast_stake, body.netuid, amount_rao)
+        if success:
+            return {"ok": True, "message": message}
+        return JSONResponse({"ok": False, "error": message}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@app.post("/api/fast-stake-limit")
+async def api_fast_stake_limit(body: FastStakeLimitBody, _: str = Depends(get_current_username)):
+    """Fast stake limit via MevShield (Bittensor extrinsic)."""
+    try:
+        amount_rao = int(body.amount_tao * 10**9)
+        success, message = await asyncio.to_thread(fast_stake_limit, body.netuid, amount_rao, body.limit_price)
+        if success:
+            return {"ok": True, "message": message}
+        return JSONResponse({"ok": False, "error": message}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@app.post("/api/fast-unstake")
+async def api_fast_unstake(body: FastUnstakeBody, _: str = Depends(get_current_username)):
+    """Fast unstake via MevShield (Bittensor extrinsic)."""
+    try:
+        success, message = await asyncio.to_thread(fast_unstake, body.netuid)
+        if success:
+            return {"ok": True, "message": message}
+        return JSONResponse({"ok": False, "error": message}, status_code=400)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 

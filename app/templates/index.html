@@ -128,7 +128,7 @@
             <div class="loading">Loading stake info...</div>
           </div>
           <div class="subnet-buttons">
-            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Stake Limit / Unstake / Unstake Limit)</div>
+            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Stake Limit / Unstake / Unstake Limit / Fast Stake / Fast Stake Limit / Fast Unstake)</div>
             <div class="subnet-grid" id="subnet-grid"></div>
           </div>
         </div>
@@ -271,6 +271,46 @@
       <button class="submit" onclick="postWithdraw()">Submit Withdraw</button>
       <div id="wd-result"></div>
     </section>
+
+    <section class="panel" id="panel-fast-stake">
+      <h2>Fast Stake</h2>
+      <small class="hint">Stake via MevShield (Bittensor extrinsic).</small>
+      <label>Amount (TAO)</label>
+      <div class="amount-input-row">
+        <input id="fs-amount" type="number" step="any" placeholder="e.g. 0.1" />
+        <div class="amount-presets-row">
+          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(30)">30</button>
+          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(50)">50</button>
+          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(100)">100</button>
+        </div>
+      </div>
+      <label>Netuid</label>
+      <input id="fs-netuid" type="number" value="1" />
+      <button class="submit" onclick="postFastStake()">Submit Fast Stake</button>
+      <div id="fs-result"></div>
+    </section>
+
+    <section class="panel" id="panel-fast-stake-limit">
+      <h2>Fast Stake Limit</h2>
+      <small class="hint">Stake limit via MevShield (Bittensor extrinsic).</small>
+      <label>Amount (TAO)</label>
+      <input id="fsl-amount" type="number" step="any" placeholder="e.g. 0.1" />
+      <label>Limit price (integer)</label>
+      <input id="fsl-limit-price" type="number" placeholder="e.g. 10000" />
+      <label>Netuid</label>
+      <input id="fsl-netuid" type="number" value="1" />
+      <button class="submit" onclick="postFastStakeLimit()">Submit Fast Stake Limit</button>
+      <div id="fsl-result"></div>
+    </section>
+
+    <section class="panel" id="panel-fast-unstake">
+      <h2>Fast Unstake</h2>
+      <small class="hint">Unstake via MevShield (Bittensor extrinsic). Unstakes all for the given netuid.</small>
+      <label>Netuid</label>
+      <input id="fu-netuid" type="number" value="1" />
+      <button class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
+      <div id="fu-result"></div>
+    </section>
       </div>
     </div>
   </div>
@@ -288,6 +328,8 @@
       "rs-hotkey", "rs-netuid", "rs-amount",
       // Remove Stake Limit
       "rsl-hotkey", "rsl-netuid", "rsl-amount", "rsl-tolerance", "rsl-use-min", "rsl-partial",
+      // Fast Stake / Fast Stake Limit / Fast Unstake
+      "fs-amount", "fs-netuid", "fsl-amount", "fsl-limit-price", "fsl-netuid", "fu-netuid",
       // Transfer Stake
       "ts-hotkey", "ts-origin", "ts-dest", "ts-amount",
       // Move Stake
@@ -349,7 +391,7 @@
     }
 
     // Subnet ID buttons: 0..127 — clicking sets network id for stake, stake limit, unstake, unstake limit
-    const SUBNET_NETWORK_IDS = ['stake-netuid', 'sl-netuid', 'rs-netuid', 'rsl-netuid'];
+    const SUBNET_NETWORK_IDS = ['stake-netuid', 'sl-netuid', 'rs-netuid', 'rsl-netuid', 'fs-netuid', 'fsl-netuid', 'fu-netuid'];
     function setTaoAmount(amount) {
       const val = String(amount);
       const stakeEl = document.getElementById('stake-amount');
@@ -408,6 +450,9 @@
       { id: 'transfer', label: 'Transfer Stake' },
       { id: 'move', label: 'Move Stake' },
       { id: 'withdraw', label: 'Withdraw' },
+      { id: 'fast-stake', label: 'Fast Stake' },
+      { id: 'fast-stake-limit', label: 'Fast Stake Limit' },
+      { id: 'fast-unstake', label: 'Fast Unstake' },
     ];
 
     // For tab persist, keep references to the tab buttons
@@ -462,7 +507,7 @@
           body: JSON.stringify(body),
         });
         const j = await r.json();
-        if (j.ok) showResult(resultId, true, JSON.stringify(j.receipt, null, 2));
+        if (j.ok) showResult(resultId, true, j.receipt != null ? JSON.stringify(j.receipt, null, 2) : (j.message || 'OK'));
         else showResult(resultId, false, j.error || JSON.stringify(j));
       } catch (e) {
         showResult(resultId, false, String(e));
@@ -576,6 +621,29 @@
       postJson('/api/withdraw', {
         amount_tao: parseFloat(document.getElementById('wd-amount').value),
       }, 'wd-result');
+    }
+
+    function setFastStakeAmount(amount) {
+      const el = document.getElementById('fs-amount');
+      if (el) { el.value = String(amount); persistAllInputs(); }
+    }
+    function postFastStake() {
+      postJson('/api/fast-stake', {
+        netuid: parseInt(document.getElementById('fs-netuid').value, 10),
+        amount_tao: parseFloat(document.getElementById('fs-amount').value),
+      }, 'fs-result');
+    }
+    function postFastStakeLimit() {
+      postJson('/api/fast-stake-limit', {
+        netuid: parseInt(document.getElementById('fsl-netuid').value, 10),
+        amount_tao: parseFloat(document.getElementById('fsl-amount').value),
+        limit_price: parseInt(document.getElementById('fsl-limit-price').value, 10),
+      }, 'fsl-result');
+    }
+    function postFastUnstake() {
+      postJson('/api/fast-unstake', {
+        netuid: parseInt(document.getElementById('fu-netuid').value, 10),
+      }, 'fu-result');
     }
 
     async function loadStakeInfo() {
