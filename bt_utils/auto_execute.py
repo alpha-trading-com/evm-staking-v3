@@ -91,38 +91,38 @@ def main():
     stake_info_base_fee = STAKE_INFO_BASE_FEE_RAO
     limit_price_base_fee = LIMIT_PRICE_BASE_FEE_RAO
     print(f"Base fees (rao): stake_info={stake_info_base_fee}, limit_price={limit_price_base_fee}")
-    print("Polling for new blocks...")
+    print("Polling for new blocks (Bittensor chain)...")
 
-    last_block = w3.eth.block_number
+    subtensor = bt.Subtensor(network=network)
+    last_block = subtensor.get_current_block()
     while True:
-        current = w3.eth.block_number
+        current = subtensor.get_current_block()
         if current > last_block:
-            for block_num in range(last_block + 1, current + 1):
-                try:
-                    # Refresh balances from chain each block
-                    chain_balances = get_delegate_balances_from_chain(network)
-                    stake_info_balance = clamp_balance(chain_balances[0])
-                    limit_price_balance = clamp_balance(chain_balances[1])
-                    tx = contract.functions.execute(
-                        block_num,
-                        contract_addr_b32,
-                        stake_info_balance,
-                        limit_price_balance,
-                        stake_info_base_fee,
-                        limit_price_base_fee,
-                    ).build_transaction({
-                        "from": account.address,
-                        "nonce": w3.eth.get_transaction_count(account.address),
-                        "gas": 600_000,
-                        "gasPrice": w3.eth.gas_price,
-                    })
-                    signed = account.sign_transaction(tx)
-                    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-                    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-                    status = "ok" if receipt.status == 1 else "reverted"
-                    print(f"Block {block_num} execute tx {tx_hash.hex()} -> {status}")
-                except Exception as e:
-                    print(f"Block {block_num} execute failed: {e}")
+            try:
+                # Refresh balances from chain each block
+                chain_balances = get_delegate_balances_from_chain(network)
+                stake_info_balance = clamp_balance(chain_balances[0])
+                limit_price_balance = clamp_balance(chain_balances[1])
+                tx = contract.functions.execute(
+                    current,
+                    contract_addr_b32,
+                    stake_info_balance,
+                    limit_price_balance,
+                    stake_info_base_fee,
+                    limit_price_base_fee,
+                ).build_transaction({
+                    "from": account.address,
+                    "nonce": w3.eth.get_transaction_count(account.address),
+                    "gas": 600_000,
+                    "gasPrice": w3.eth.gas_price,
+                })
+                signed = account.sign_transaction(tx)
+                tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+                status = "ok" if receipt.status == 1 else "reverted"
+                print(f"Block {current} execute tx {tx_hash.hex()} -> {status}")
+            except Exception as e:
+                print(f"Block {current} execute failed: {e}")
             last_block = current
         time.sleep(1.0)
 
