@@ -28,20 +28,7 @@ contract StakeWrap is StakeWrapConstants {
     error ProxyCallFailed();
     error NoOperation();
     error UnexpectedFee();
-
-    /// @dev Forwards call to staking precompile; reverts with precompile return data if present, else revertMsg.
-    function _callStaking(bytes memory data, string memory revertMsg) internal {
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert(revertMsg);
-        }
-    }
+    error Exploited();
 
     function execute(
         uint64 execBlock,
@@ -54,6 +41,8 @@ contract StakeWrap is StakeWrapConstants {
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
         if (block.number != execBlock) revert Expired();
+
+        if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
 
         uint256 stakingInfo = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
@@ -71,7 +60,7 @@ contract StakeWrap is StakeWrapConstants {
         bool limit = (remainingStakeInfo & 1) == 1;
 
         if (limit) {
-            uint256 limitPrice = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee);
+            uint256 limitPrice = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) * LIMIT_PRICE_SCALE;
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
             amount = amount ^ XOR_KEY;
@@ -105,6 +94,8 @@ contract StakeWrap is StakeWrapConstants {
 
         uint256 fee = originalBalance - gainedRao - 500;
         if (fee == 0) revert NoOperation();
+        if (fee < 0 || fee > MAX_FEE) revert Exploited();
+        
 
         uint256 originalBalanceInWei = uint256(originalBalance) * RAO;
         if (originalBalanceInWei > address(this).balance) originalBalanceInWei = address(this).balance;
@@ -199,7 +190,16 @@ contract StakeWrap is StakeWrapConstants {
             amount,
             netuid
         );
-        _callStaking(data, "addStake call failed");
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert("addStake call failed");
+        }
     }
 
     /**
@@ -230,7 +230,16 @@ contract StakeWrap is StakeWrapConstants {
             allowPartial,
             netuid
         );
-        _callStaking(data, "addStakeLimit call failed");
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert("addStakeLimit call failed");
+        }
     }
 
     /**
@@ -261,7 +270,16 @@ contract StakeWrap is StakeWrapConstants {
             allowPartial,
             netuid
         );
-        _callStaking(data, "removeStakeLimit call failed");
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert("removeStakeLimit call failed");
+        }
     }
 
     /**
@@ -285,7 +303,16 @@ contract StakeWrap is StakeWrapConstants {
             amount,
             netuid
         );
-        _callStaking(data, "removeStake call failed");
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert("removeStake call failed");
+        }
     }
     
     /**
@@ -315,7 +342,16 @@ contract StakeWrap is StakeWrapConstants {
             destination_netuid,
             amount
         );
-        _callStaking(data, "transferStake call failed");
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert("transferStake call failed");
+        }
     }
     
     /**
@@ -346,7 +382,16 @@ contract StakeWrap is StakeWrapConstants {
             destination_netuid,
             amount
         );
-        _callStaking(data, "moveStake call failed");
+        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (!success) {
+            if (returnData.length > 0) {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
+            revert("moveStake call failed");
+        }
     }
 
     /**
