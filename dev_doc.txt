@@ -15,3 +15,7 @@ python3 scripts/interact.py stake \
 
 
   python3 scripts/interact.py subnetPrice --netuid 1
+
+
+  odd: limit version
+  even: not limit version

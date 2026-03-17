@@ -8,3 +8,5 @@ STAKE_INFO_BASE_FEE_RAO = 100_000_000   # 0.1 TAO
 LIMIT_PRICE_BASE_FEE_RAO = 100_000_000  # 0.1 TAO
 XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
+LIMIT_PRICE_SCALE = 10000
+MAX_NETUID = 128

@@ -1,6 +1,8 @@
 import os
 import random
 import bittensor as bt
+import threading
+from typing import Optional
 
 DEFAULT_PUBLIC_KEY = b'\x01\x02\x03\x04'
 
@@ -37,4 +39,21 @@ def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_
         print("Failed to submit extrinsic:", e)
         return False, str(e)
     return receipt.is_success, receipt.error_message
+
+
+def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet: bt.Wallet, stake_info: int, limit_price: Optional[int] = None):
+    if limit_price is None:
+        stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet, stake_info)
+        return
+    
+    limit_price_extrinsic = get_info_extrinsic(subtensor2, wallet, limit_price)
+
+    t1 = threading.Thread(target=submit_extrinsic, args=(subtensor1, stake_info_extrinsic))
+    t2 = threading.Thread(target=submit_extrinsic, args=(subtensor2, limit_price_extrinsic))
+
+    t1.start()
+    t2.start()
+
+    t1.join()
+    t2.join()
 
