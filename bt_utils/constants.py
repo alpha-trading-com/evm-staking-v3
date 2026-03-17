@@ -2,9 +2,9 @@ WITHDRAW_COLDKEY = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"
 STAKE_INFO_DELEGATE = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"
 LIMIT_PRICE_DELEGATE = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"
 DEFAULT_HOTKEY = "5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21"
-XOR_KEY = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 CONTRACT_ADDRESS = "5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht"
 
-# Base fees in rao (fee - baseFee = stakingInfo)
 STAKE_INFO_BASE_FEE_RAO = 100_000_000   # 0.1 TAO
 LIMIT_PRICE_BASE_FEE_RAO = 100_000_000  # 0.1 TAO
+XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+MAX_DELEGATE_BALANCE_RAO = 2 * 10**9

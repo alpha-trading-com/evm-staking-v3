@@ -13,12 +13,7 @@ from eth_utils import keccak, to_hex
 
 from evm.contract import get_contract as _evm_get_contract, get_stake_wrap_abi, STAKE_WRAP_ARTIFACT_PATH
 from evm.address import ss58_to_bytes32
-
-# XOR key for obfuscating uint256 parameters (must match contract StakeWrapConstants.XOR_KEY)
-XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
-
-# Contract constant: MAX_DELEGATE_BALANCE = 2 TAO
-MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
+from bt_utils.constants import XOR_KEY, MAX_DELEGATE_BALANCE_RAO
 
 # Minimal ABI for StakeWrap interaction (fallback when artifact missing)
 CONTRACT_ABI: List[Dict[str, Any]] = [
