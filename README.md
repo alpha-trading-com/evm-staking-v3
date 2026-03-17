@@ -25,7 +25,6 @@ Create a `.env` file in the project root. Required and optional variables:
 | `PRIVATE_KEY` | Yes | EVM private key (hex, no 0x) used to deploy and as contract owner |
 | `RPC_URL` | No | EVM RPC (default: `https://test.finney.opentensor.ai/`) |
 | `BITTENSOR_NETWORK` | No | Bittensor network for auto_execute (default: `finney`) |
-| `CONTRACT_SS58` | No | Override contract SS58 for UI; otherwise derived from deployment |
 
 Example:
 
