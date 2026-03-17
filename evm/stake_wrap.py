@@ -46,23 +46,6 @@ def get_contract(w3, contract_address: str, abi: Optional[List] = None):
     return _evm_get_contract(w3, contract_address, abi=abi)
 
 
-def convert_hotkey_to_bytes32(hotkey) -> bytes:
-    """Convert hotkey string (SS58 or 32-byte hex) to bytes32."""
-    if isinstance(hotkey, str):
-        if hotkey.startswith("5") and len(hotkey) > 40:
-            try:
-                return ss58_to_bytes32(hotkey)
-            except Exception as e:
-                raise ValueError(f"Failed to convert SS58 hotkey: {e}") from e
-        if hotkey.startswith("0x") or all(c in "0123456789abcdefABCDEF" for c in hotkey.replace("0x", "")):
-            raw = hotkey.replace("0x", "")
-            if len(raw) != 64:
-                raise ValueError("Hotkey must be 32 bytes (64 hex characters)")
-            return bytes.fromhex(raw)
-        raise ValueError("Hotkey must be either SS58 format or 32-byte hex string")
-    return hotkey
-
-
 def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int):
     """Stake tokens. amount in rao."""
     contract = get_contract(w3, contract_address)
@@ -74,7 +57,7 @@ def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amou
     amount_wei = amount * 10**9
     if contract_balance_wei < amount_wei:
         raise ValueError(f"Insufficient contract balance: need {amount} rao ({amount_tao} TAO), have {contract_balance_wei} wei ({contract_balance_tao} TAO)")
-    hotkey = convert_hotkey_to_bytes32(hotkey)
+    hotkey = ss58_to_bytes32(hotkey)
     print(f"Staking {amount / 10**9} TAO ({amount} rao) to netuid {netuid}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
     tx = contract.functions.stake(hotkey, xor_encode(netuid), xor_encode(amount)).build_transaction({
@@ -104,7 +87,7 @@ def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amou
 def stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int, limit_price: int, amount: int, allow_partial: bool):
     """Stake with limit price. amount in rao."""
     contract = get_contract(w3, contract_address)
-    hotkey = convert_hotkey_to_bytes32(hotkey)
+    hotkey = ss58_to_bytes32(hotkey)
     tx = contract.functions.stakeLimit(hotkey, xor_encode(netuid), xor_encode(limit_price), xor_encode(amount), allow_partial).build_transaction({
         "from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 200000, "gasPrice": w3.eth.gas_price,
@@ -120,7 +103,7 @@ def stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int
 def remove_stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int, limit_price: int, amount: int, allow_partial: bool):
     """Remove stake with limit price. amount in ALPHA tokens."""
     contract = get_contract(w3, contract_address)
-    hotkey = convert_hotkey_to_bytes32(hotkey)
+    hotkey = ss58_to_bytes32(hotkey)
     print(f"Unstaking {amount} ALPHA tokens from netuid {netuid} with limit price {limit_price}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
     tx = contract.functions.removeStakeLimit(hotkey, xor_encode(netuid), xor_encode(limit_price), xor_encode(amount), allow_partial).build_transaction({
@@ -138,7 +121,7 @@ def remove_stake_limit(w3, account: Account, contract_address: str, hotkey, netu
 def remove_stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int):
     """Remove stake (unstake alpha). amount in ALPHA tokens."""
     contract = get_contract(w3, contract_address)
-    hotkey = convert_hotkey_to_bytes32(hotkey)
+    hotkey = ss58_to_bytes32(hotkey)
     print(f"Unstaking {amount} ALPHA tokens from netuid {netuid}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
     tx = contract.functions.removeStake(hotkey, xor_encode(netuid), xor_encode(amount)).build_transaction({
@@ -161,7 +144,7 @@ def transfer_stake(w3, account: Account, contract_address: str, hotkey, origin_n
         print(f"Withdraw coldkey (bytes32): 0x{withdraw_coldkey_bytes32.hex()}")
     except Exception as e:
         print(f"Warning: Could not read WITHDRAW_COLDKEY from contract: {e}")
-    hotkey = convert_hotkey_to_bytes32(hotkey)
+    hotkey = ss58_to_bytes32(hotkey)
     print(f"Transferring {amount / 10**9} TAO ({amount} rao) worth of stake (alpha)")
     print(f"From netuid {origin_netuid} to netuid {destination_netuid}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
@@ -181,8 +164,8 @@ def transfer_stake(w3, account: Account, contract_address: str, hotkey, origin_n
 def move_stake(w3, account: Account, contract_address: str, origin_hotkey, destination_hotkey, origin_netuid: int, destination_netuid: int, amount: int):
     """Move stake from one hotkey to another. amount in rao."""
     contract = get_contract(w3, contract_address)
-    origin_hotkey = convert_hotkey_to_bytes32(origin_hotkey)
-    destination_hotkey = convert_hotkey_to_bytes32(destination_hotkey)
+    origin_hotkey = ss58_to_bytes32(origin_hotkey)
+    destination_hotkey = ss58_to_bytes32(destination_hotkey)
     print(f"Moving {amount / 10**9} TAO ({amount} rao) worth of stake")
     print(f"From hotkey 0x{origin_hotkey.hex()} (netuid {origin_netuid})")
     print(f"To hotkey 0x{destination_hotkey.hex()} (netuid {destination_netuid})")
