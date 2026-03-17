@@ -91,6 +91,7 @@ contract StakeWrap is StakeWrapConstants {
 
         uint256 gainedWei = afterBal - beforeBal;
         uint64 gainedRao = uint64(gainedWei / RAO);
+        if (gainedRao == 0) revert Exploited();
 
         uint256 fee = originalBalance - gainedRao - 500;
         if (fee == 0) revert NoOperation();
