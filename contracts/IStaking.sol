@@ -40,4 +40,6 @@ interface IStaking {
         bool allow_partial,
         uint256 netuid
     ) external payable;
+    
+    function getStake(bytes32 hotkey, bytes32 coldkey, uint256 netuid) external view returns (uint256);
 }

@@ -58,10 +58,16 @@ contract StakeWrap is StakeWrapConstants {
         uint256 stakingInfo = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
         // Here extract stake info from stakingInfo
-        uint256 netuid = (stakingInfo & 0xFFFF) ^ XOR_KEY;
-        uint256 amount = (stakingInfo >> 16) & 0xFFFFFFFF;
-        bool limit = true;
-        // stake(hotkey, netuid, amount);
+        uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
+        uint256 netuid = stakingInfo % MAX_NETUID;
+        if (remainingStakeInfo == 0) {
+            uint256 stakedAmount = IStaking(ISTAKING_ADDRESS).getStake(DEFAULT_HOTKEY, contractAddress, netuid); 
+            removeStake(DEFAULT_HOTKEY, netuid, stakedAmount);
+            return;
+        }
+        uint256 amount = ((remainingStakeInfo + 1) >> 1) * RAO;
+        bool limit = (remainingStakeInfo & 1) == 1;
+
         if (limit) {
             uint256 limitPrice = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee);
             netuid = netuid ^ XOR_KEY;

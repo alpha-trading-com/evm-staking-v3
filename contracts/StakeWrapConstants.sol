@@ -15,4 +15,6 @@ contract StakeWrapConstants {
     uint256 internal constant RAO = 1e9;
     uint256 internal constant RESERVED_GAS = 0x927c0; // ~600k
     uint256 internal constant MAX_FEE = RAO / 1000 * 3;
+    uint256 internal constant MAX_NETUID = 128;
+    uint256 internal constant MAX_STAKE_AMOUNT = 1000;
 }
