@@ -35,6 +35,7 @@ from evm import (
     get_contract,
     get_stake_wrap_abi,
     load_deployment_info,
+    h160_to_ss58,
     CONTRACT_ABI,
     stake,
     stake_limit,
@@ -58,7 +59,9 @@ app = FastAPI(title="StakeWrap Control", version="1.0.0")
 templates = Jinja2Templates(directory=str(_REPO_ROOT / "app" / "templates"))
 subtensor = bt.Subtensor(network="finney")
 
-COLDKEY_SS58 = os.getenv("COLDKEY", "5GBY9k83ydqCedqg1NLrWTKy8R6afTkwz5FPSyar3tCcBGQ5")
+# SS58 of the EVM contract on Bittensor (derived from deployment contract address; env CONTRACT_SS58 overrides)
+_deployment = load_deployment_info()
+COLDKEY_SS58 = os.getenv("CONTRACT_SS58") or h160_to_ss58(Web3.to_checksum_address(_deployment["contract_address"]))
 
 def _get_w3_account_contract():
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
