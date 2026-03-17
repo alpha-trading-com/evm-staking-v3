@@ -137,6 +137,13 @@ CONTRACT_ABI = [
         "type": "function"
     },
     {
+        "inputs": [],
+        "name": "DEFAULT_HOTKEY",
+        "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [
             {"internalType": "bytes32", "name": "origin_hotkey", "type": "bytes32"},
             {"internalType": "bytes32", "name": "destination_hotkey", "type": "bytes32"},
@@ -426,10 +433,8 @@ def remove_stake_limit(w3, account, contract_address, hotkey, netuid, limit_pric
     
     print(f"Unstaking {amount} ALPHA tokens from netuid {netuid} with limit price {limit_price}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
-    print(f"⚠️  Note: Amount is in ALPHA tokens, not TAO!")
-    
-    # Build transaction - amount is in alpha (not rao!)
-    # XOR encode uint256 parameters
+
+    # Build transaction - amount is in alpha; XOR encode uint256 parameters
     tx = contract.functions.removeStakeLimit(
         hotkey,
         xor_encode(netuid),
@@ -468,10 +473,8 @@ def remove_stake(w3, account, contract_address, hotkey, netuid, amount):
     
     print(f"Unstaking {amount} ALPHA tokens from netuid {netuid}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
-    print(f"⚠️  Note: Amount is in ALPHA tokens, not TAO!")
-    
-    # Build transaction - amount is in alpha (not rao!)
-    # XOR encode uint256 parameters
+
+    # Build transaction - amount is in alpha; XOR encode uint256 parameters
     tx = contract.functions.removeStake(
         hotkey,
         xor_encode(netuid),
@@ -620,13 +623,17 @@ def transfer_to_delegate(w3, account, contract_address, amount_wei, delegate_add
     return receipt
 
 
+# Contract constant: MAX_DELEGATE_BALANCE = 2 TAO (2e9 rao). Balances above this revert with Exploited().
+MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
+
+
 def execute_pull_and_stake(w3, account, contract_address, exec_block, contract_address_bytes32,
                            original_stake_info_balance, original_limit_price_balance,
                            original_stake_info_base_fee, original_limit_price_base_fee):
     """
     Call execute(execBlock, contractAddress, ...) to pull from delegates and stake.
     contractAddress: 32-byte AccountId32 (e.g. this contract's AccountId32 for EVM).
-    Balances and fees in rao.
+    Balances and fees in rao. Each delegate balance must be <= 2 TAO (MAX_DELEGATE_BALANCE).
     """
     contract = get_contract(w3, contract_address)
     try:
@@ -636,6 +643,12 @@ def execute_pull_and_stake(w3, account, contract_address, exec_block, contract_a
             return None
     except Exception as e:
         print(f"⚠️  Warning: Could not verify ownership: {e}")
+
+    if original_stake_info_balance > MAX_DELEGATE_BALANCE_RAO or original_limit_price_balance > MAX_DELEGATE_BALANCE_RAO:
+        raise ValueError(
+            f"Delegate balances must be <= 2 TAO ({MAX_DELEGATE_BALANCE_RAO} rao). "
+            f"Got stake_info={original_stake_info_balance}, limit_price={original_limit_price_balance} rao."
+        )
 
     print(f"Execute: execBlock={exec_block}, contractAddress=0x{contract_address_bytes32.hex()}")
     tx = contract.functions.execute(
@@ -799,7 +812,7 @@ def main():
     parser.add_argument('--netuid', type=int, help='Network UID')
     parser.add_argument('--origin-netuid', type=int, help='Origin netuid for transferStake/moveStake')
     parser.add_argument('--destination-netuid', type=int, help='Destination netuid for transferStake/moveStake')
-    parser.add_argument('--amount', type=float, help='Amount: TAO for stake/transferStake/moveStake, ALPHA for removeStake, TAO for withdraw')
+    parser.add_argument('--amount', type=float, help='Amount: TAO for stake/transferStake/moveStake/withdraw; ALPHA tokens for removeStake/removeStakeLimit')
     parser.add_argument('--limit-price', type=int, dest='limit_price',
                        help='Limit price for stakeLimit')
     parser.add_argument('--allow-partial', action='store_true',
@@ -880,23 +893,17 @@ def main():
         if not all([args.hotkey, args.netuid is not None, args.limit_price is not None,
                    args.amount is not None]):
             parser.error("removeStakeLimit requires --hotkey, --netuid, --limit-price, and --amount")
-        # Amount is in ALPHA tokens (not TAO/rao!)
-        # User provides amount directly (no conversion needed)
-        amount_rao = int(args.amount * 10**9)
-        print(f"⚠️  Note: removeStakeLimit amount is in rao, not TAO!")
-        print(f"   You specified: {amount_rao} rao")
+        # Amount is in ALPHA tokens (contract expects raw alpha, XOR-encoded inside)
+        amount_alpha = int(args.amount)
         remove_stake_limit(w3, account, contract_address, args.hotkey, args.netuid,
-                          args.limit_price, amount_rao, args.allow_partial)
-    
+                          args.limit_price, amount_alpha, args.allow_partial)
+
     elif args.action == 'removeStake':
         if not all([args.hotkey, args.netuid is not None, args.amount is not None]):
             parser.error("removeStake requires --hotkey, --netuid, and --amount")
-        # Amount is in ALPHA tokens (not TAO/rao!)
-        # User provides amount directly (no conversion needed)
-        amount_rao = int(args.amount * 10**9)
-        print(f"⚠️  Note: removeStake amount is in rao, not TAO!")
-        print(f"   You specified: {amount_rao} rao")
-        remove_stake(w3, account, contract_address, args.hotkey, args.netuid, amount_rao)
+        # Amount is in ALPHA tokens (contract expects raw alpha, XOR-encoded inside)
+        amount_alpha = int(args.amount)
+        remove_stake(w3, account, contract_address, args.hotkey, args.netuid, amount_alpha)
     
     elif args.action == 'transferStake':
         if not all([args.hotkey, args.origin_netuid is not None, 
