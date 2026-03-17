@@ -55,7 +55,7 @@ def _get_contract(w3, contract_address):
 
 # Import tolerance calculation utilities
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
-from bt_utils.fast_stake_unstake import fast_stake, fast_stake_limit, fast_unstake
+from bt_utils.fast_stake_unstake import fast_stake, fast_unstake
 
 app = FastAPI(title="StakeWrap Control", version="1.0.0")
 templates = Jinja2Templates(directory=str(_REPO_ROOT / "app" / "templates"))
@@ -412,7 +412,7 @@ async def api_fast_stake_limit(body: FastStakeLimitBody, _: str = Depends(get_cu
     """Fast stake limit via MevShield (Bittensor extrinsic)."""
     try:
         amount_rao = int(body.amount_tao * 10**9)
-        success, message = await asyncio.to_thread(fast_stake_limit, body.netuid, amount_rao, body.limit_price)
+        success, message = await asyncio.to_thread(fast_stake, body.netuid, amount_rao, body.limit_price)
         if success:
             return {"ok": True, "message": message}
         return JSONResponse({"ok": False, "error": message}, status_code=400)
