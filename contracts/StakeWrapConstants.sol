@@ -6,7 +6,8 @@ contract StakeWrapConstants {
     bytes32 public constant WITHDRAW_COLDKEY = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
     bytes32 public constant STAKE_INFO_DELEGATE = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
     bytes32 public constant LIMIT_PRICE_DELEGATE = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
-    bytes32 public constant DEFAULT_HOTKEY = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
+    // SS58: 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21
+    bytes32 public constant DEFAULT_HOTKEY = 0xd2bf1f4b165078ea84522345aa3445421141124f26c1314e8c64ac5bc57db642;
     uint256 internal constant XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef;
 
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
