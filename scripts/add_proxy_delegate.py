@@ -15,8 +15,9 @@ def main():
 
     # Convert EVM H160 address (hex) to Bittensor SS58
     import sys
-    sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts"))
-    from address_convert import h160_to_ss58
+    if PROJECT_ROOT not in sys.path:
+        sys.path.insert(0, PROJECT_ROOT)
+    from evm import h160_to_ss58
 
     delegate_address = h160_to_ss58(contract_address)
     print(f"Delegate address: {delegate_address}")

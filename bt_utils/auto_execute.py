@@ -2,11 +2,7 @@
 """
 Call the StakeWrap contract's execute() at the start of every new block.
 
-Uses delegate addresses from bt_utils.constants (STAKE_INFO_DELEGATE, LIMIT_PRICE_DELEGATE).
-Balances are read from the Bittensor chain for those delegates when bittensor is available;
-otherwise uses STAKE_INFO_DELEGATE_BALANCE_RAO and LIMIT_PRICE_DELEGATE_BALANCE_RAO from
-bt_utils.constants.
-
+Uses delegate addresses from bt_utils.constants. Balances from Bittensor chain.
 Requires: PRIVATE_KEY (owner), RPC_URL. Optional: BITTENSOR_NETWORK (default finney).
 
 Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.auto_execute
@@ -14,26 +10,20 @@ Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.a
 
 import os
 import sys
-import json
 import time
-import hashlib
-import importlib.util
 
 from web3 import Web3
 from eth_account import Account
 
-# Paths: this file is in bt_utils/; project root is parent of bt_utils
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(_THIS_DIR)
-SCRIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
+from evm import contract_address_bytes32, get_contract, load_deployment
 from bt_utils.constants import (
     STAKE_INFO_DELEGATE,
     LIMIT_PRICE_DELEGATE,
-    STAKE_INFO_DELEGATE_BALANCE_RAO,
-    LIMIT_PRICE_DELEGATE_BALANCE_RAO,
     STAKE_INFO_BASE_FEE_RAO,
     LIMIT_PRICE_BASE_FEE_RAO,
 )
@@ -42,51 +32,6 @@ from bt_utils.constants import (
 MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
 
 import bittensor as bt
-
-
-def load_deployment(path=None):
-    if path is None:
-        path = os.path.join(ROOT_DIR, "deployment.json")
-    with open(path, "r") as f:
-        return json.load(f)
-
-
-def _load_abi_from_interact():
-    """Load CONTRACT_ABI from scripts/interact.py when artifact is missing."""
-    interact_path = os.path.join(SCRIPTS_DIR, "interact.py")
-    if not os.path.exists(interact_path):
-        raise FileNotFoundError(f"Neither StakeWrap.json artifact nor {interact_path} found")
-    spec = importlib.util.spec_from_file_location("interact", interact_path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.CONTRACT_ABI
-
-
-def get_contract(w3, contract_address):
-    artifact_path = os.path.join(ROOT_DIR, "artifacts/contracts/StakeWrap.sol/StakeWrap.json")
-    if os.path.exists(artifact_path):
-        with open(artifact_path, "r") as f:
-            abi = json.load(f)["abi"]
-    else:
-        abi = _load_abi_from_interact()
-    return w3.eth.contract(address=contract_address, abi=abi)
-
-
-def _h160_to_account_id(h160_hex: str) -> bytes:
-    """EVM address -> 32-byte AccountId32: Blake2b-256(b'evm:' + h160). Matches address_convert.py."""
-    raw = h160_hex.strip()
-    if raw.startswith("0x") or raw.startswith("0X"):
-        raw = raw[2:]
-    if len(raw) != 40:
-        raise ValueError("Ethereum address must be 40 hex chars (with or without 0x)")
-    addr_bytes = bytes.fromhex(raw)
-    combined = b"evm:" + addr_bytes
-    return hashlib.blake2b(combined, digest_size=32).digest()
-
-
-def contract_address_bytes32(contract_address_hex: str) -> bytes:
-    """EVM contract address -> 32-byte AccountId32 (Blake2b('evm:' || h160))."""
-    return _h160_to_account_id(contract_address_hex)
 
 
 def get_delegate_balances_from_chain(network="finney"):

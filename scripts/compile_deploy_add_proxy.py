@@ -32,9 +32,10 @@ try:
 except ImportError:
     pass
 
-# Use same H160→SS58 conversion as address_convert.py (evm: prefix + Blake2b-256)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts"))
-from address_convert import h160_to_ss58
+# H160→SS58 via evm package (Blake2b-256(b"evm:" || h160))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+from evm import h160_to_ss58
 
 
 def step_compile() -> None:

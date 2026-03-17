@@ -31,8 +31,11 @@ from web3 import Web3
 from eth_account import Account
 
 from app.auth import get_current_username
-
-from scripts.interact import (
+from evm import (
+    get_contract,
+    get_stake_wrap_abi,
+    load_deployment_info,
+    CONTRACT_ABI,
     stake,
     stake_limit,
     remove_stake,
@@ -40,9 +43,13 @@ from scripts.interact import (
     transfer_stake,
     move_stake,
     withdraw,
-    load_deployment_info,
-    get_contract,
 )
+
+
+def _get_contract(w3, contract_address):
+    """StakeWrap contract instance; uses artifact ABI when available."""
+    abi = get_stake_wrap_abi() or CONTRACT_ABI
+    return get_contract(w3, contract_address, abi=abi)
 
 # Import tolerance calculation utilities
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
@@ -100,7 +107,7 @@ async def api_status(_: str = Depends(get_current_username)):
     balance_wei = w3.eth.get_balance(contract_address)
     balance_tao = float(Web3.from_wei(balance_wei, "ether"))
     try:
-        contract = get_contract(w3, contract_address)
+        contract = _get_contract(w3, contract_address)
         owner = contract.functions.owner().call()
     except Exception:
         owner = None

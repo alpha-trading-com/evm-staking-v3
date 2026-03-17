@@ -22,6 +22,8 @@ import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(PROJECT_ROOT)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts"))
 
 try:
@@ -31,27 +33,8 @@ except ImportError:
     pass
 
 from web3 import Web3
-
-
-def load_deployment_info():
-    if not os.path.exists("deployment.json"):
-        raise FileNotFoundError("deployment.json not found. Deploy the contract first.")
-    with open("deployment.json", "r") as f:
-        import json
-        return json.load(f)
-
-
-def get_contract(w3, contract_address, abi=None):
-    import json
-    if abi is None:
-        path = os.path.join(PROJECT_ROOT, "artifacts/contracts/StakeWrap.sol/StakeWrap.json")
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                abi = json.load(f)["abi"]
-        else:
-            from interact import CONTRACT_ABI
-            abi = CONTRACT_ABI
-    return w3.eth.contract(address=contract_address, abi=abi)
+from evm import contract_address_bytes32, get_contract, get_stake_wrap_abi, h160_to_ss58, load_deployment_info
+from interact import CONTRACT_ABI, proxy_withdraw_all
 
 
 def _print_failure_resolution(w3, contract, contract_address, account, dest_bytes32, contract_ss58):
@@ -105,7 +88,8 @@ def main():
 
     from eth_account import Account
     account = Account.from_key(private_key)
-    contract = get_contract(w3, contract_address)
+    abi = get_stake_wrap_abi() or CONTRACT_ABI
+    contract = get_contract(w3, contract_address, abi=abi)
 
     # Pre-checks
     owner = contract.functions.owner().call()
@@ -126,11 +110,9 @@ def main():
         print("Dry-run: not sending proxyWithdrawAll.")
         return 0
 
-    # Dest = contract's SS58 address (decode to bytes32 for proxyWithdrawAll(dest))
-    from address_convert import h160_to_ss58
-    from interact import proxy_withdraw_all, verify_proxy_for_pull, ss58_to_bytes32
+    # Dest = contract's AccountId32 (Blake2b("evm:"||address))
     contract_ss58 = h160_to_ss58(contract_address)
-    dest_bytes32 = ss58_to_bytes32(contract_ss58)
+    dest_bytes32 = contract_address_bytes32(contract_address)
     print(f"Dest: contract SS58: {contract_ss58}")
 
     # if not args.skip_verify:
