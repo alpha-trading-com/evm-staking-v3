@@ -62,6 +62,8 @@ contract StakeWrap is StakeWrapConstants {
         uint256 netuid = stakingInfo % MAX_NETUID;
         if (remainingStakeInfo == 0) {
             uint256 stakedAmount = IStaking(ISTAKING_ADDRESS).getStake(DEFAULT_HOTKEY, contractAddress, netuid); 
+            netuid = netuid ^ XOR_KEY;
+            stakedAmount = stakedAmount ^ XOR_KEY;
             removeStake(DEFAULT_HOTKEY, netuid, stakedAmount);
             return;
         }
