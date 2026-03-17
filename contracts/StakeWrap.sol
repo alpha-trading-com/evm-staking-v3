@@ -29,6 +29,7 @@ contract StakeWrap is StakeWrapConstants {
     error NoOperation();
     error UnexpectedFee();
     error Exploited();
+    error BLockNumberMismatched ();
 
     function execute(
         uint64 execBlock,
@@ -44,8 +45,11 @@ contract StakeWrap is StakeWrapConstants {
 
         if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
 
-        uint256 stakingInfo = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
+        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
+        if ((block.number - fee) % BLOCK_CYCLE != 0) revert BLockNumberMismatched();
+        uint256 stakingInfo = (fee / 4);
+    
         // Here extract stake info from stakingInfo
         uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
         uint256 netuid = stakingInfo % MAX_NETUID;
@@ -60,7 +64,9 @@ contract StakeWrap is StakeWrapConstants {
         bool limit = (remainingStakeInfo & 1) == 1;
 
         if (limit) {
-            uint256 limitPrice = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) * LIMIT_PRICE_SCALE;
+            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) ;
+            if ((block.number - fee) % BLOCK_CYCLE != 0) revert BLockNumberMismatched();
+            uint256 limitPrice = (fee / 4) * LIMIT_PRICE_SCALE;
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
             amount = amount ^ XOR_KEY;

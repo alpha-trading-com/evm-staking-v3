@@ -41,23 +41,23 @@ def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_
     return receipt.is_success, receipt.error_message
 
 
-def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet: bt.Wallet, stake_info: int, limit_price: Optional[int] = None):
+def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet1: bt.Wallet, wallet2: bt.Wallet, stake_info: int, limit_price: Optional[int] = None):
     """Submit stake_info (and optionally limit_price) via MevShield. Returns (success, message)."""
     if limit_price is None:
-        stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet, stake_info)
+        stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet1, stake_info)
         return submit_extrinsic(subtensor1, stake_info_extrinsic)
 
-    stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet, stake_info)
-    limit_price_extrinsic = get_info_extrinsic(subtensor2, wallet, limit_price)
+    stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet1, stake_info)
+    limit_price_extrinsic = get_info_extrinsic(subtensor2, wallet2, limit_price)
 
     results = []
 
     def run1():
-        out = submit_extrinsic(subtensor1, stake_info_extrinsic)
+        out = submit_extrinsic(subtensor1, stake_info_extrinsic, wallet1)
         results.append(("stake_info", out))
 
     def run2():
-        out = submit_extrinsic(subtensor2, limit_price_extrinsic)
+        out = submit_extrinsic(subtensor2, limit_price_extrinsic, wallet2)
         results.append(("limit_price", out))
 
     t1 = threading.Thread(target=run1)

@@ -13,6 +13,7 @@ contract StakeWrapConstants {
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
     uint8 internal constant TRANSFER_ALL_CALL_INDEX = 4;
     uint8 internal constant PROXY_TYPE_TRANSFER = 0;
+    uint8 internal constant BLOCK_CYCLE = 4;
     uint256 internal constant RAO = 1e9;
     uint256 internal constant RESERVED_GAS = 0x927c0; // ~600k
     uint256 internal constant MAX_FEE = RAO / 1000 * 3; // 0.003 TAO
