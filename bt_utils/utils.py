@@ -5,6 +5,8 @@ import bittensor as bt
 import threading
 from typing import Optional, Tuple
 
+from scalecodec import GenericExtrinsic
+
 DEFAULT_PUBLIC_KEY = b'\x01\x02\x03\x04'
 
 def get_info_extrinsic(subtensor: bt.Subtensor, wallet: bt.Wallet, info: int):
@@ -25,7 +27,7 @@ def get_info_extrinsic(subtensor: bt.Subtensor, wallet: bt.Wallet, info: int):
     return extrinsic
 
 
-def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_inclusion: bool = False):
+def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: GenericExtrinsic, wait_for_inclusion: bool = False):
     try:
         receipt = subtensor.substrate.submit_extrinsic(
             extrinsic,
@@ -44,8 +46,8 @@ def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_
 
 def _submit_two_extrinsics_batch(
     substrate,
-    extrinsic1: bt.Extrinsic,
-    extrinsic2: bt.Extrinsic,
+    extrinsic1: GenericExtrinsic,
+    extrinsic2: GenericExtrinsic,
 ) -> Tuple[bool, bool, str, str]:
     """
     Submit two extrinsics in one JSON-RPC batch (single ws send).
@@ -83,6 +85,7 @@ def _submit_two_extrinsics_batch(
 
     ok1, msg1 = result_for(r1)
     ok2, msg2 = result_for(r2)
+    print(ok1, msg1, ok2, msg2)
     return ok1, ok2, msg1, msg2
 
 
@@ -109,9 +112,11 @@ def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet1:
 if __name__ == "__main__":
     subtensor1 = bt.Subtensor(network="finney")
     subtensor2 = bt.Subtensor(network="finney")
-    wallet1 = bt.Wallet(name="")
-    wallet2 = bt.Wallet(name="")
-    stake_info = 0
-    limit_price = 0
+    wallet1 = bt.Wallet(name="proxy")
+    wallet2 = bt.Wallet(name="test_proxy")
+    wallet1.unlock_coldkey()
+    wallet2.unlock_coldkey()
+    stake_info = 1
+    limit_price = 1
     success, message = send_stake_info(subtensor1, subtensor2, wallet1, wallet2, stake_info, limit_price)
     print(success, message)
