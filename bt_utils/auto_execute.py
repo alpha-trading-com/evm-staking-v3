@@ -105,6 +105,8 @@ def main():
                 # Use next block as execBlock so the tx is expected in the block it will be mined in
                 # (otherwise we often mine in current+1 and revert Expired())
                 exec_block = current + 1
+                print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
+
                 tx = contract.functions.execute(
                     exec_block,
                     contract_addr_b32,
