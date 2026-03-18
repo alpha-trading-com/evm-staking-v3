@@ -93,20 +93,45 @@ def main():
     limit_price_base_fee = LIMIT_PRICE_BASE_FEE_RAO
     print(f"Base fees (rao): stake_info={stake_info_base_fee}, limit_price={limit_price_base_fee}")
     print("Polling for new blocks (Bittensor chain)...")
-
+    
+    nonce = w3.eth.get_transaction_count(account.address)
+    signed = None
     while True:
         current = subtensor.get_current_block()
-        if current > last_block:
+        if current > last_block: # begining of new block
             try:
-                # Refresh balances from chain each block
+                if signed is None:
+                    chain_balances = get_delegate_balances_from_chain(subtensor, network)
+                    stake_info_balance = clamp_balance(chain_balances[0])
+                    limit_price_balance = clamp_balance(chain_balances[1])
+                    # Use next block as execBlock so the tx is expected in the block it will be mined in
+                    # (otherwise we often mine in current+1 and revert Expired())
+                    exec_block = current + 1
+                    print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
+
+                    tx = contract.functions.execute(
+                        exec_block,
+                        contract_addr_b32,
+                        stake_info_balance,
+                        limit_price_balance,
+                        stake_info_base_fee,
+                        limit_price_base_fee,
+                    ).build_transaction({
+                        "from": account.address,
+                        "nonce": nonce,
+                        "gas": 600_000,
+                        "gasPrice": w3.eth.gas_price,
+                    })
+                    signed = account.sign_transaction(tx) 
+                tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
+                nonce += 1
+
+                #prepare next block
                 chain_balances = get_delegate_balances_from_chain(subtensor, network)
                 stake_info_balance = clamp_balance(chain_balances[0])
                 limit_price_balance = clamp_balance(chain_balances[1])
-                # Use next block as execBlock so the tx is expected in the block it will be mined in
-                # (otherwise we often mine in current+1 and revert Expired())
-                exec_block = current + 1
-                print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
-
+                exec_block = current + 2
                 tx = contract.functions.execute(
                     exec_block,
                     contract_addr_b32,
@@ -116,20 +141,14 @@ def main():
                     limit_price_base_fee,
                 ).build_transaction({
                     "from": account.address,
-                    "nonce": w3.eth.get_transaction_count(account.address),
+                    "nonce": nonce,
                     "gas": 600_000,
                     "gasPrice": w3.eth.gas_price,
                 })
                 signed = account.sign_transaction(tx) 
-                tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-                print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
-                #receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-                #status = "ok" if receipt.status == 1 else "reverted"
-                #print(f"Block {current} execute tx {tx_hash.hex()}") 
             except Exception as e:
                 print(f"Block {current} execute failed: {e}")
             last_block = current
-        time.sleep(1.0)
 
 
 if __name__ == "__main__":
