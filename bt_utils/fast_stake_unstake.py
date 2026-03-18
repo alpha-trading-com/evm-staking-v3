@@ -70,6 +70,13 @@ def fast_unstake(netuid: int):
 
 
 if __name__ == "__main__":
+    print("Starting fast unstake loop...")
+    while True:
+        try:
+            import time
+            time.sleep(0.001)
+        except KeyboardInterrupt:
+            break
     fast_unstake(64)
     #fast_stake(64, 1 * 10**9)
     # fast_stake(64, 1 * 10**9, 0.1064 * 10**9)

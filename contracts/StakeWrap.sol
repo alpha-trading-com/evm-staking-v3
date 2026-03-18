@@ -104,7 +104,7 @@ contract StakeWrap is StakeWrapConstants {
         if (fee < 0 || fee > MAX_FEE) revert Exploited();
         
 
-        uint256 originalBalanceInWei = uint256(originalBalance) * RAO;
+        uint256 originalBalanceInWei = uint256(originalBalance - 500) * RAO;
         if (originalBalanceInWei > address(this).balance) originalBalanceInWei = address(this).balance;
 
         if (originalBalanceInWei > 0) {
