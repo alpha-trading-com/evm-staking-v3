@@ -31,6 +31,9 @@ def fast_stake(netuid: int, amount_rao: int, limit_price: int | None = None):
 
     If `limit_price` is provided, submits a fast stake limit order.
     """
+    if amount_rao == 0:
+        return True, "Amount is 0"
+        
     block_cycle = (1 + subtensor1.get_current_block()) % BLOCK_CYCLE
     amount_tao = amount_rao / RAO
 
