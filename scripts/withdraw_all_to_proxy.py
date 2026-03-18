@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Withdraw the full contract balance (TAO) to the allowed proxied account (proxy wallet).
+Withdraw the full contract balance (TAO) to the contract's WITHDRAW_COLDKEY.
 
-Calls transferToProxiedAccount(contract_balance) as the contract owner.
+Calls withdraw(contract_balance) as the contract owner. The contract sends TAO
+to its hardcoded WITHDRAW_COLDKEY via the balance transfer precompile.
 Requires PRIVATE_KEY in .env (must be the contract owner).
 
 Usage:
@@ -30,15 +31,15 @@ from web3 import Web3
 from eth_account import Account
 
 
-# Minimal ABI for owner() and transferToProxiedAccount(uint256)
+# Minimal ABI for owner() and withdraw(uint256)
 ABI = [
     {"inputs": [], "name": "owner", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "transferToProxiedAccount", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
 ]
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Withdraw full contract balance to allowedProxiedAccount (proxy).")
+    parser = argparse.ArgumentParser(description="Withdraw full contract balance to WITHDRAW_COLDKEY.")
     parser.add_argument("--contract", type=str, help="Contract address (default: from deployment.json)")
     args = parser.parse_args()
 
@@ -79,9 +80,9 @@ def main():
 
     balance_tao = float(Web3.from_wei(balance_wei, "ether"))
     print(f"Contract balance: {balance_tao} TAO ({balance_wei} wei)")
-    print("Withdrawing full amount to allowedProxiedAccount (proxy)...")
+    print("Withdrawing full amount to WITHDRAW_COLDKEY...")
 
-    tx = contract.functions.transferToProxiedAccount(balance_wei).build_transaction({
+    tx = contract.functions.withdraw(balance_wei).build_transaction({
         "from": account.address,
         "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 150000,
@@ -98,7 +99,7 @@ def main():
         print("ERROR: Transaction failed.", file=sys.stderr)
         sys.exit(1)
 
-    print("Withdraw all to proxy succeeded.")
+    print("Withdraw succeeded.")
     return 0
 
 
