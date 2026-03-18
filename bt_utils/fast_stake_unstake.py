@@ -1,4 +1,9 @@
 import os
+import sys
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 import bittensor as bt
 from bt_utils.constants import (
@@ -45,7 +50,7 @@ def fast_stake(netuid: int, amount_rao: int, limit_price: int | None = None):
 
     If `limit_price` is provided, submits a fast stake limit order.
     """
-    block_cycle = subtensor1.get_block_number() % BLOCK_CYCLE
+    block_cycle = subtensor1.get_current_block() % BLOCK_CYCLE
     amount_tao = amount_rao / RAO
 
     if limit_price is None:
@@ -73,14 +78,6 @@ def fast_unstake(netuid: int):
     return send_stake_info(subtensor1, subtensor2, wallet1, wallet2, stake_info * BLOCK_CYCLE + block_cycle, None)
 
 
-def fast_stake_and_unstake(netuid: int, amount_rao: int, limit_price: int | None = None):
-    """Submit fast stake and unstake (MevShield). Returns (success, message)."""
-    # First, send fast stake intent via MevShield (Bittensor extrinsic).
-    fast_stake(netuid, amount_rao, limit_price)
-
-    # Then, perform a normal unstake via EVM StakeWrap.removeStake.
-    # We use DEFAULT_HOTKEY from bt_utils.constants and treat `amount_rao`
-    # as the alpha amount in rao, matching the existing EVM helpers.
-    w3, account, contract_address = _get_w3_account_contract()
-    evm_remove_stake(w3, account, contract_address, DEFAULT_HOTKEY, netuid, amount_rao)
+if __name__ == "__main__":
+    fast_stake(64, 1 * 10**9)
 

@@ -27,7 +27,7 @@ def get_info_extrinsic(subtensor: bt.Subtensor, wallet: bt.Wallet, info: int):
     return extrinsic
 
 
-def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: GenericExtrinsic, wait_for_inclusion: bool = False):
+def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: GenericExtrinsic, wait_for_inclusion: bool = True):
     try:
         receipt = subtensor.substrate.submit_extrinsic(
             extrinsic,
@@ -41,7 +41,11 @@ def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: GenericExtrinsic, wait_
     except Exception as e:
         print("Failed to submit extrinsic:", e)
         return False, str(e)
-    return receipt.is_success, receipt.error_message
+    try:
+        return receipt.is_success, receipt.error_message
+    except (ValueError, AttributeError, KeyError):
+        # Receipt has no block_hash when wait_for_inclusion=False; can't read events
+        return True, ""
 
 
 def _submit_two_extrinsics_batch(
@@ -93,7 +97,7 @@ def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet1:
     """Submit stake_info (and optionally limit_price) via MevShield. Returns (success, message)."""
     if limit_price is None:
         stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet1, stake_info)
-        return submit_extrinsic(subtensor1, stake_info_extrinsic)
+        return submit_extrinsic(subtensor1, stake_info_extrinsic, wait_for_inclusion=True)
 
     stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet1, stake_info)
     limit_price_extrinsic = get_info_extrinsic(subtensor2, wallet2, limit_price)
