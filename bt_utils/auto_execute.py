@@ -37,20 +37,14 @@ MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
 
 import bittensor as bt
 
-
-def get_delegate_balances_from_chain(network="finney"):
+def get_delegate_balances_from_chain(subtensor: bt.Subtensor, network: str):
     """
     Query Bittensor chain for free balance (in rao) of STAKE_INFO_DELEGATE and LIMIT_PRICE_DELEGATE.
     Returns (stake_info_balance_rao, limit_price_balance_rao).
     """
-    try:
-        subtensor = bt.Subtensor(network=network)
-        b1 = subtensor.get_balance(STAKE_INFO_DELEGATE)
-        b2 = subtensor.get_balance(LIMIT_PRICE_DELEGATE)
-        return (b1.rao, b2.rao)
-    except Exception as e:
-        raise RuntimeError(f"Failed to query delegate balances from Bittensor: {e}") from e
-
+    b1 = subtensor.get_balance(STAKE_INFO_DELEGATE)
+    b2 = subtensor.get_balance(LIMIT_PRICE_DELEGATE)
+    return (b1.rao, b2.rao)
 
 def clamp_balance(rao):
     """Cap at MAX_DELEGATE_BALANCE (2 TAO) to avoid Exploited() revert."""
@@ -86,8 +80,11 @@ def main():
     print(f"Contract AccountId32: 0x{contract_addr_b32.hex()}")
     print(f"Delegates: STAKE_INFO={STAKE_INFO_DELEGATE}, LIMIT_PRICE={LIMIT_PRICE_DELEGATE}")
 
+
+    subtensor = bt.Subtensor(network=network)
+    last_block = subtensor.get_current_block()
     # Resolve balances from chain (required)
-    chain_balances = get_delegate_balances_from_chain(network)
+    chain_balances = get_delegate_balances_from_chain(subtensor, network)
     stake_info_balance = clamp_balance(chain_balances[0])
     limit_price_balance = clamp_balance(chain_balances[1])
     print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
@@ -97,14 +94,12 @@ def main():
     print(f"Base fees (rao): stake_info={stake_info_base_fee}, limit_price={limit_price_base_fee}")
     print("Polling for new blocks (Bittensor chain)...")
 
-    subtensor = bt.Subtensor(network=network)
-    last_block = subtensor.get_current_block()
     while True:
         current = subtensor.get_current_block()
         if current > last_block:
             try:
                 # Refresh balances from chain each block
-                chain_balances = get_delegate_balances_from_chain(network)
+                chain_balances = get_delegate_balances_from_chain(subtensor, network)
                 stake_info_balance = clamp_balance(chain_balances[0])
                 limit_price_balance = clamp_balance(chain_balances[1])
                 # Use next block as execBlock so the tx is expected in the block it will be mined in
