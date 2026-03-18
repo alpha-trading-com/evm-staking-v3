@@ -14,5 +14,5 @@ RAO = 10**9
 BLOCK_CYCLE = 4
 
 # Deletegate wallets
-DELETEGATE_1 = "soon"
-DELETEGATE_2 = "soon_2"
+DELETEGATE_1 = "proxy"
+DELETEGATE_2 = "test_proxy"
