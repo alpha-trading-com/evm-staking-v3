@@ -151,7 +151,7 @@ def main():
         if not all([args.hotkey, args.netuid is not None, args.amount is not None]):
             parser.error("removeStake requires --hotkey, --netuid, and --amount")
         # Amount is in ALPHA tokens (contract expects raw alpha, XOR-encoded inside)
-        amount_alpha = int(args.amount)
+        amount_alpha = int(args.amount * 10**9)
         remove_stake(w3, account, contract_address, args.hotkey, args.netuid, amount_alpha)
     
     elif args.action == 'transferStake':
