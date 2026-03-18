@@ -1,8 +1,9 @@
+import json
 import os
 import random
 import bittensor as bt
 import threading
-from typing import Optional
+from typing import Optional, Tuple
 
 DEFAULT_PUBLIC_KEY = b'\x01\x02\x03\x04'
 
@@ -41,6 +42,50 @@ def submit_extrinsic(subtensor: bt.Subtensor, extrinsic: bt.Extrinsic, wait_for_
     return receipt.is_success, receipt.error_message
 
 
+def _submit_two_extrinsics_batch(
+    substrate,
+    extrinsic1: bt.Extrinsic,
+    extrinsic2: bt.Extrinsic,
+) -> Tuple[bool, bool, str, str]:
+    """
+    Submit two extrinsics in one JSON-RPC batch (single ws send).
+    Returns (ok1, ok2, msg1, msg2). Uses substrate's connection; both extrinsics
+    are sent to the same node.
+    """
+    batch = [
+        {"jsonrpc": "2.0", "method": "author_submitExtrinsic", "params": [str(extrinsic1.data)], "id": 1},
+        {"jsonrpc": "2.0", "method": "author_submitExtrinsic", "params": [str(extrinsic2.data)], "id": 2},
+    ]
+    ws = substrate.connect(init=False)
+    ws.send(json.dumps(batch))
+    raw = ws.recv(timeout=substrate.retry_timeout, decode=False)
+    if hasattr(raw, "decode"):
+        raw = raw.decode()
+    response = json.loads(raw)
+
+    # Server may return a batch response (list) or a single object (error or some nodes)
+    if isinstance(response, list):
+        by_id = {r.get("id"): r for r in response if "id" in r}
+        r1 = by_id.get(1, {})
+        r2 = by_id.get(2, {})
+    else:
+        r1 = response if response.get("id") == 1 else {}
+        r2 = response if response.get("id") == 2 else {}
+
+    def result_for(r):
+        if not r:
+            return False, "no response"
+        if "error" in r:
+            return False, r["error"].get("message", str(r["error"]))
+        if "result" in r:
+            return True, ""
+        return False, str(r)
+
+    ok1, msg1 = result_for(r1)
+    ok2, msg2 = result_for(r2)
+    return ok1, ok2, msg1, msg2
+
+
 def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet1: bt.Wallet, wallet2: bt.Wallet, stake_info: int, limit_price: Optional[int] = None):
     """Submit stake_info (and optionally limit_price) via MevShield. Returns (success, message)."""
     if limit_price is None:
@@ -50,28 +95,23 @@ def send_stake_info(subtensor1: bt.Subtensor, subtensor2: bt.Subtensor, wallet1:
     stake_info_extrinsic = get_info_extrinsic(subtensor1, wallet1, stake_info)
     limit_price_extrinsic = get_info_extrinsic(subtensor2, wallet2, limit_price)
 
-    results = []
-
-    def run1():
-        out = submit_extrinsic(subtensor1, stake_info_extrinsic)
-        results.append(("stake_info", out))
-
-    def run2():
-        out = submit_extrinsic(subtensor2, limit_price_extrinsic)
-        results.append(("limit_price", out))
-
-    t1 = threading.Thread(target=run1)
-    t2 = threading.Thread(target=run2)
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
-
-    ok1 = results[0][1][0] if len(results) > 0 else False
-    ok2 = results[1][1][0] if len(results) > 1 else False
-    msg1 = results[0][1][1] if len(results) > 0 else ""
-    msg2 = results[1][1][1] if len(results) > 1 else ""
+    # Prefer one JSON-RPC batch on the first subtensor (same chain) so both extrinsics
+    # are sent in a single payload
+    ok1, ok2, msg1, msg2 = _submit_two_extrinsics_batch(
+        subtensor1.substrate,
+        stake_info_extrinsic,
+        limit_price_extrinsic,
+    )
     success = ok1 and ok2
     message = "ok" if success else f"stake_info={msg1}; limit_price={msg2}"
     return success, message
 
+if __name__ == "__main__":
+    subtensor1 = bt.Subtensor(network="finney")
+    subtensor2 = bt.Subtensor(network="finney")
+    wallet1 = bt.Wallet(name="")
+    wallet2 = bt.Wallet(name="")
+    stake_info = 0
+    limit_price = 0
+    success, message = send_stake_info(subtensor1, subtensor2, wallet1, wallet2, stake_info, limit_price)
+    print(success, message)
