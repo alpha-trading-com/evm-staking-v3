@@ -11,6 +11,7 @@ import io
 import os
 import sys
 import contextlib
+import threading
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -65,18 +66,69 @@ subtensor = bt.Subtensor(network="finney")
 _deployment = load_deployment_info()
 COLDKEY_SS58 = os.getenv("CONTRACT_SS58") or h160_to_ss58(Web3.to_checksum_address(_deployment["contract_address"]))
 
-def _get_w3_account_contract():
-    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    private_key = os.getenv("PRIVATE_KEY")
-    if not private_key:
-        raise RuntimeError("PRIVATE_KEY is required")
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
+# Cached Web3 connection (avoid new connection + account per request)
+_w3_cache = None
+_w3_cache_lock = threading.Lock()
+
+
+def _clear_w3_cache() -> None:
+    """Drop cached Web3 connection so next request opens a new one (e.g. after WSS drop)."""
+    global _w3_cache
+    with _w3_cache_lock:
+        _w3_cache = None
+
+
+def _is_connection_error(exc: BaseException) -> bool:
+    """True if the exception is likely from a lost/stale connection (e.g. WSS closed)."""
+    if isinstance(exc, (ConnectionError, BrokenPipeError, OSError)):
+        return True
+    msg = str(exc).lower()
+    return any(
+        x in msg
+        for x in ("connection", "closed", "broken pipe", "reset", "timeout", "websocket")
+    )
+
+
+def _make_w3_connection(rpc_url: str) -> Web3:
+    """Create a Web3 connection that supports both HTTP(S) and WS(S) RPC URLs."""
+    if rpc_url.startswith(("ws://", "wss://")):
+        provider = Web3.LegacyWebSocketProvider(rpc_url)
+    elif rpc_url.startswith(("http://", "https://")):
+        provider = Web3.HTTPProvider(rpc_url)
+    else:
+        raise ValueError(f"Unsupported RPC URL scheme: {rpc_url}")
+
+    w3 = Web3(provider)
     if not w3.is_connected():
         raise RuntimeError(f"Failed to connect to {rpc_url}")
-    account = Account.from_key(private_key)
-    info = load_deployment_info()
-    contract_address = Web3.to_checksum_address(info["contract_address"])
-    return w3, account, contract_address
+    return w3
+
+
+def _get_w3_account_contract():
+    """Return (w3, account, contract_address), reusing a cached connection when still connected."""
+    global _w3_cache
+    with _w3_cache_lock:
+        if _w3_cache is not None:
+            w3, account, contract_address = _w3_cache
+            try:
+                if w3.is_connected():
+                    return w3, account, contract_address
+                else:
+                    print("w3 is not connected, creating new connection")
+            except Exception:
+                pass
+            _w3_cache = None
+
+        rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
+        private_key = os.getenv("PRIVATE_KEY")
+        if not private_key:
+            raise RuntimeError("PRIVATE_KEY is required")
+        w3 = _make_w3_connection(rpc_url)
+        account = Account.from_key(private_key)
+        info = load_deployment_info()
+        contract_address = Web3.to_checksum_address(info["contract_address"])
+        _w3_cache = (w3, account, contract_address)
+        return w3, account, contract_address
 
 
 def _receipt_to_dict(receipt):
