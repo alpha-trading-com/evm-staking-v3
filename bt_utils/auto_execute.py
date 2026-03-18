@@ -107,8 +107,11 @@ def main():
                 chain_balances = get_delegate_balances_from_chain(network)
                 stake_info_balance = clamp_balance(chain_balances[0])
                 limit_price_balance = clamp_balance(chain_balances[1])
+                # Use next block as execBlock so the tx is expected in the block it will be mined in
+                # (otherwise we often mine in current+1 and revert Expired())
+                exec_block = current + 1
                 tx = contract.functions.execute(
-                    current,
+                    exec_block,
                     contract_addr_b32,
                     stake_info_balance,
                     limit_price_balance,
@@ -120,8 +123,9 @@ def main():
                     "gas": 600_000,
                     "gasPrice": w3.eth.gas_price,
                 })
-                signed = account.sign_transaction(tx)
+                signed = account.sign_transaction(tx) 
                 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
                 #receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
                 #status = "ok" if receipt.status == 1 else "reverted"
                 #print(f"Block {current} execute tx {tx_hash.hex()}") 

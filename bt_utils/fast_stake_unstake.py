@@ -74,10 +74,10 @@ def fast_stake(netuid: int, amount_rao: int, limit_price: int | None = None):
 def fast_unstake(netuid: int):
     """Submit fast unstake (MevShield). Returns (success, message)."""
     stake_info = netuid
-    block_cycle = subtensor1.get_block_number() % BLOCK_CYCLE
+    block_cycle = (1 + subtensor1.get_current_block()) % BLOCK_CYCLE
     return send_stake_info(subtensor1, subtensor2, wallet1, wallet2, stake_info * BLOCK_CYCLE + block_cycle, None)
 
 
 if __name__ == "__main__":
-    fast_stake(64, 1 * 10**9)
+    fast_unstake(64)
 
