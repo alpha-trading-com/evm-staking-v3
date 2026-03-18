@@ -48,7 +48,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
         if ((block.number - fee) % BLOCK_CYCLE != 0) revert BLockNumberMismatched();
-        uint256 stakingInfo = (fee / 4);
+        uint256 stakingInfo = (fee / BLOCK_CYCLE);
     
         // Here extract stake info from stakingInfo
         uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
@@ -66,7 +66,7 @@ contract StakeWrap is StakeWrapConstants {
         if (limit) {
             fee = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) ;
             if ((block.number - fee) % BLOCK_CYCLE != 0) revert BLockNumberMismatched();
-            uint256 limitPrice = (fee / 4) * LIMIT_PRICE_SCALE;
+            uint256 limitPrice = (fee / BLOCK_CYCLE) * LIMIT_PRICE_SCALE;
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
             amount = amount ^ XOR_KEY;
