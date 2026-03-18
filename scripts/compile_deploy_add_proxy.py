@@ -80,7 +80,8 @@ def step_add_proxy(contract_address: str) -> None:
     from bittensor.core.chain_data.proxy import ProxyType
     for wallet_name in [DELETEGATE_1, DELETEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
-        wallet.unlock_coldkey()
+        wallet.coldkey_file.save_password_to_env(os.getenv(f"{wallet_name}_PASSWORD"))
+        wallet.coldkey_file.decrypt()
         subtensor = bt.Subtensor(network="finney")
         real_ss58 = wallet.coldkey.ss58_address
         # Remove all existing proxies first (may prompt for password)
