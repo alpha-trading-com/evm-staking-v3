@@ -1,9 +1,12 @@
 import os
 import sys
+from dotenv import load_dotenv
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
+
+load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
 import bittensor as bt
 from bt_utils.constants import (
@@ -15,8 +18,8 @@ from bt_utils.constants import (
     BLOCK_CYCLE,
     DEFAULT_HOTKEY,
 )
+
 from bt_utils.utils import send_stake_info
-from dotenv import load_dotenv
 from eth_account import Account
 from evm import load_deployment_info, remove_stake as evm_remove_stake
 from web3 import Web3
@@ -25,6 +28,10 @@ subtensor1 = bt.Subtensor(network="finney")
 subtensor2 = bt.Subtensor(network="finney")
 wallet1 = bt.Wallet(name=DELETEGATE_1)
 wallet2 = bt.Wallet(name=DELETEGATE_2)
+wallet1.coldkey_file.save_password_to_env(os.getenv("DELETEGATE_1_PASSWORD"))
+wallet2.coldkey_file.save_password_to_env(os.getenv("DELETEGATE_2_PASSWORD"))
+wallet1.coldkey_file.decrypt()
+wallet2.coldkey_file.decrypt()
 
 def fast_stake(netuid: int, amount_rao: int, limit_price: int | None = None):
     """Submit fast stake (MevShield). Returns (success, message).
@@ -63,6 +70,7 @@ def fast_unstake(netuid: int):
 
 
 if __name__ == "__main__":
+    # fast_unstake(64)
     # fast_stake(64, 1 * 10**9)
-    fast_stake(64, 1 * 10**9, 0.0064 * 10**9)
+    fast_stake(64, 1 * 10**9, 0.1064 * 10**9)
 
