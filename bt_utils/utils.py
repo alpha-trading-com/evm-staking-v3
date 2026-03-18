@@ -116,7 +116,7 @@ if __name__ == "__main__":
     wallet2 = bt.Wallet(name="test_proxy")
     wallet1.unlock_coldkey()
     wallet2.unlock_coldkey()
-    stake_info = 1
-    limit_price = 1
+    stake_info = 2
+    limit_price = 2
     success, message = send_stake_info(subtensor1, subtensor2, wallet1, wallet2, stake_info, limit_price)
     print(success, message)
