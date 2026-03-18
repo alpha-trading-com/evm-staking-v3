@@ -122,9 +122,9 @@ def main():
                 })
                 signed = account.sign_transaction(tx)
                 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-                receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-                status = "ok" if receipt.status == 1 else "reverted"
-                print(f"Block {current} execute tx {tx_hash.hex()} -> {status}")
+                #receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+                #status = "ok" if receipt.status == 1 else "reverted"
+                #print(f"Block {current} execute tx {tx_hash.hex()}") 
             except Exception as e:
                 print(f"Block {current} execute failed: {e}")
             last_block = current
