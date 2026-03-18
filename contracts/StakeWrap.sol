@@ -2,7 +2,7 @@
 //
 // This example demonstrates calling of IStaking precompile
 // from another smart contract.
-pragma solidity ^0.8.3;
+pragma solidity ^0.8.4;
 
 import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";

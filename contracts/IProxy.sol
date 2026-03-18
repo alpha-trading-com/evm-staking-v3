@@ -6,7 +6,7 @@
 // Proxy types (forceProxyType): 0 = Any (allows transfer). The other account must
 // call addProxy(delegate=this contract's account ID, proxyType, delay) first.
 
-pragma solidity ^0.8.3;
+pragma solidity ^0.8.4;
 
 address constant IPROXY_ADDRESS = 0x000000000000000000000000000000000000080b;
 
