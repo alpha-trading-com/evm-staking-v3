@@ -133,8 +133,8 @@ async fn main() -> Result<()> {
 
     let mut last_block: u64 = 0;
     let mut nonce = client.get_transaction_count(client.address(), None).await?;
-    let mut exec_block: u64 = 0;
-    let mut is_executor_enabled = is_executor_enabled(repo_root);
+    // Pending tx for next block (exec_block, stake_info_rao, limit_price_rao). Same as Python's signed + prepare next.
+    let mut pending: Option<(u64, u128, u128)> = None;
 
     println!("Polling Bittensor for new blocks (execute() on EVM each block). Contract: {:?}", contract_address);
 
@@ -143,35 +143,50 @@ async fn main() -> Result<()> {
             &network,
             &stake_info_delegate,
             &limit_price_delegate,
-        ).await?;
+        )
+        .await?;
 
         if current > last_block {
-            let stake_info_balance = clamp_balance(stake_info_balance);
-            let limit_price_balance = clamp_balance(limit_price_balance);
-            exec_block = current + 1;
-
-            let packed_balances = pack_balances(stake_info_balance, limit_price_balance);
-            let calldata = encode_execute_calldata(exec_block, packed_balances);
-
-            let base_gas = client.get_gas_price().await?;
-            let gas_price = if gas_price_mult != 1.0 {
-                U256::from((base_gas.as_u128() as f64 * gas_price_mult) as u128)
+            let exec_block_send = current + 1;
+            let (s1, s2) = if let Some((eb, b1, b2)) = pending {
+                if eb == exec_block_send {
+                    (b1, b2)
+                } else {
+                    // Pending was for wrong block; fetch fresh (we already have current, stake_info_balance, limit_price_balance)
+                    (clamp_balance(stake_info_balance), clamp_balance(limit_price_balance))
+                }
             } else {
-                base_gas
+                (clamp_balance(stake_info_balance), clamp_balance(limit_price_balance))
             };
-            let tx = TransactionRequest::new()
-                .to(contract_address)
-                .data(calldata)
-                .gas(gas_limit)
-                .gas_price(gas_price)
-                .nonce(nonce);
 
-            is_executor_enabled = is_executor_enabled(repo_root);
-            if is_executor_enabled {
-                let pending = client.send_transaction(tx, None).await?;
-                println!("Block {} execute(execBlock={}) tx {:?}", current, exec_block, pending.tx_hash());
+            if is_executor_enabled(repo_root) {
+                let packed = pack_balances(s1, s2);
+                let calldata = encode_execute_calldata(exec_block_send, packed);
+                let base_gas = client.get_gas_price().await?;
+                let gas_price = if gas_price_mult != 1.0 {
+                    U256::from((base_gas.as_u128() as f64 * gas_price_mult) as u128)
+                } else {
+                    base_gas
+                };
+                let tx = TransactionRequest::new()
+                    .to(contract_address)
+                    .data(calldata)
+                    .gas(gas_limit)
+                    .gas_price(gas_price)
+                    .nonce(nonce);
+                let pending_tx = client.send_transaction(tx, None).await?;
+                println!("Block {} execute(execBlock={}) tx {:?}", current, exec_block_send, pending_tx.tx_hash());
                 nonce += 1;
             }
+
+            // Prepare next block (same as Python: fetch balances, build for exec_block = current+2)
+            let (_, next_b1, next_b2) = get_bittensor_block_and_balances(
+                &network,
+                &stake_info_delegate,
+                &limit_price_delegate,
+            )
+            .await?;
+            pending = Some((current + 2, clamp_balance(next_b1), clamp_balance(next_b2)));
             last_block = current;
         }
 
