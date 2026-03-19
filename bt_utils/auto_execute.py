@@ -91,7 +91,7 @@ def main():
 
     stake_info_base_fee = STAKE_INFO_BASE_FEE_RAO
     limit_price_base_fee = LIMIT_PRICE_BASE_FEE_RAO
-    print(f"Base fees (rao): stake_info={stake_info_base_fee}, limit_price={limit_price_base_fee}")
+    print(f"Base fees (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
     print("Polling for new blocks (Bittensor chain)...")
     
     nonce = w3.eth.get_transaction_count(account.address)
@@ -131,6 +131,7 @@ def main():
                 chain_balances = get_delegate_balances_from_chain(subtensor, network)
                 stake_info_balance = clamp_balance(chain_balances[0])
                 limit_price_balance = clamp_balance(chain_balances[1])
+                print(f"Base fees (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
                 exec_block = current + 2
                 tx = contract.functions.execute(
                     exec_block,

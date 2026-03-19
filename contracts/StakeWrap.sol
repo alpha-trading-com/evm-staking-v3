@@ -41,7 +41,7 @@ contract StakeWrap is StakeWrapConstants {
 
         uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
-        if ((fee - 1) % BLOCK_CYCLE != 0) revert(string(abi.encodePacked("Staking Fee Format Error, fee: ", Strings.toString(fee))));
+        if ((fee - 1) % BLOCK_CYCLE != 0) revert(string(abi.encodePacked("fee: ", Strings.toString(fee), " - Staking Fee Format Error")));
         uint256 stakingInfo = (fee - 1) / BLOCK_CYCLE;
     
         // Here extract stake info from stakingInfo
@@ -59,7 +59,7 @@ contract StakeWrap is StakeWrapConstants {
 
         if (limit) {
             fee = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) ;
-            if ((fee - 1) % BLOCK_CYCLE != 0) revert(string(abi.encodePacked("Limit Price Fee Format Error, fee: ", Strings.toString(fee))));
+            if ((fee - 1) % BLOCK_CYCLE != 0) revert(string(abi.encodePacked("fee: ", Strings.toString(fee), " - Limit Price Fee Format Error")));
             uint256 limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE;
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
