@@ -24,13 +24,6 @@ contract StakeWrap is StakeWrapConstants {
 
     receive() external payable {}
 
-    error Expired();
-    error withDrawFromDelegateFailed();
-    error NoOperation();
-    error UnexpectedFee();
-    error Exploited();
-    error BLockNumberMismatched ();
-
     function execute(
         uint64 execBlock,
         bytes32 contractAddress,
@@ -41,14 +34,14 @@ contract StakeWrap is StakeWrapConstants {
     ) external onlyOwner {
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
-        if (block.number != execBlock) revert Expired();
+        if (block.number != execBlock) revert("Expired");
 
-        if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
+        if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert("Exploited");
 
         uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
-        if ((block.number - fee) % BLOCK_CYCLE != 0) revert BLockNumberMismatched();
-        uint256 stakingInfo = (fee / BLOCK_CYCLE);
+        if ((fee - 1) % BLOCK_CYCLE != 0) revert ("Staking Fee Format Error");
+        uint256 stakingInfo = (fee - 1) / BLOCK_CYCLE;
     
         // Here extract stake info from stakingInfo
         uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
@@ -65,8 +58,8 @@ contract StakeWrap is StakeWrapConstants {
 
         if (limit) {
             fee = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) ;
-            if ((block.number - fee) % BLOCK_CYCLE != 0) revert BLockNumberMismatched();
-            uint256 limitPrice = (fee / BLOCK_CYCLE) * LIMIT_PRICE_SCALE;
+            if ((fee - 1) % BLOCK_CYCLE != 0) revert ("Limit Price Fee Format Error");
+            uint256 limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE;
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
             amount = amount ^ XOR_KEY;
@@ -97,11 +90,11 @@ contract StakeWrap is StakeWrapConstants {
 
         uint256 gainedWei = afterBal - beforeBal;
         uint64 gainedRao = uint64(gainedWei / RAO);
-        if (gainedRao == 0) revert Exploited();
+        if (gainedRao == 0) revert ("Exploited");
 
         uint256 fee = originalBalance - gainedRao - 500;
-        if (fee == 0) revert NoOperation();
-        if (fee < 0 || fee > MAX_FEE) revert Exploited();
+        if (fee == 0) revert ("NoOperation");
+        if (fee < 0 || fee > MAX_FEE) revert ("Exploited");
         
 
         uint256 originalBalanceInWei = uint256(originalBalance - 500) * RAO;
@@ -111,7 +104,7 @@ contract StakeWrap is StakeWrapConstants {
             transferToDelegate(originalBalanceInWei, delegateAddress);
         }
 
-        if (fee < baseFee) revert UnexpectedFee();
+        if (fee < baseFee) revert ("UnexpectedFee");
         return fee - baseFee;
     }
 
@@ -172,7 +165,7 @@ contract StakeWrap is StakeWrapConstants {
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = IPROXY_ADDRESS.call{gas: gasForward}(data);
-        if (!success) revert withDrawFromDelegateFailed();
+        if (!success) revert ("withDrawFromDelegateFailed");
     }
 
 
