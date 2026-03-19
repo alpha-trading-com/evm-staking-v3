@@ -109,12 +109,10 @@ def main():
     
     nonce = w3.eth.get_transaction_count(account.address)
     signed = None
+    is_executor_enabled_flag = is_executor_enabled()
     while True:
         current = subtensor.get_current_block()
         if current > last_block:  # beginning of new block
-            if not is_executor_enabled():
-                last_block = current
-                continue
             try:
                 if signed is None:
                     chain_balances = get_delegate_balances_from_chain(subtensor, network)
@@ -139,9 +137,12 @@ def main():
                         "gasPrice": w3.eth.gas_price,
                     })
                     signed = account.sign_transaction(tx) 
-                tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-                print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
-                nonce += 1
+                if is_executor_enabled_flag:
+                    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                    print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
+                    nonce += 1
+
+                is_executor_enabled_flag = is_executor_enabled()
 
                 # prepare next block
                 chain_balances = get_delegate_balances_from_chain(subtensor, network)
