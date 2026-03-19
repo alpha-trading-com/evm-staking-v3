@@ -107,9 +107,9 @@ contract StakeWrap is StakeWrapConstants {
 
         if (fee < baseFee) revert ("UnexpectedFee");
         fee = fee - baseFee;
-        if (fee < 64) return fee;
-        if (fee < 16384) return fee - 1;
-        return fee - 3;
+        if (fee < 64) return fee; // 0 -> 0, 1 -> 1, 63 -> 63
+        if (fee < 16384) return fee - 1; // 64 -> 65, 65 -> 66, 16383 -> 16384
+        return fee - 3; // 16384 -> 16387, 16385 -> 16388, 16386 -> 16389
     }
 
     

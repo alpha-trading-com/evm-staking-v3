@@ -132,8 +132,7 @@ def step_add_proxy(contract_ss58: str) -> None:
     from bittensor.core.chain_data.proxy import ProxyType
     for wallet_name in [DELETEGATE_1, DELETEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
-        wallet.coldkey_file.save_password_to_env(os.getenv(f"{wallet_name}_PASSWORD"))
-        wallet.coldkey_file.decrypt()
+        wallet.unlock_coldkey()
         subtensor = bt.Subtensor(network="finney")
         real_ss58 = wallet.coldkey.ss58_address
         proxies_list, _ = subtensor.get_proxies_for_real_account(real_ss58)
@@ -168,8 +167,7 @@ def step_transfer_to_contract(contract_ss58: str) -> None:
     from bittensor.utils.balance import Balance
 
     wallet = bt.Wallet(name=DELETEGATE_1)
-    wallet.coldkey_file.save_password_to_env(os.getenv(f"{DELETEGATE_1}_PASSWORD"))
-    wallet.coldkey_file.decrypt()
+    wallet.unlock_coldkey()
     subtensor = bt.Subtensor(network="finney")
     amount = Balance.from_tao(1.1)
     response = subtensor.transfer(
