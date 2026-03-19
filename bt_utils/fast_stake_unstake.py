@@ -24,6 +24,7 @@ from bt_utils.utils import send_stake_info_async
 from eth_account import Account
 from evm import load_deployment_info, remove_stake as evm_remove_stake
 from web3 import Web3
+from bittensor.core.async_subtensor import AsyncSubtensor
 
 # Wallets (sync; used for signing; load once)
 wallet1 = bt.Wallet(name=DELETEGATE_1)
@@ -42,7 +43,6 @@ _async_subtensor = None
 async def get_async_subtensor() -> "bt.AsyncSubtensor":
     """Return the global AsyncSubtensor, initializing on first use."""
     global _async_subtensor
-    from bittensor.core.async_subtensor import AsyncSubtensor
     if _async_subtensor is None:
         _async_subtensor = AsyncSubtensor(network=NETWORK)
         await _async_subtensor.initialize()
