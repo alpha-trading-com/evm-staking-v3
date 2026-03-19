@@ -45,12 +45,6 @@ async def get_async_subtensor() -> "bt.AsyncSubtensor":
     return _async_subtensor
 
 
-async def _block_cycle_for_execute_async(async_subtensor: bt.AsyncSubtensor) -> int:
-    """Return (1 + block) % BLOCK_CYCLE for the block where execute() will run (next block)."""
-    block = await async_subtensor.get_current_block()
-    return (1 + block) % BLOCK_CYCLE
-
-
 async def fast_stake_async(
     netuid: int,
     amount_rao: int,
@@ -64,7 +58,6 @@ async def fast_stake_async(
         return True, "Amount is 0"
 
     async_subtensor = await get_async_subtensor()
-    block_cycle = await _block_cycle_for_execute_async(async_subtensor)
     amount_tao = amount_rao / RAO
 
     if limit_price is None:
@@ -73,9 +66,9 @@ async def fast_stake_async(
     else:
         stake_info = netuid + MAX_NETUID * (amount_tao * 2 - 1)
         limit_price_scaled = int((limit_price + LIMIT_PRICE_SCALE - 1) / LIMIT_PRICE_SCALE)
-        limit_info = limit_price_scaled * BLOCK_CYCLE + block_cycle
+        limit_info = limit_price_scaled * BLOCK_CYCLE + 1
 
-    stake_info_encoded = stake_info * BLOCK_CYCLE + block_cycle
+    stake_info_encoded = stake_info * BLOCK_CYCLE + 1
     return await send_stake_info_async(
         async_subtensor,
         wallet1,
@@ -90,8 +83,7 @@ async def fast_unstake_async(
 ) -> Tuple[bool, str]:
     """Submit fast unstake (MevShield). Returns (success, message). Async."""
     async_subtensor = await get_async_subtensor()
-    block_cycle = await _block_cycle_for_execute_async(async_subtensor)
-    stake_info = netuid * BLOCK_CYCLE + block_cycle
+    stake_info = netuid * BLOCK_CYCLE + 1
     return await send_stake_info_async(
         async_subtensor, wallet1, wallet2, stake_info, None
     )
