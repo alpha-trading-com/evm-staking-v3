@@ -55,7 +55,12 @@ def _get_contract(w3, contract_address):
     return get_contract(w3, contract_address, abi=abi)
 
 # Import tolerance calculation utilities
-from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
+from utils.tolerance import (
+    calculate_stake_limit_price,
+    calculate_unstake_limit_price,
+    get_stake_min_tolerance,
+    get_unstake_min_tolerance,
+)
 from bt_utils.fast_stake_unstake import (
     fast_stake_async,
     fast_unstake_async,
@@ -518,7 +523,7 @@ class CalcToleranceBody(BaseModel):
 
 @app.post("/api/calc-min-tolerance")
 async def api_calc_min_tolerance(body: CalcToleranceBody, _: str = Depends(get_current_username)):
-    """Calculate minimum tolerance for staking/unstaking operations."""
+    """Calculate minimum tolerance for staking/unstaking operations. Returns limit_price and rate_tolerance."""
     try:
         if body.operation == "stake":
             limit_price = int(calculate_stake_limit_price(
@@ -528,6 +533,7 @@ async def api_calc_min_tolerance(body: CalcToleranceBody, _: str = Depends(get_c
                 default_rate_tolerance=0.0,  # Ignored when min_tolerance=True
                 subtensor=subtensor
             ))
+            rate_tolerance = get_stake_min_tolerance(body.tao_amount, body.netuid, subtensor)
         else:  # unstake
             limit_price = int(calculate_unstake_limit_price(
                 tao_amount=body.tao_amount,
@@ -536,7 +542,13 @@ async def api_calc_min_tolerance(body: CalcToleranceBody, _: str = Depends(get_c
                 default_rate_tolerance=0.0,
                 subtensor=subtensor
             ))
-        return {"ok": True, "limit_price": limit_price, "operation": body.operation}
+            rate_tolerance = get_unstake_min_tolerance(body.tao_amount, body.netuid, subtensor)
+        return {
+            "ok": True,
+            "limit_price": limit_price,
+            "rate_tolerance": round(rate_tolerance, 6),
+            "operation": body.operation,
+        }
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
