@@ -56,7 +56,11 @@ def _get_contract(w3, contract_address):
 
 # Import tolerance calculation utilities
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
-from bt_utils.fast_stake_unstake import fast_stake, fast_unstake, fast_stake_and_unstake
+from bt_utils.fast_stake_unstake import (
+    fast_stake_async,
+    fast_unstake_async,
+    fast_stake_and_unstake_async,
+)
 
 app = FastAPI(title="StakeWrap Control", version="1.0.0")
 templates = Jinja2Templates(directory=str(_REPO_ROOT / "app" / "templates"))
@@ -457,7 +461,7 @@ async def api_fast_stake(body: FastStakeBody, _: str = Depends(get_current_usern
     """Fast stake via MevShield (Bittensor extrinsic)."""
     try:
         amount_rao = int(body.amount_tao * 10**9)
-        success, message = await asyncio.to_thread(fast_stake, body.netuid, amount_rao)
+        success, message = await fast_stake_async(body.netuid, amount_rao)
         if success:
             return {"ok": True, "message": message}
         return JSONResponse({"ok": False, "error": message}, status_code=400)
@@ -470,7 +474,7 @@ async def api_fast_stake_limit(body: FastStakeLimitBody, _: str = Depends(get_cu
     """Fast stake limit via MevShield (Bittensor extrinsic)."""
     try:
         amount_rao = int(body.amount_tao * 10**9)
-        success, message = await asyncio.to_thread(fast_stake, body.netuid, amount_rao, body.limit_price)
+        success, message = await fast_stake_async(body.netuid, amount_rao, body.limit_price)
         if success:
             return {"ok": True, "message": message}
         return JSONResponse({"ok": False, "error": message}, status_code=400)
@@ -482,7 +486,7 @@ async def api_fast_stake_limit(body: FastStakeLimitBody, _: str = Depends(get_cu
 async def api_fast_unstake(body: FastUnstakeBody, _: str = Depends(get_current_username)):
     """Fast unstake via MevShield (Bittensor extrinsic)."""
     try:
-        success, message = await asyncio.to_thread(fast_unstake, body.netuid)
+        success, message = await fast_unstake_async(body.netuid)
         if success:
             return {"ok": True, "message": message}
         return JSONResponse({"ok": False, "error": message}, status_code=400)
@@ -495,8 +499,7 @@ async def api_fast_stake_and_unstake(body: FastStakeAndUnstakeBody, _: str = Dep
     """Fast stake via MevShield, then normal unstake via EVM."""
     try:
         amount_rao = int(body.amount_tao * 10**9)
-        success, message = await asyncio.to_thread(
-            fast_stake_and_unstake,
+        success, message = await fast_stake_and_unstake_async(
             body.netuid,
             amount_rao,
             body.limit_price,
