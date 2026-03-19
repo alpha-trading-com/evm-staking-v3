@@ -48,22 +48,20 @@ fn is_executor_enabled(repo_root: &Path) -> bool {
     v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true)
 }
 
-/// Fetch current Bittensor block number and delegate balances via subxt (agcli-style).
-/// Uses generated API from build.rs (System::Account storage for free balance).
-async fn get_bittensor_block_and_balances(
-    _network: &str,
-    stake_info_delegate_ss58: &str,
-    limit_price_delegate_ss58: &str,
-) -> Result<(u64, u128, u128)> {
-    let ws_url = std::env::var("BITTENSOR_WS_URL")
-        .unwrap_or_else(|_| crate::DEFAULT_BITTENSOR_WS_URL.to_string());
-    let rpc_client = RpcClient::from_url(&ws_url)
+type BittensorClient = OnlineClient<generated::RuntimeConfig>;
+
+/// Connect to Bittensor via subxt and return the client.
+async fn bittensor_client(ws_url: &str) -> Result<BittensorClient> {
+    let rpc_client = RpcClient::from_url(ws_url)
         .await
         .context("subxt RPC connect to Bittensor")?;
-    let client = OnlineClient::<generated::RuntimeConfig>::from_rpc_client(rpc_client)
+    OnlineClient::<generated::RuntimeConfig>::from_rpc_client(rpc_client)
         .await
-        .context("subxt OnlineClient from RPC")?;
+        .context("subxt OnlineClient from RPC")
+}
 
+/// Fetch current Bittensor block number and hash via subxt.
+async fn get_current_block_number(client: &BittensorClient) -> Result<(u64, subxt::blocks::BlockHash<generated::RuntimeConfig>)> {
     let block_hash = client
         .blocks()
         .at_latest()
@@ -77,7 +75,16 @@ async fn get_bittensor_block_and_balances(
         .context("block at hash")?
         .number()
         .into();
+    Ok((block_number, block_hash))
+}
 
+/// Fetch delegate free balances (rao) at the given block via System::Account storage.
+async fn get_delegate_balances_at_block(
+    client: &BittensorClient,
+    block_hash: subxt::blocks::BlockHash<generated::RuntimeConfig>,
+    stake_info_delegate_ss58: &str,
+    limit_price_delegate_ss58: &str,
+) -> Result<(u128, u128)> {
     let account_id = |ss58: &str| -> Result<generated::AccountId> {
         let pk = sr25519::Public::from_ss58check(ss58).context("invalid SS58 address")?;
         Ok(generated::AccountId::from(pk.0))
@@ -93,9 +100,28 @@ async fn get_bittensor_block_and_balances(
             .context("fetch System::Account")?;
         Ok::<u128, anyhow::Error>(opt.map(|i| i.data.free as u128).unwrap_or(0))
     };
-
     let stake_info_rao = free_rao(stake_info_delegate_ss58).await?;
     let limit_price_rao = free_rao(limit_price_delegate_ss58).await?;
+    Ok((stake_info_rao, limit_price_rao))
+}
+
+/// Fetch current Bittensor block number and delegate balances (composes block + balances).
+async fn get_bittensor_block_and_balances(
+    _network: &str,
+    stake_info_delegate_ss58: &str,
+    limit_price_delegate_ss58: &str,
+) -> Result<(u64, u128, u128)> {
+    let ws_url = std::env::var("BITTENSOR_WS_URL")
+        .unwrap_or_else(|_| crate::DEFAULT_BITTENSOR_WS_URL.to_string());
+    let client = bittensor_client(&ws_url).await?;
+    let (block_number, block_hash) = get_current_block_number(&client).await?;
+    let (stake_info_rao, limit_price_rao) = get_delegate_balances_at_block(
+        &client,
+        block_hash,
+        stake_info_delegate_ss58,
+        limit_price_delegate_ss58,
+    )
+    .await?;
     Ok((block_number, stake_info_rao, limit_price_rao))
 }
 
