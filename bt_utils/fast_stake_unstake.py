@@ -18,12 +18,8 @@ from bt_utils.constants import (
     DELETEGATE_1,
     DELETEGATE_2,
     BLOCK_CYCLE,
-    DEFAULT_HOTKEY,
 )
 from bt_utils.utils import send_stake_info_async
-from eth_account import Account
-from evm import load_deployment_info, remove_stake as evm_remove_stake
-from web3 import Web3
 from bittensor.core.async_subtensor import AsyncSubtensor
 
 # Wallets (sync; used for signing; load once)
@@ -59,8 +55,6 @@ async def fast_stake_async(
     netuid: int,
     amount_rao: int,
     limit_price: int | None = None,
-    *,
-    network: str = NETWORK,
 ) -> Tuple[bool, str]:
     """Submit fast stake (MevShield). Returns (success, message). Async.
 
@@ -93,8 +87,6 @@ async def fast_stake_async(
 
 async def fast_unstake_async(
     netuid: int,
-    *,
-    network: str = NETWORK,
 ) -> Tuple[bool, str]:
     """Submit fast unstake (MevShield). Returns (success, message). Async."""
     async_subtensor = await get_async_subtensor()
@@ -103,35 +95,6 @@ async def fast_unstake_async(
     return await send_stake_info_async(
         async_subtensor, wallet1, wallet2, stake_info, None
     )
-
-
-async def fast_stake_and_unstake_async(
-    netuid: int,
-    amount_rao: int,
-    limit_price: int | None = None,
-    *,
-    network: str = NETWORK,
-) -> Tuple[bool, str]:
-    """Fast stake via MevShield, then EVM remove_stake. Returns (success, message)."""
-    success, message = await fast_stake_async(netuid, amount_rao, limit_price, network=network)
-    if not success:
-        return False, message
-    # Unstake via EVM (amount in alpha; conversion from amount_rao may be needed depending on price)
-    load_dotenv(os.path.join(_REPO_ROOT, ".env"))
-    rpc_url = os.getenv("RPC_URL")
-    private_key = os.getenv("PRIVATE_KEY")
-    if not rpc_url or not private_key:
-        return True, "fast_stake ok; EVM unstake skipped (no RPC_URL/PRIVATE_KEY)"
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
-        return True, "fast_stake ok; EVM unstake skipped (RPC not connected)"
-    deployment = load_deployment_info()
-    contract_address = deployment["contract_address"]
-    account = Account.from_key(private_key)
-    # amount_rao is TAO; remove_stake expects amount in ALPHA - using amount_rao as placeholder
-    evm_remove_stake(w3, account, contract_address, DEFAULT_HOTKEY, netuid, amount_rao)
-    return True, message
-
 
 if __name__ == "__main__":
     async def main():
