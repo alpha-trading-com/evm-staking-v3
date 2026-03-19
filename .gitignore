@@ -10,3 +10,5 @@ __pycache__/
 .pytest_cache/
 venv/
 venv/
+executor_enabled.json
+executor_heartbeat.json

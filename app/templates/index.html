@@ -135,11 +135,14 @@
       </div>
       <div class="main-right">
         <h1>🔐 StakeWrap Control</h1>
-        <p style="color: var(--muted); margin-bottom: 1.5rem;">
-          Control stake, stake limit, unstake, unstake limit, transfer stake, move stake, and withdraw operations via UI.
-          Powered by FastAPI + uvicorn.
-        </p>
-
+        <div class="executor-control" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <span>Executor:</span>
+          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+            <input id="executor-enabled" type="checkbox" onchange="setExecutorEnabled(this.checked)" />
+            <span id="executor-enabled-label">ON</span>
+          </label>
+          <span id="executor-status-msg" class="hint" style="margin: 0;"></span>
+        </div>
         <div class="tabs" id="tabs"></div>
 
     <section class="panel active" id="panel-stake">
@@ -280,7 +283,7 @@
       <label>Netuid</label>
       <div class="amount-input-row">
         <input id="fs-netuid" type="number" value="1" style="max-width: 8rem;" />
-        <button class="submit" onclick="postFastStakeOrLimit()" style="margin-top: 0;">Submit Fast Stake</button>
+        <button id="btn-fast-stake" class="submit" onclick="postFastStakeOrLimit()" style="margin-top: 0;">Submit Fast Stake</button>
       </div>
       <div id="fast-stake-limit-options" style="display: none;">
         <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
@@ -303,7 +306,7 @@
       <small class="hint">Unstake via MevShield (Bittensor extrinsic). Unstakes all for the given netuid.</small>
       <label>Netuid</label>
       <input id="fu-netuid" type="number" value="1" />
-      <button class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
+      <button id="btn-fast-unstake" class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
       <div id="fu-result"></div>
     </section>
       </div>
@@ -437,6 +440,46 @@
       }
     }
 
+    // Executor ON/OFF: only when ON and heartbeat recent can fast stake/unstake be applied
+    async function loadExecutorStatus() {
+      try {
+        const r = await fetch('/api/executor-status');
+        const j = await r.json();
+        const cb = document.getElementById('executor-enabled');
+        const label = document.getElementById('executor-enabled-label');
+        const msg = document.getElementById('executor-status-msg');
+        const btnFastStake = document.getElementById('btn-fast-stake');
+        const btnFastUnstake = document.getElementById('btn-fast-unstake');
+        if (cb) cb.checked = j.executor_enabled !== false;
+        if (label) label.textContent = j.executor_enabled ? 'ON' : 'OFF';
+        if (msg) msg.textContent = j.message || '';
+        const canSubmit = j.executor_enabled && j.executor_active;
+        if (btnFastStake) btnFastStake.disabled = !canSubmit;
+        if (btnFastUnstake) btnFastUnstake.disabled = !canSubmit;
+      } catch (e) {
+        const msg = document.getElementById('executor-status-msg');
+        if (msg) msg.textContent = 'Failed to load executor status';
+      }
+    }
+    async function setExecutorEnabled(checked) {
+      try {
+        const r = await fetch('/api/set-executor-enabled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: checked }),
+        });
+        const j = await r.json();
+        if (j.ok) await loadExecutorStatus();
+        else {
+          document.getElementById('executor-enabled').checked = !checked;
+          document.getElementById('executor-status-msg').textContent = j.error || 'Failed';
+        }
+      } catch (e) {
+        document.getElementById('executor-enabled').checked = !checked;
+        document.getElementById('executor-status-msg').textContent = String(e);
+      }
+    }
+
     // Restore persisted values as soon as DOM loads
     document.addEventListener("DOMContentLoaded", () => {
       restoreAllInputs();
@@ -450,6 +493,7 @@
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
       loadStakeInfo(); // Load stake info on page load
+      loadExecutorStatus();
     });
 
     // --- Persistence END ---

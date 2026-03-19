@@ -12,6 +12,7 @@ While this script is running, you can use fast stake, fast stake limit, and fast
 apply staking/unstaking on chain.
 """
 
+import json
 import os
 import sys
 import time
@@ -30,6 +31,8 @@ from bt_utils.constants import (
     LIMIT_PRICE_DELEGATE,
     STAKE_INFO_BASE_FEE_RAO,
     LIMIT_PRICE_BASE_FEE_RAO,
+    EXECUTOR_ENABLED_FILENAME,
+    EXECUTOR_HEARTBEAT_FILENAME,
 )
 
 # Contract: MAX_DELEGATE_BALANCE = 2 TAO
@@ -49,6 +52,18 @@ def get_delegate_balances_from_chain(subtensor: bt.Subtensor, network: str):
 def clamp_balance(rao):
     """Cap at MAX_DELEGATE_BALANCE (2 TAO) to avoid Exploited() revert."""
     return min(rao, MAX_DELEGATE_BALANCE_RAO)
+
+
+def is_executor_enabled() -> bool:
+    """True if executor_enabled.json has "enabled": true. Default True if file missing."""
+    path = os.path.join(ROOT_DIR, EXECUTOR_ENABLED_FILENAME)
+    if not os.path.isfile(path):
+        return True
+    try:
+        with open(path) as f:
+            return json.load(f).get("enabled", True)
+    except Exception:
+        return True
 
 
 def main():
@@ -98,7 +113,10 @@ def main():
     signed = None
     while True:
         current = subtensor.get_current_block()
-        if current > last_block: # begining of new block
+        if current > last_block:  # beginning of new block
+            if not is_executor_enabled():
+                last_block = current
+                continue
             try:
                 if signed is None:
                     chain_balances = get_delegate_balances_from_chain(subtensor, network)
@@ -126,8 +144,15 @@ def main():
                 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
                 print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
                 nonce += 1
+                # Heartbeat so UI knows executor is running and submitting
+                heartbeat_path = os.path.join(ROOT_DIR, EXECUTOR_HEARTBEAT_FILENAME)
+                try:
+                    with open(heartbeat_path, "w") as f:
+                        json.dump({"last_block": current, "exec_block": exec_block, "timestamp": time.time()}, f)
+                except Exception:
+                    pass
 
-                #prepare next block
+                # prepare next block
                 chain_balances = get_delegate_balances_from_chain(subtensor, network)
                 stake_info_balance = clamp_balance(chain_balances[0])
                 limit_price_balance = clamp_balance(chain_balances[1])
