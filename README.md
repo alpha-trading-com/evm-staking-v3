@@ -6,9 +6,48 @@ This staking and unstaking tool uses the same idea as MEV: a transaction submitt
 
 ## Behind the scenes
 
-MEV works because sudo-level extrinsics such as `MevShield.announce_next_key` have higher priority than normal extrinsics. Stake/unstake intent is encoded in the **tip** of that extrinsic; the block builder includes it at the start of the block, and the StakeWrap contract’s `execute()` applies it on chain.
+We use the **MevShield.announce_next_key** extrinsic to encode stake/unstake intent in its **tip**, even if the extrinsic itself fails. Sudo-level extrinsics like this have higher priority; the block builder can include them at block start. The tip (and thus the encoded intent) is observable from the chain (e.g. delegate balance change). The StakeWrap contract’s **execute()** then runs each block and applies that intent by calling the staking precompile.
 
+### How fast stake and fast unstake work
 
+Two things happen in sequence: (1) your intent is encoded by submitting **MevShield.announce_next_key** with tip = encoded(netuid, amount, etc.)—the intent is encoded this way even if the extrinsic fails; (2) each block, the contract’s **execute()** runs and applies that intent by calling the staking precompile.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as UI / API
+    participant Backend as Backend (FastAPI)
+    participant MevShield as Bittensor (MevShield)
+    participant AutoExec as auto_execute.py
+    participant Contract as StakeWrap contract
+    participant IStaking as IStaking precompile
+
+    Note over User,IStaking: 1. Encode intent via MevShield.announce_next_key (even if extrinsic fails)
+    User->>UI: Fast Stake (amount, netuid) or Fast Unstake (netuid)
+    UI->>Backend: POST /api/fast-stake or /api/fast-unstake
+    Backend->>Backend: Encode intent as stake_info (or limit_price for limit orders)
+    Backend->>MevShield: MevShield.announce_next_key(tip = encoded intent)
+    Note over MevShield: Intent encoded in tip (tip from delegate).<br/>Included at block start; intent is encoded even if extrinsic fails.
+
+    Note over User,IStaking: 2. Each block: execute() applies intent on chain
+    loop Every Bittensor block
+        AutoExec->>MevShield: Read delegate balances (stake-info & limit-price)
+        AutoExec->>Contract: execute(execBlock, stakeInfoPacked, limitPricePacked)
+        Contract->>MevShield: withdrawFromDelegate (pull TAO from delegate → contract)
+        Contract->>Contract: Decode fee → (netuid, amount) or unstake or limit order
+        Contract->>IStaking: addStake() / removeStake() / addStakeLimit()
+        IStaking->>IStaking: Stake or unstake applied on Bittensor staking pallet
+    end
+```
+
+**In short:**
+
+| Step | What happens |
+|------|----------------|
+| **Intent** | You click Fast Stake (e.g. 50 TAO, netuid 1). The backend submits **MevShield.announce_next_key** with **tip** = encoded (netuid, amount). The intent is encoded in this way even if the extrinsic fails. The block builder includes it at block start; the tip is taken from the delegate wallet. |
+| **Apply** | `auto_execute.py` runs every block. It reads the two delegate balances, calls the contract’s **execute()**. The contract pulls TAO from the delegate, decodes the “fee” (the tip that was consumed) to recover (netuid, amount), then calls the **IStaking** precompile to perform addStake, removeStake, or addStakeLimit. |
+
+Fast **unstake** uses the same flow with a different encoding (stake_info = netuid only, meaning “unstake all for this netuid”). Fast **stake limit** uses both delegates: one tip encodes (netuid, amount), the other encodes the limit price.
 
 ## Prerequisites
 
@@ -50,7 +89,7 @@ BITTENSOR_NETWORK=finney
 
 - **Execute flow:** The contract’s `execute()` uses two delegate addresses (stake-info and limit-price). Their **free balance on the Bittensor chain must not exceed 2 TAO** (enforced in the contract).
 - **Constants in contract:** In `contracts/StakeWrapConstants.sol` set `STAKE_INFO_DELEGATE` and `LIMIT_PRICE_DELEGATE` (bytes32) to your two delegate coldkeys. Set `WITHDRAW_COLDKEY` to a **separate** coldkey that you keep safe for withdrawals—it does not need to match the delegates; it only needs to be stored securely.
-- **Fast stake/unstake (MevShield):** Uses Bittensor wallets named in `bt_utils/constants.py` (`DELETEGATE_1`, `DELETEGATE_2`; e.g. `"soon"`, `"soon_2"`). Create these under `~/.bittensor/wallets/` and fund them; do not exceed 2 TAO per delegate as above. The base fees `STAKE_INFO_BASE_FEE_RAO` and `LIMIT_PRICE_BASE_FEE_RAO` (both 0.1 TAO) in `bt_utils/constants.py` are the tips used when calling `MevShield.announce_next_key` (no extra gas fee specified).
+- **Fast stake/unstake (MevShield):** Uses Bittensor wallets named in `bt_utils/constants.py` (`DELETEGATE_1`, `DELETEGATE_2`; e.g. `"soon"`, `"soon_2"`). Create these under `~/.bittensor/wallets/` and fund them; do not exceed 2 TAO per delegate as above. Intent is encoded by calling **MevShield.announce_next_key** with tip = encoded(netuid, amount, etc.), even if that extrinsic fails. The base fees `STAKE_INFO_BASE_FEE_RAO` and `LIMIT_PRICE_BASE_FEE_RAO` (both 0.1 TAO) in `bt_utils/constants.py` are the tips used for that call (no extra gas fee specified).
 
 ## 4. Compile, deploy, and add contract as proxy
 
@@ -125,7 +164,7 @@ python3 bt_utils/auto_execute.py
 
 Run from project root so `deployment.json` and imports resolve. The UI can turn execution on/off via the **Executor** toggle; when ON, the script sends `execute()` each block when enabled.
 
-**While this script is running**, you can use **fast stake**, **fast stake limit**, and **fast unstake** (via the UI or API). Those operations send stake/unstake intent via MevShield; the auto-execute loop calls the contract’s `execute()`, which applies the staking/unstaking on chain.
+**While this script is running**, you can use **fast stake**, **fast stake limit**, and **fast unstake** (via the UI or API). Those operations encode intent by submitting **MevShield.announce_next_key** (tip = encoded intent, even if the extrinsic fails); the auto-execute loop calls the contract’s `execute()`, which applies the staking/unstaking on chain.
 
 ## Summary
 
