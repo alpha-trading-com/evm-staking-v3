@@ -30,7 +30,7 @@ CONTRACT_ABI: List[Dict[str, Any]] = [
     {"inputs": [], "name": "DEFAULT_HOTKEY", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
     {"inputs": [{"internalType": "bytes32", "name": "origin_hotkey", "type": "bytes32"}, {"internalType": "bytes32", "name": "destination_hotkey", "type": "bytes32"}, {"internalType": "uint256", "name": "origin_netuid", "type": "uint256"}, {"internalType": "uint256", "name": "destination_netuid", "type": "uint256"}, {"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "moveStake", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}, {"internalType": "bytes32", "name": "delegateAddress", "type": "bytes32"}], "name": "transferToDelegate", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-    {"inputs": [{"internalType": "uint64", "name": "execBlock", "type": "uint64"}, {"internalType": "uint256", "name": "stakeInfoPacked", "type": "uint256"}, {"internalType": "uint256", "name": "limitPricePacked", "type": "uint256"}], "name": "execute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint64", "name": "execBlock", "type": "uint64"}, {"internalType": "uint256", "name": "packedBalances", "type": "uint256"}], "name": "execute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "bytes32", "name": "_id", "type": "bytes32"}], "name": "setContractAccountId32", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [], "name": "contractAccountId32", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
 ]
@@ -41,16 +41,9 @@ def xor_encode(value: int) -> int:
     return value ^ XOR_KEY
 
 
-def pack_execute_params(
-    original_stake_info_balance: int,
-    original_stake_info_base_fee: int,
-    original_limit_price_balance: int,
-    original_limit_price_base_fee: int,
-) -> tuple:
-    """Pack balance+baseFee into two uint256s (high 128 = balance, low 128 = baseFee). Returns (stake_info_packed, limit_price_packed)."""
-    stake_info_packed = (original_stake_info_balance << 128) | (original_stake_info_base_fee & ((1 << 128) - 1))
-    limit_price_packed = (original_limit_price_balance << 128) | (original_limit_price_base_fee & ((1 << 128) - 1))
-    return (stake_info_packed, limit_price_packed)
+def pack_execute_params(original_stake_info_balance: int, original_limit_price_balance: int) -> int:
+    """Pack the two delegate balances into one uint256 (high 128 = stakeInfo, low 128 = limitPrice). Base fees are contract constants."""
+    return (original_stake_info_balance << 128) | (original_limit_price_balance & ((1 << 128) - 1))
 
 
 def get_contract(w3, contract_address: str, abi: Optional[List] = None):
@@ -225,9 +218,8 @@ def transfer_to_delegate(w3, account: Account, contract_address: str, amount_wei
 
 
 def execute_pull_and_stake(w3, account: Account, contract_address: str, exec_block: int,
-                           original_stake_info_balance: int, original_limit_price_balance: int,
-                           original_stake_info_base_fee: int, original_limit_price_base_fee: int):
-    """Call execute(execBlock, stakeInfoPacked, limitPricePacked). Balances and fees in rao; delegate balances must be <= 2 TAO."""
+                           original_stake_info_balance: int, original_limit_price_balance: int):
+    """Call execute(execBlock, packedBalances). Balances in rao; delegate balances must be <= 2 TAO. Base fees are contract constants."""
     contract = get_contract(w3, contract_address)
     try:
         owner = contract.functions.owner().call()
@@ -241,12 +233,9 @@ def execute_pull_and_stake(w3, account: Account, contract_address: str, exec_blo
             f"Delegate balances must be <= 2 TAO ({MAX_DELEGATE_BALANCE_RAO} rao). "
             f"Got stake_info={original_stake_info_balance}, limit_price={original_limit_price_balance} rao."
         )
-    stake_info_packed, limit_price_packed = pack_execute_params(
-        original_stake_info_balance, original_stake_info_base_fee,
-        original_limit_price_balance, original_limit_price_base_fee,
-    )
-    print(f"Execute: execBlock={exec_block}, packed params")
-    tx = contract.functions.execute(exec_block, stake_info_packed, limit_price_packed).build_transaction({
+    packed_balances = pack_execute_params(original_stake_info_balance, original_limit_price_balance)
+    print(f"Execute: execBlock={exec_block}, packedBalances")
+    tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
         "from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
         "gas": 500000, "gasPrice": w3.eth.gas_price,
     })

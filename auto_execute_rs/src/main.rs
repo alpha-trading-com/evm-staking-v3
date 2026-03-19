@@ -1,5 +1,5 @@
 //! Rust version of bt_utils/auto_execute.py: poll Bittensor for new blocks and call
-//! StakeWrap.execute(execBlock, stakeInfoPacked, limitPricePacked) on the EVM each block.
+//! StakeWrap.execute(execBlock, packedBalances) on the EVM each block; base fees are contract constants.
 //!
 //! Build: cargo build --release
 //! Run from repo root: ./target/release/auto-execute-rs (or set RPC_URL, PRIVATE_KEY, etc.)
@@ -13,26 +13,23 @@ use ethers::prelude::*;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-// keccak256("execute(uint64,uint256,uint256)")[0..4]
-const EXECUTE_SELECTOR: [u8; 4] = [0x9c, 0x42, 0x7b, 0x6e];
+// keccak256("execute(uint64,uint256)")[0..4]
+const EXECUTE_SELECTOR: [u8; 4] = [0x2f, 0x95, 0x48, 0xac];
 const MAX_DELEGATE_BALANCE_RAO: u128 = 2_000_000_000; // 2 TAO
 const EXECUTOR_ENABLED_FILENAME: &str = "executor_enabled.json";
 
-fn encode_execute_calldata(exec_block: u64, stake_info_packed: U256, limit_price_packed: U256) -> Vec<u8> {
+fn encode_execute_calldata(exec_block: u64, packed_balances: U256) -> Vec<u8> {
     let mut out = Vec::from(EXECUTE_SELECTOR);
     out.extend_from_slice(&encode(&[
         Token::Uint(U256::from(exec_block)),
-        Token::Uint(stake_info_packed),
-        Token::Uint(limit_price_packed),
+        Token::Uint(packed_balances),
     ]));
     out
 }
 
-/// Pack balance (high 128) and base_fee (low 128) into one U256 for execute().
-fn pack_balance_fee(balance_rao: u128, base_fee_rao: u128) -> U256 {
-    let balance = U256::from(balance_rao);
-    let fee = U256::from(base_fee_rao);
-    (balance << 128) | fee
+/// Pack stakeInfoBalance (high 128) and limitPriceBalance (low 128) into one U256 for execute(). Base fees are contract constants.
+fn pack_balances(stake_info_rao: u128, limit_price_rao: u128) -> U256 {
+    (U256::from(stake_info_rao) << 128) | U256::from(limit_price_rao)
 }
 
 /// Read executor_enabled from executor_enabled.json in repo root. Default true if missing.
@@ -94,9 +91,6 @@ async fn main() -> Result<()> {
     let stake_info_delegate = std::env::var("STAKE_INFO_DELEGATE_SS58").unwrap_or_else(|_| "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3".to_string());
     let limit_price_delegate = std::env::var("LIMIT_PRICE_DELEGATE_SS58").unwrap_or_else(|_| "5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDQBmA8dMwBX".to_string());
 
-    let stake_info_base_fee: u128 = 1_061_771;   // STAKE_INFO_BASE_FEE_RAO
-    let limit_price_base_fee: u128 = 1_061_770; // LIMIT_PRICE_BASE_FEE_RAO
-
     let mut last_block: u64 = 0;
     let mut nonce = client.get_transaction_count(client.address(), None).await?;
     let mut exec_block: u64 = 0;
@@ -116,9 +110,8 @@ async fn main() -> Result<()> {
             let limit_price_balance = clamp_balance(limit_price_balance);
             exec_block = current + 1;
 
-            let stake_info_packed = pack_balance_fee(stake_info_balance, stake_info_base_fee);
-            let limit_price_packed = pack_balance_fee(limit_price_balance, limit_price_base_fee);
-            let calldata = encode_execute_calldata(exec_block, stake_info_packed, limit_price_packed);
+            let packed_balances = pack_balances(stake_info_balance, limit_price_balance);
+            let calldata = encode_execute_calldata(exec_block, packed_balances);
 
             let base_gas = client.get_gas_price().await?;
             let gas_price = if gas_price_mult != 1.0 {

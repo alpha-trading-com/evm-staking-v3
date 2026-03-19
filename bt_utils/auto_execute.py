@@ -29,8 +29,6 @@ from evm.stake_wrap import pack_execute_params
 from bt_utils.constants import (
     STAKE_INFO_DELEGATE,
     LIMIT_PRICE_DELEGATE,
-    STAKE_INFO_BASE_FEE_RAO,
-    LIMIT_PRICE_BASE_FEE_RAO,
     EXECUTOR_ENABLED_FILENAME,
 )
 
@@ -128,11 +126,8 @@ def main():
     limit_price_balance = clamp_balance(chain_balances[1])
     print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
 
-    stake_info_base_fee = STAKE_INFO_BASE_FEE_RAO
-    limit_price_base_fee = LIMIT_PRICE_BASE_FEE_RAO
     # Gas: use EXECUTOR_GAS_LIMIT in .env to cap (e.g. 400000); otherwise 600_000. Lower = cheaper if chain uses less.
     gas_limit = int(os.getenv("EXECUTOR_GAS_LIMIT", "600000"))
-    print(f"Base fees (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
     print("Polling for new blocks (Bittensor chain)...")
 
     nonce = w3.eth.get_transaction_count(account.address)
@@ -150,15 +145,8 @@ def main():
                     # (otherwise we often mine in current+1 and revert Expired())
                     exec_block = current + 1
                     print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
-                    stake_info_packed, limit_price_packed = pack_execute_params(
-                        stake_info_balance, stake_info_base_fee,
-                        limit_price_balance, limit_price_base_fee,
-                    )
-                    tx = contract.functions.execute(
-                        exec_block,
-                        stake_info_packed,
-                        limit_price_packed,
-                    ).build_transaction({
+                    packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
+                    tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                         "from": account.address,
                         "nonce": nonce,
                         "gas": gas_limit,
@@ -176,17 +164,9 @@ def main():
                 chain_balances = get_delegate_balances_from_chain(subtensor, network)
                 stake_info_balance = clamp_balance(chain_balances[0])
                 limit_price_balance = clamp_balance(chain_balances[1])
-                print(f"Base fees (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
                 exec_block = current + 2
-                stake_info_packed, limit_price_packed = pack_execute_params(
-                    stake_info_balance, stake_info_base_fee,
-                    limit_price_balance, limit_price_base_fee,
-                )
-                tx = contract.functions.execute(
-                    exec_block,
-                    stake_info_packed,
-                    limit_price_packed,
-                ).build_transaction({
+                packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
+                tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                     "from": account.address,
                     "nonce": nonce,
                     "gas": gas_limit,

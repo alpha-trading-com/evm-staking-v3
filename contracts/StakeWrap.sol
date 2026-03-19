@@ -61,26 +61,23 @@ contract StakeWrap is StakeWrapConstants {
 
     receive() external payable {}
 
-    /// stakeInfoPacked: high 128 bits = originalStakeInfoDelegateBalance, low 128 = originalStakeInfoBaseFee.
-    /// limitPricePacked: high 128 bits = originalLimitPriceDelegateBalance, low 128 = originalLimitPriceBaseFee.
+    /// packedBalances: high 128 bits = stakeInfoDelegateBalance, low 128 = limitPriceDelegateBalance.
+    /// Base fees are contract constants (STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO) to save calldata.
     function execute(
         uint64 execBlock,
-        uint256 stakeInfoPacked,
-        uint256 limitPricePacked
+        uint256 packedBalances
     ) external onlyOwnerOrExecutor {
         if (contractAccountId32 == bytes32(0)) revert ContractAccountId32NotSet();
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
         if (block.number != execBlock) revert Expired();
 
-        uint256 originalStakeInfoDelegateBalance = stakeInfoPacked >> 128;
-        uint256 originalStakeInfoBaseFee = uint128(stakeInfoPacked);
-        uint256 originalLimitPriceDelegateBalance = limitPricePacked >> 128;
-        uint256 originalLimitPriceBaseFee = uint128(limitPricePacked);
+        uint256 originalStakeInfoDelegateBalance = packedBalances >> 128;
+        uint256 originalLimitPriceDelegateBalance = uint128(packedBalances);
 
         if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
 
-        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
+        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, originalStakeInfoDelegateBalance, STAKE_INFO_BASE_FEE_RAO);
 
         if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
         uint256 stakingInfo;
@@ -99,7 +96,7 @@ contract StakeWrap is StakeWrapConstants {
         bool limit = (remainingStakeInfo & 1) == 1;
 
         if (limit) {
-            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee);
+            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, originalLimitPriceDelegateBalance, LIMIT_PRICE_BASE_FEE_RAO);
             if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
             uint256 limitPrice;
             unchecked { limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE; }

@@ -1,6 +1,6 @@
 # auto-execute-rs
 
-Rust reimplementation of `bt_utils/auto_execute.py`: on each new Bittensor block, call the StakeWrap contract’s `execute(execBlock, stakeInfoPacked, limitPricePacked)` on the EVM.
+Rust reimplementation of `bt_utils/auto_execute.py`: on each new Bittensor block, call the StakeWrap contract’s `execute(execBlock, packedBalances)` on the EVM (base fees are contract constants).
 
 **Why Rust:** Lower latency (see block → build and send tx with minimal overhead), single binary, no Python runtime.
 

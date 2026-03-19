@@ -32,7 +32,7 @@ sequenceDiagram
     Note over User,IStaking: 2. Each block: execute() applies intent on chain
     loop Every Bittensor block
         AutoExec->>MevShield: Read delegate balances (stake-info & limit-price)
-        AutoExec->>Contract: execute(execBlock, stakeInfoPacked, limitPricePacked)
+        AutoExec->>Contract: execute(execBlock, packedBalances)
         Contract->>MevShield: withdrawFromDelegate (pull TAO from delegate → contract)
         Contract->>Contract: Decode fee → (netuid, amount) or unstake or limit order
         Contract->>IStaking: addStake() / removeStake() / addStakeLimit()
@@ -114,7 +114,7 @@ python3 scripts/compile_deploy_add_proxy.py --skip-compile --skip-deploy
 
 (You can also compile and deploy manually: `npm run compile` then `python3 scripts/deploy.py`—then add proxies separately if needed.)
 
-**Gas:** The contract uses custom errors and packed storage to reduce gas. You can set `EXECUTOR_GAS_LIMIT` (e.g. 400000) in `.env` if your chain typically uses less than 600k for `execute()`.
+**Gas:** The contract uses custom errors and packed storage to reduce gas. The two base fees (stake-info and limit-price) are contract constants, so `execute(execBlock, packedBalances)` uses one fewer calldata word than before. You can set `EXECUTOR_GAS_LIMIT` (e.g. 400000) in `.env` if your chain typically uses less than 600k for `execute()`.
 
 ## 5. Run the UI server
 
@@ -170,7 +170,7 @@ Run from project root so `deployment.json` and imports resolve. The UI can turn 
 
 You can run the same “see block → call execute()” loop in **Rust** for lower latency and a single binary. The repo includes a minimal Rust crate in **`auto_execute_rs/`**.
 
-- **EVM part:** Implemented (ethers-rs: connect to RPC, build `execute(execBlock, stakeInfoPacked, limitPricePacked)`, sign with `EXECUTOR_PRIVATE_KEY` or `PRIVATE_KEY`, send tx). Uses the same `.env` and `deployment.json` as the Python script.
+- **EVM part:** Implemented (ethers-rs: connect to RPC, build `execute(execBlock, packedBalances)`, sign with `EXECUTOR_PRIVATE_KEY` or `PRIVATE_KEY`, send tx). Uses the same `.env` and `deployment.json` as the Python script.
 - **Bittensor part:** Not implemented. The Rust binary needs the current Bittensor block number and the two delegate balances. To finish the Rust version you can: (1) use [subxt](https://docs.rs/subxt) with Bittensor/Finney metadata to query the chain (block number and `Balances::Account` for the delegate SS58 addresses), or (2) use raw JSON-RPC to the Bittensor node, or (3) keep using the Python script.
 
 See **`auto_execute_rs/README.md`** for build/run and how to implement the Bittensor query in Rust.

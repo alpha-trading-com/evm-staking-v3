@@ -71,8 +71,6 @@ def main():
     parser.add_argument('--exec-block', type=int, dest='exec_block', help='execute: block number for execution (must equal current block)')
     parser.add_argument('--original-stake-info-balance', type=int, dest='original_stake_info_balance', help='execute: original stake-info delegate balance in rao')
     parser.add_argument('--original-limit-price-balance', type=int, dest='original_limit_price_balance', help='execute: original limit-price delegate balance in rao')
-    parser.add_argument('--original-stake-info-base-fee', type=int, dest='original_stake_info_base_fee', help='execute: base fee for stake-info in rao')
-    parser.add_argument('--original-limit-price-base-fee', type=int, dest='original_limit_price_base_fee', help='execute: base fee for limit-price in rao')
 
     args = parser.parse_args()
     
@@ -188,16 +186,12 @@ def main():
         transfer_to_delegate(w3, account, contract_address, amount_wei, delegate_bytes32)
 
     elif args.action == 'execute':
-        if None in (args.exec_block, args.original_stake_info_balance,
-                    args.original_limit_price_balance, args.original_stake_info_base_fee,
-                    args.original_limit_price_base_fee):
-            parser.error("execute requires --exec-block, --original-stake-info-balance, "
-                         "--original-limit-price-balance, --original-stake-info-base-fee, --original-limit-price-base-fee")
+        if None in (args.exec_block, args.original_stake_info_balance, args.original_limit_price_balance):
+            parser.error("execute requires --exec-block, --original-stake-info-balance, --original-limit-price-balance")
         execute_pull_and_stake(
             w3, account, contract_address,
             args.exec_block,
             args.original_stake_info_balance, args.original_limit_price_balance,
-            args.original_stake_info_base_fee, args.original_limit_price_base_fee,
         )
 
 if __name__ == '__main__':
