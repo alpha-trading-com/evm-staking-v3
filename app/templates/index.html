@@ -440,7 +440,7 @@
       }
     }
 
-    // Executor ON/OFF: only when ON and heartbeat recent can fast stake/unstake be applied
+    // Executor ON/OFF: when ON, fast stake/unstake are applied (script assumed always running)
     async function loadExecutorStatus() {
       try {
         const r = await fetch('/api/executor-status');
@@ -453,7 +453,7 @@
         if (cb) cb.checked = j.executor_enabled !== false;
         if (label) label.textContent = j.executor_enabled ? 'ON' : 'OFF';
         if (msg) msg.textContent = j.message || '';
-        const canSubmit = j.executor_enabled && j.executor_active;
+        const canSubmit = j.executor_enabled;
         if (btnFastStake) btnFastStake.disabled = !canSubmit;
         if (btnFastUnstake) btnFastUnstake.disabled = !canSubmit;
       } catch (e) {

@@ -15,7 +15,6 @@ apply staking/unstaking on chain.
 import json
 import os
 import sys
-import time
 
 from web3 import Web3
 from eth_account import Account
@@ -32,7 +31,6 @@ from bt_utils.constants import (
     STAKE_INFO_BASE_FEE_RAO,
     LIMIT_PRICE_BASE_FEE_RAO,
     EXECUTOR_ENABLED_FILENAME,
-    EXECUTOR_HEARTBEAT_FILENAME,
 )
 
 # Contract: MAX_DELEGATE_BALANCE = 2 TAO
@@ -144,13 +142,6 @@ def main():
                 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
                 print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
                 nonce += 1
-                # Heartbeat so UI knows executor is running and submitting
-                heartbeat_path = os.path.join(ROOT_DIR, EXECUTOR_HEARTBEAT_FILENAME)
-                try:
-                    with open(heartbeat_path, "w") as f:
-                        json.dump({"last_block": current, "exec_block": exec_block, "timestamp": time.time()}, f)
-                except Exception:
-                    pass
 
                 # prepare next block
                 chain_balances = get_delegate_balances_from_chain(subtensor, network)

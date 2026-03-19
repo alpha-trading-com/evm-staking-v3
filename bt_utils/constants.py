@@ -19,5 +19,4 @@ DELETEGATE_2 = "test_proxy"
 
 # Executor: UI can turn on/off via executor_enabled.json; auto_execute only submits when enabled
 EXECUTOR_ENABLED_FILENAME = "executor_enabled.json"
-EXECUTOR_HEARTBEAT_FILENAME = "executor_heartbeat.json"
 

@@ -11,4 +11,3 @@ __pycache__/
 venv/
 venv/
 executor_enabled.json
-executor_heartbeat.json

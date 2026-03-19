@@ -13,7 +13,6 @@ import os
 import sys
 import contextlib
 import threading
-import time
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -63,7 +62,7 @@ from utils.tolerance import (
     get_stake_min_tolerance,
     get_unstake_min_tolerance,
 )
-from bt_utils.constants import EXECUTOR_ENABLED_FILENAME, EXECUTOR_HEARTBEAT_FILENAME
+from bt_utils.constants import EXECUTOR_ENABLED_FILENAME
 from bt_utils.fast_stake_unstake import (
     fast_stake_async,
     fast_unstake_async,
@@ -166,8 +165,6 @@ async def index(request: Request, _: str = Depends(get_current_username)):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-EXECUTOR_ACTIVE_MAX_AGE_SEC = 60  # Consider executor "active" (submitting) if heartbeat newer than this
-
 def _read_executor_enabled() -> bool:
     path = _REPO_ROOT / EXECUTOR_ENABLED_FILENAME
     if not path.is_file():
@@ -181,37 +178,10 @@ def _read_executor_enabled() -> bool:
 
 @app.get("/api/executor-status")
 async def api_executor_status(_: str = Depends(get_current_username)):
-    """Return executor on/off (UI toggle) and whether it's active (heartbeat recent)."""
+    """Return executor on/off (UI toggle). Script is assumed always running."""
     enabled = _read_executor_enabled()
-    heartbeat_path = _REPO_ROOT / EXECUTOR_HEARTBEAT_FILENAME
-    try:
-        if not heartbeat_path.is_file():
-            active = False
-            age_sec = None
-            last_block = None
-        else:
-            mtime = heartbeat_path.stat().st_mtime
-            age_sec = time.time() - mtime
-            active = enabled and age_sec <= EXECUTOR_ACTIVE_MAX_AGE_SEC
-            with open(heartbeat_path) as f:
-                data = json.load(f)
-            last_block = data.get("last_block")
-        if not enabled:
-            msg = "Executor is OFF. Turn ON so fast stake/unstake are applied (auto_execute.py must be running)."
-        elif not active:
-            msg = "Executor ON but no recent heartbeat. Run python bt_utils/auto_execute.py."
-        else:
-            msg = "Executor ON and active."
-        return {
-            "ok": True,
-            "executor_enabled": enabled,
-            "executor_active": active,
-            "last_block": last_block,
-            "last_seen_ago_sec": round(age_sec, 1) if age_sec is not None else None,
-            "message": msg,
-        }
-    except Exception as e:
-        return {"ok": True, "executor_enabled": enabled, "executor_active": False, "message": str(e)}
+    msg = "Executor is OFF. Turn ON so fast stake/unstake are applied." if not enabled else "Executor ON."
+    return {"ok": True, "executor_enabled": enabled, "message": msg}
 
 
 class SetExecutorEnabledBody(BaseModel):
