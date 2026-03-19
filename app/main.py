@@ -247,7 +247,8 @@ class FastStakeBody(BaseModel):
 class FastStakeLimitBody(BaseModel):
     netuid: int
     amount_tao: float
-    limit_price: int
+    rate_tolerance: float = 0.5
+    use_min_tolerance: bool = False
 
 
 class FastUnstakeBody(BaseModel):
@@ -475,12 +476,19 @@ async def api_fast_stake(body: FastStakeBody, _: str = Depends(get_current_usern
 
 @app.post("/api/fast-stake-limit")
 async def api_fast_stake_limit(body: FastStakeLimitBody, _: str = Depends(get_current_username)):
-    """Fast stake limit via MevShield (Bittensor extrinsic)."""
+    """Fast stake limit via MevShield (Bittensor extrinsic). Limit price computed from tolerance like stake-limit."""
     try:
         amount_rao = int(body.amount_tao * 10**9)
-        success, message = await fast_stake_async(body.netuid, amount_rao, body.limit_price)
+        limit_price = int(calculate_stake_limit_price(
+            tao_amount=body.amount_tao,
+            netuid=body.netuid,
+            min_tolerance_staking=body.use_min_tolerance,
+            default_rate_tolerance=body.rate_tolerance,
+            subtensor=subtensor,
+        ))
+        success, message = await fast_stake_async(body.netuid, amount_rao, limit_price)
         if success:
-            return {"ok": True, "message": message}
+            return {"ok": True, "message": message, "limit_price_used": limit_price}
         return JSONResponse({"ok": False, "error": message}, status_code=400)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)

@@ -128,7 +128,7 @@
             <div class="loading">Loading stake info...</div>
           </div>
           <div class="subnet-buttons">
-            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Stake Limit / Unstake / Unstake Limit / Fast Stake / Fast Stake Limit / Fast Unstake / Fast Stake+Unstake)</div>
+            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Unstake / Fast Stake / Fast Unstake)</div>
             <div class="subnet-grid" id="subnet-grid"></div>
           </div>
         </div>
@@ -171,15 +171,15 @@
         <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
           <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
             <span>Rate Tolerance</span>
-            <input id="sl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
+            <input id="sl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 8rem; margin: 0;" />
           </label>
-          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
           <label style="margin: 0;">
             <input id="sl-use-min" type="checkbox" /> Use Minimum Tolerance
           </label>
           <label style="margin: 0;">
             <input id="sl-partial" type="checkbox" /> Allow Partial Staking
           </label>
+          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
           <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceStake()">Calculate Min Tolerance</button>
         </div>
       </div>
@@ -187,39 +187,38 @@
     </section>
 
     <section class="panel" id="panel-remove">
-      <h2>Unstake (removeStake)</h2>
-      <small class="hint">Amount is in raw alpha units (integer). Same convention as CLI.</small>
+      <h2>Unstake</h2>
+      <small class="hint">Remove stake (market) or unstake limit order. Amount in raw alpha units (integer). Leave amount empty to unstake all.</small>
+      <label style="margin-top: 0.5rem;">
+        <input id="rs-not-limited" type="checkbox" checked /> Not limited (market order)
+      </label>
       <label>Amount (integer, alpha raw units)</label>
-      <input id="rs-amount" type="number" placeholder="e.g. 100000000" />
+      <input id="rs-amount" type="number" placeholder="e.g. 100000000 (empty = all)" />
       <label>Netuid</label>
-      <input id="rs-netuid" type="number" value="1" />
+      <div class="amount-input-row">
+        <input id="rs-netuid" type="number" value="1" style="max-width: 8rem;" />
+        <button class="submit" onclick="postRemoveStakeOrLimit()" style="margin-top: 0;">Submit Unstake</button>
+      </div>
       <label>Hotkey</label>
       <input id="rs-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button class="submit" onclick="postRemoveStake()">Submit Unstake</button>
+      <div id="remove-limit-options" style="display: none;">
+        <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+            <span>Rate Tolerance</span>
+            <input id="rsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
+          </label>
+          
+          <label style="margin: 0;">
+            <input id="rsl-use-min" type="checkbox" /> Use Minimum Tolerance
+          </label>
+          <label style="margin: 0;">
+            <input id="rsl-partial" type="checkbox" /> Allow partial fill
+          </label>
+          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
+          <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceUnstake()">Calculate Min Tolerance</button>
+        </div>
+      </div>
       <div id="rs-result"></div>
-    </section>
-
-    <section class="panel" id="panel-remove-limit">
-      <h2>Unstake Limit (removeStakeLimit)</h2>
-      <label>Amount (integer, alpha raw units)</label>
-      <input id="rsl-amount" type="number" placeholder="e.g. 100000000" />
-      <small class="hint">Amount is in raw alpha units (same as CLI: int(amount*1e9))</small>
-      <label>Network ID</label>
-      <input id="rsl-netuid" type="number" value="1" />
-      <label>Rate Tolerance</label>
-      <input id="rsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" />
-      <small class="hint">Ignored when "Use Minimum Tolerance" is checked</small>
-      <label style="margin-top: 0.5rem;">
-        <input id="rsl-use-min" type="checkbox" /> Use Minimum Tolerance
-      </label>
-      <label style="margin-top: 0.5rem;">
-        <input id="rsl-partial" type="checkbox" /> Allow partial fill
-      </label>
-      <label>Hotkey</label>
-      <input id="rsl-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button class="submit" onclick="postRemoveStakeLimit()">Unstake</button>
-      <button type="button" class="refresh-btn" style="margin-left: 0.5rem;" onclick="calcMinToleranceUnstake()">Calculate Min Tolerance</button>
-      <div id="rsl-result"></div>
     </section>
 
     <section class="panel" id="panel-transfer">
@@ -265,7 +264,10 @@
 
     <section class="panel" id="panel-fast-stake">
       <h2>Fast Stake</h2>
-      <small class="hint">Stake via MevShield (Bittensor extrinsic).</small>
+      <small class="hint">Stake via MevShield (Bittensor extrinsic). Uncheck "Not limited" for limit order.</small>
+      <label style="margin-top: 0.5rem;">
+        <input id="fs-not-limited" type="checkbox" checked /> Not limited (market order)
+      </label>
       <label>Amount (TAO)</label>
       <div class="amount-input-row">
         <input id="fs-amount" type="number" step="any" placeholder="e.g. 0.1" />
@@ -276,22 +278,24 @@
         </div>
       </div>
       <label>Netuid</label>
-      <input id="fs-netuid" type="number" value="1" />
-      <button class="submit" onclick="postFastStake()">Submit Fast Stake</button>
+      <div class="amount-input-row">
+        <input id="fs-netuid" type="number" value="1" style="max-width: 8rem;" />
+        <button class="submit" onclick="postFastStakeOrLimit()" style="margin-top: 0;">Submit Fast Stake</button>
+      </div>
+      <div id="fast-stake-limit-options" style="display: none;">
+        <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+            <span>Rate Tolerance</span>
+            <input id="fsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
+          </label>
+          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
+          <label style="margin: 0;">
+            <input id="fsl-use-min" type="checkbox" /> Use Minimum Tolerance
+          </label>
+          <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceFastStake()">Calculate Min Tolerance</button>
+        </div>
+      </div>
       <div id="fs-result"></div>
-    </section>
-
-    <section class="panel" id="panel-fast-stake-limit">
-      <h2>Fast Stake Limit</h2>
-      <small class="hint">Stake limit via MevShield (Bittensor extrinsic).</small>
-      <label>Amount (TAO)</label>
-      <input id="fsl-amount" type="number" step="any" placeholder="e.g. 0.1" />
-      <label>Limit price (integer)</label>
-      <input id="fsl-limit-price" type="number" placeholder="e.g. 10000" />
-      <label>Netuid</label>
-      <input id="fsl-netuid" type="number" value="1" />
-      <button class="submit" onclick="postFastStakeLimit()">Submit Fast Stake Limit</button>
-      <div id="fsl-result"></div>
     </section>
 
     <section class="panel" id="panel-fast-unstake">
@@ -301,19 +305,6 @@
       <input id="fu-netuid" type="number" value="1" />
       <button class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
       <div id="fu-result"></div>
-    </section>
-    
-    <section class="panel" id="panel-fast-stake-and-unstake">
-      <h2>Fast Stake + Unstake</h2>
-      <small class="hint">First fast stake via MevShield, then unstake via EVM (StakeWrap.removeStake).</small>
-      <label>Amount (TAO)</label>
-      <input id="fsu-amount" type="number" step="any" placeholder="e.g. 0.1" />
-      <label>Limit price (integer, optional)</label>
-      <input id="fsu-limit-price" type="number" placeholder="e.g. 10000 (leave empty for market)" />
-      <label>Netuid</label>
-      <input id="fsu-netuid" type="number" value="1" />
-      <button class="submit" onclick="postFastStakeAndUnstake()">Submit Fast Stake + Unstake</button>
-      <div id="fsu-result"></div>
     </section>
       </div>
     </div>
@@ -327,13 +318,11 @@
       // Stake (merged with limit)
       "stake-hotkey", "stake-netuid", "stake-amount", "stake-not-limited",
       "sl-tolerance", "sl-use-min", "sl-partial",
-      // Remove Stake
-      "rs-hotkey", "rs-netuid", "rs-amount",
-      // Remove Stake Limit
-      "rsl-hotkey", "rsl-netuid", "rsl-amount", "rsl-tolerance", "rsl-use-min", "rsl-partial",
-      // Fast Stake / Fast Stake Limit / Fast Unstake / Fast Stake+Unstake
-      "fs-amount", "fs-netuid", "fsl-amount", "fsl-limit-price", "fsl-netuid", "fu-netuid",
-      "fsu-amount", "fsu-limit-price", "fsu-netuid",
+      // Unstake (merged with limit)
+      "rs-hotkey", "rs-netuid", "rs-amount", "rs-not-limited",
+      "rsl-tolerance", "rsl-use-min", "rsl-partial",
+      // Fast Stake (merged with limit) / Fast Unstake
+      "fs-amount", "fs-netuid", "fs-not-limited", "fsl-tolerance", "fsl-use-min", "fu-netuid",
       // Transfer Stake
       "ts-hotkey", "ts-origin", "ts-dest", "ts-amount",
       // Move Stake
@@ -395,7 +384,7 @@
     }
 
     // Subnet ID buttons: 0..127 — clicking sets network id for stake, unstake, unstake limit, and all fast operations
-    const SUBNET_NETWORK_IDS = ['stake-netuid', 'rs-netuid', 'rsl-netuid', 'fs-netuid', 'fsl-netuid', 'fu-netuid', 'fsu-netuid'];
+    const SUBNET_NETWORK_IDS = ['stake-netuid', 'rs-netuid', 'fs-netuid', 'fu-netuid'];
     function setTaoAmount(amount) {
       const val = String(amount);
       const stakeEl = document.getElementById('stake-amount');
@@ -405,6 +394,16 @@
     function toggleStakeLimitOptions() {
       const notLimited = document.getElementById('stake-not-limited').checked;
       const opts = document.getElementById('stake-limit-options');
+      if (opts) opts.style.display = notLimited ? 'none' : 'block';
+    }
+    function toggleRemoveLimitOptions() {
+      const notLimited = document.getElementById('rs-not-limited').checked;
+      const opts = document.getElementById('remove-limit-options');
+      if (opts) opts.style.display = notLimited ? 'none' : 'block';
+    }
+    function toggleFastStakeLimitOptions() {
+      const notLimited = document.getElementById('fs-not-limited').checked;
+      const opts = document.getElementById('fast-stake-limit-options');
       if (opts) opts.style.display = notLimited ? 'none' : 'block';
     }
     function setNetworkIdFromSubnet(subnetId) {
@@ -444,6 +443,10 @@
       setupFieldPersistence();
       toggleStakeLimitOptions(); // show/hide limit options per "Not limited" checkbox
       document.getElementById('stake-not-limited').addEventListener('change', toggleStakeLimitOptions);
+      toggleRemoveLimitOptions();
+      document.getElementById('rs-not-limited').addEventListener('change', toggleRemoveLimitOptions);
+      toggleFastStakeLimitOptions();
+      document.getElementById('fs-not-limited').addEventListener('change', toggleFastStakeLimitOptions);
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
       loadStakeInfo(); // Load stake info on page load
@@ -454,14 +457,11 @@
     const tabIds = [
       { id: 'stake', label: 'Stake' },
       { id: 'remove', label: 'Unstake' },
-      { id: 'remove-limit', label: 'Unstake Limit' },
+      { id: 'fast-stake', label: 'Fast Stake' },
+      { id: 'fast-unstake', label: 'Fast Unstake' },
       { id: 'transfer', label: 'Transfer Stake' },
       { id: 'move', label: 'Move Stake' },
       { id: 'withdraw', label: 'Withdraw' },
-      { id: 'fast-stake', label: 'Fast Stake' },
-      { id: 'fast-stake-limit', label: 'Fast Stake Limit' },
-      { id: 'fast-unstake', label: 'Fast Unstake' },
-      { id: 'fast-stake-and-unstake', label: 'Fast Stake+Unstake' },
     ];
 
     // For tab persist, keep references to the tab buttons
@@ -571,6 +571,29 @@
         showResult('stake-result', false, String(e));
       }
     }
+    function postRemoveStakeOrLimit() {
+      const notLimited = document.getElementById('rs-not-limited').checked;
+      if (notLimited) {
+        const amountValue = document.getElementById('rs-amount').value.trim();
+        const amount = amountValue === '' ? null : parseInt(amountValue, 10);
+        postJson('/api/remove-stake', {
+          hotkey: document.getElementById('rs-hotkey').value.trim(),
+          netuid: parseInt(document.getElementById('rs-netuid').value, 10),
+          amount: amount,
+        }, 'rs-result');
+      } else {
+        const amountVal = document.getElementById('rs-amount').value.trim();
+        const amount = amountVal === '' ? 0 : parseInt(amountVal, 10);
+        postJson('/api/remove-stake-limit', {
+          hotkey: document.getElementById('rs-hotkey').value.trim(),
+          netuid: parseInt(document.getElementById('rs-netuid').value, 10),
+          amount: amount,
+          rate_tolerance: parseFloat(document.getElementById('rsl-tolerance').value),
+          use_min_tolerance: document.getElementById('rsl-use-min').checked,
+          allow_partial: document.getElementById('rsl-partial').checked,
+        }, 'rs-result');
+      }
+    }
     function postRemoveStake() {
       const amountValue = document.getElementById('rs-amount').value.trim();
       const amount = amountValue === '' ? null : parseInt(amountValue, 10);
@@ -580,25 +603,16 @@
         amount: amount,
       }, 'rs-result');
     }
-    function postRemoveStakeLimit() {
-      postJson('/api/remove-stake-limit', {
-        hotkey: document.getElementById('rsl-hotkey').value.trim(),
-        netuid: parseInt(document.getElementById('rsl-netuid').value, 10),
-        amount: parseInt(document.getElementById('rsl-amount').value, 10),
-        rate_tolerance: parseFloat(document.getElementById('rsl-tolerance').value),
-        use_min_tolerance: document.getElementById('rsl-use-min').checked,
-        allow_partial: document.getElementById('rsl-partial').checked,
-      }, 'rsl-result');
-    }
     async function calcMinToleranceUnstake() {
-      const amount = parseInt(document.getElementById('rsl-amount').value, 10);
-      const netuid = parseInt(document.getElementById('rsl-netuid').value, 10);
+      const amountVal = document.getElementById('rs-amount').value.trim();
+      const amount = amountVal === '' ? 0 : parseInt(amountVal, 10);
+      const netuid = parseInt(document.getElementById('rs-netuid').value, 10);
       if (!amount || !netuid) {
-        showResult('rsl-result', false, 'Please enter amount and Network ID');
+        showResult('rs-result', false, 'Please enter amount and Netuid');
         return;
       }
       const amount_tao = amount / 1e9;  // Convert alpha raw to TAO
-      showResult('rsl-result', false, 'Calculating...');
+      showResult('rs-result', false, 'Calculating...');
       try {
         const r = await fetch('/api/calc-min-tolerance', {
           method: 'POST',
@@ -612,12 +626,12 @@
             tolEl.value = j.rate_tolerance;
             persistAllInputs();
           }
-          showResult('rsl-result', true, `Min tolerance limit price: ${j.limit_price} rao/alpha. Rate tolerance set to ${j.rate_tolerance}`);
+          showResult('rs-result', true, `Min tolerance limit price: ${j.limit_price} rao/alpha. Rate tolerance set to ${j.rate_tolerance}`);
         } else {
-          showResult('rsl-result', false, j.error);
+          showResult('rs-result', false, j.error);
         }
       } catch (e) {
-        showResult('rsl-result', false, String(e));
+        showResult('rs-result', false, String(e));
       }
     }
     function postTransferStake() {
@@ -648,34 +662,55 @@
       const el = document.getElementById('fs-amount');
       if (el) { el.value = String(amount); persistAllInputs(); }
     }
-    function postFastStake() {
-      postJson('/api/fast-stake', {
-        netuid: parseInt(document.getElementById('fs-netuid').value, 10),
-        amount_tao: parseFloat(document.getElementById('fs-amount').value),
-      }, 'fs-result');
+    function postFastStakeOrLimit() {
+      const notLimited = document.getElementById('fs-not-limited').checked;
+      const netuid = parseInt(document.getElementById('fs-netuid').value, 10);
+      const amount_tao = parseFloat(document.getElementById('fs-amount').value);
+      if (notLimited) {
+        postJson('/api/fast-stake', { netuid, amount_tao }, 'fs-result');
+      } else {
+        postJson('/api/fast-stake-limit', {
+          netuid,
+          amount_tao,
+          rate_tolerance: parseFloat(document.getElementById('fsl-tolerance').value),
+          use_min_tolerance: document.getElementById('fsl-use-min').checked,
+        }, 'fs-result');
+      }
     }
-    function postFastStakeLimit() {
-      postJson('/api/fast-stake-limit', {
-        netuid: parseInt(document.getElementById('fsl-netuid').value, 10),
-        amount_tao: parseFloat(document.getElementById('fsl-amount').value),
-        limit_price: parseInt(document.getElementById('fsl-limit-price').value, 10),
-      }, 'fsl-result');
+    async function calcMinToleranceFastStake() {
+      const amount_tao = parseFloat(document.getElementById('fs-amount').value);
+      const netuid = parseInt(document.getElementById('fs-netuid').value, 10);
+      if (!amount_tao || !netuid) {
+        showResult('fs-result', false, 'Please enter Amount (TAO) and Netuid');
+        return;
+      }
+      showResult('fs-result', false, 'Calculating...');
+      try {
+        const r = await fetch('/api/calc-min-tolerance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tao_amount: amount_tao, netuid, operation: 'stake' }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          const tolEl = document.getElementById('fsl-tolerance');
+          if (tolEl != null && j.rate_tolerance != null) {
+            tolEl.value = j.rate_tolerance;
+            persistAllInputs();
+          }
+          showResult('fs-result', true, `Min tolerance limit price: ${j.limit_price} rao/alpha. Rate tolerance set to ${j.rate_tolerance}`);
+        } else {
+          showResult('fs-result', false, j.error);
+        }
+      } catch (e) {
+        showResult('fs-result', false, String(e));
+      }
     }
     function postFastUnstake() {
       postJson('/api/fast-unstake', {
         netuid: parseInt(document.getElementById('fu-netuid').value, 10),
       }, 'fu-result');
     }
-    function postFastStakeAndUnstake() {
-      const limitVal = document.getElementById('fsu-limit-price').value.trim();
-      const limitPrice = limitVal === '' ? null : parseInt(limitVal, 10);
-      postJson('/api/fast-stake-and-unstake', {
-        netuid: parseInt(document.getElementById('fsu-netuid').value, 10),
-        amount_tao: parseFloat(document.getElementById('fsu-amount').value),
-        limit_price: limitPrice,
-      }, 'fsu-result');
-    }
-
     async function loadStakeInfo() {
       const container = document.getElementById('stake-info-container');
       container.innerHTML = '<div class="loading">Loading stake info...</div>';
