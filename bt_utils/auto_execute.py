@@ -64,6 +64,16 @@ def is_executor_enabled() -> bool:
     except Exception:
         return True
 
+def get_current_block(subtensor: bt.Subtensor):
+    ws = subtensor.substrate.ws
+    payload = {
+        "jsonrpc": "2.0", "method": "chain_getHeader", "params": [None], "id": 0
+    }
+    get_block_ws_data = json.dumps(payload)
+
+    ws.send(get_block_ws_data)
+    response = json.loads(ws.recv())
+    return int(response["result"]["number"],0)
 
 def main():
     from dotenv import load_dotenv
@@ -129,7 +139,7 @@ def main():
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
     while True:
-        current = subtensor.get_current_block()
+        current = get_current_block(subtensor)
         if current > last_block:  # beginning of new block
             try:
                 if signed is None:

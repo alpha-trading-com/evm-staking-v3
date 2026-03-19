@@ -166,6 +166,15 @@ Run from project root so `deployment.json` and imports resolve. The UI can turn 
 
 **While this script is running**, you can use **fast stake**, **fast stake limit**, and **fast unstake** (via the UI or API). Those operations encode intent by submitting **MevShield.announce_next_key** (tip = encoded intent, even if the extrinsic fails); the auto-execute loop calls the contract’s `execute()`, which applies the staking/unstaking on chain.
 
+### 8. Rust alternative for auto-execute (optional)
+
+You can run the same “see block → call execute()” loop in **Rust** for lower latency and a single binary. The repo includes a minimal Rust crate in **`auto_execute_rs/`**.
+
+- **EVM part:** Implemented (ethers-rs: connect to RPC, build `execute(execBlock, stakeInfoPacked, limitPricePacked)`, sign with `EXECUTOR_PRIVATE_KEY` or `PRIVATE_KEY`, send tx). Uses the same `.env` and `deployment.json` as the Python script.
+- **Bittensor part:** Not implemented. The Rust binary needs the current Bittensor block number and the two delegate balances. To finish the Rust version you can: (1) use [subxt](https://docs.rs/subxt) with Bittensor/Finney metadata to query the chain (block number and `Balances::Account` for the delegate SS58 addresses), or (2) use raw JSON-RPC to the Bittensor node, or (3) keep using the Python script.
+
+See **`auto_execute_rs/README.md`** for build/run and how to implement the Bittensor query in Rust.
+
 ## Summary
 
 1. Install Node/Python deps; create `.env` with `PRIVATE_KEY` (and optional `RPC_URL`, `BITTENSOR_NETWORK`, `CONTRACT_SS58`).
