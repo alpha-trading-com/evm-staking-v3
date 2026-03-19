@@ -30,10 +30,10 @@ from bt_utils.constants import (
     STAKE_INFO_DELEGATE,
     LIMIT_PRICE_DELEGATE,
     EXECUTOR_ENABLED_FILENAME,
+    MAX_DELEGATE_BALANCE_RAO,
 )
 
 # Contract: MAX_DELEGATE_BALANCE = 2 TAO
-MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
 
 import bittensor as bt
 
