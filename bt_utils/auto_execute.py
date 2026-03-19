@@ -121,9 +121,11 @@ def main():
 
     stake_info_base_fee = STAKE_INFO_BASE_FEE_RAO
     limit_price_base_fee = LIMIT_PRICE_BASE_FEE_RAO
+    # Gas: use EXECUTOR_GAS_LIMIT in .env to cap (e.g. 400000); otherwise 600_000. Lower = cheaper if chain uses less.
+    gas_limit = int(os.getenv("EXECUTOR_GAS_LIMIT", "600000"))
     print(f"Base fees (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
     print("Polling for new blocks (Bittensor chain)...")
-    
+
     nonce = w3.eth.get_transaction_count(account.address)
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
@@ -150,7 +152,7 @@ def main():
                     ).build_transaction({
                         "from": account.address,
                         "nonce": nonce,
-                        "gas": 600_000,
+                        "gas": gas_limit,
                         "gasPrice": w3.eth.gas_price,
                     })
                     signed = account.sign_transaction(tx) 
@@ -177,7 +179,7 @@ def main():
                 ).build_transaction({
                     "from": account.address,
                     "nonce": nonce,
-                    "gas": 600_000,
+                    "gas": gas_limit,
                     "gasPrice": w3.eth.gas_price,
                 })
                 signed = account.sign_transaction(tx) 

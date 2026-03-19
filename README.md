@@ -34,6 +34,7 @@ Create a `.env` file in the project root. Required and optional variables:
 |----------|----------|-------------|
 | `PRIVATE_KEY` | Yes | EVM private key (hex, no 0x) used to deploy and as contract owner; also used by the UI for stake/unstake/withdraw |
 | `EXECUTOR_PRIVATE_KEY` | No | Optional separate key for auto_execute; avoids nonce conflict with owner (see Executor below) |
+| `EXECUTOR_GAS_LIMIT` | No | Gas limit for execute() txs in auto_execute (default: 600000). Lower = cheaper if the chain uses less. |
 | `RPC_URL` | No | EVM RPC (default: `https://test.finney.opentensor.ai/`) |
 | `BITTENSOR_NETWORK` | No | Bittensor network for auto_execute (default: `finney`) |
 
@@ -73,6 +74,8 @@ python3 scripts/compile_deploy_add_proxy.py --skip-compile --skip-deploy
 ```
 
 (You can also compile and deploy manually: `npm run compile` then `python3 scripts/deploy.py`—then add proxies separately if needed.)
+
+**Gas:** The contract uses custom errors and packed storage to reduce gas. You can set `EXECUTOR_GAS_LIMIT` (e.g. 400000) in `.env` if your chain typically uses less than 600k for `execute()`.
 
 ## 5. Run the UI server
 

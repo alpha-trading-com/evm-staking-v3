@@ -8,25 +8,39 @@ import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
 import "./StakeWrapConstants.sol";
 import "./IProxy.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract StakeWrap is StakeWrapConstants {
+    error OnlyOwner();
+    error OnlyOwnerOrExecutor();
+    error Expired();
+    error Exploited();
+    error FeeFormatError(uint256 fee);
+    error UnexpectedFee();
+    error NoOperation();
+    error InvalidDelegate();
+    error AmountZero();
+    error InsufficientBalance();
+    error PrecompileTransferFailed();
+    error ProxyInsufficientGas();
+    error WithdrawFromDelegateFailed();
+    error StakingCallFailed();
+
     address public owner;
     /// If set, this address may call execute() so owner can use the same chain for other txs without nonce conflict.
     address public executor;
-    uint64 private _lastExecBlock;
+    uint64 private _lastExecBlock; // packed in same slot as executor (gas: 1 slot)
 
     constructor() {
         owner = msg.sender;
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
+        if (msg.sender != owner) revert OnlyOwner();
         _;
     }
 
     modifier onlyOwnerOrExecutor() {
-        require(msg.sender == owner || (executor != address(0) && msg.sender == executor), "Only owner or executor");
+        if (msg.sender != owner && (executor == address(0) || msg.sender != executor)) revert OnlyOwnerOrExecutor();
         _;
     }
 
@@ -47,14 +61,15 @@ contract StakeWrap is StakeWrapConstants {
     ) external onlyOwnerOrExecutor {
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
-        if (block.number != execBlock) revert("Expired");
+        if (block.number != execBlock) revert Expired();
 
-        if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert("Exploited");
+        if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
 
         uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
-        if ((fee - 1) % BLOCK_CYCLE != 0) revert(string(abi.encodePacked("fee: ", Strings.toString(fee), " - Staking Fee Format Error")));
-        uint256 stakingInfo = (fee - 1) / BLOCK_CYCLE;
+        if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
+        uint256 stakingInfo;
+        unchecked { stakingInfo = (fee - 1) / BLOCK_CYCLE; }
     
         // Here extract stake info from stakingInfo
         uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
@@ -71,8 +86,9 @@ contract StakeWrap is StakeWrapConstants {
 
         if (limit) {
             fee = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) ;
-            if ((fee - 1) % BLOCK_CYCLE != 0) revert(string(abi.encodePacked("fee: ", Strings.toString(fee), " - Limit Price Fee Format Error")));
-            uint256 limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE;
+            if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
+            uint256 limitPrice;
+            unchecked { limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE; }
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
             amount = amount ^ XOR_KEY;
@@ -103,22 +119,23 @@ contract StakeWrap is StakeWrapConstants {
 
         uint256 gainedWei = afterBal - beforeBal;
         uint64 gainedRao = uint64(gainedWei / RAO);
-        if (gainedRao == 0) revert ("Exploited");
+        if (gainedRao == 0) revert Exploited();
 
-        uint256 fee = originalBalance - gainedRao - 500;
-        if (fee == 0) revert ("NoOperation");
-        if (fee < 0 || fee > MAX_FEE) revert ("Exploited");
-        
+        uint256 fee;
+        unchecked { fee = originalBalance - gainedRao - 500; }
+        if (fee == 0) revert NoOperation();
+        if (fee > MAX_FEE) revert Exploited();
 
-        uint256 originalBalanceInWei = uint256(originalBalance - 500) * RAO;
+        uint256 originalBalanceInWei;
+        unchecked { originalBalanceInWei = uint256(originalBalance - 500) * RAO; }
         if (originalBalanceInWei > address(this).balance) originalBalanceInWei = address(this).balance;
 
         if (originalBalanceInWei > 0) {
             transferToDelegate(originalBalanceInWei, delegateAddress);
         }
 
-        if (fee < baseFee) revert ("UnexpectedFee");
-        fee = fee - baseFee;
+        if (fee < baseFee) revert UnexpectedFee();
+        unchecked { fee = fee - baseFee; }
         if (fee < 64) return fee; // 0 -> 0, 1 -> 1, 63 -> 63
         if (fee < 16384) return fee - 1; // 64 -> 65, 65 -> 66, 16383 -> 16384
         return fee - 3; // 16384 -> 16387, 16385 -> 16388, 16386 -> 16389
@@ -132,11 +149,11 @@ contract StakeWrap is StakeWrapConstants {
      * @param amount Amount to transfer in wei
      */
     function transferToDelegate(uint256 amount, bytes32 delegateAddress) internal {
-        require(amount > 0, "Amount must be greater than 0");
-        require(address(this).balance >= amount, "Insufficient balance");
+        if (amount == 0) revert AmountZero();
+        if (address(this).balance < amount) revert InsufficientBalance();
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", delegateAddress));
-        require(success, "Precompile transfer failed");
+        if (!success) revert PrecompileTransferFailed();
     }
 
     /**
@@ -149,7 +166,7 @@ contract StakeWrap is StakeWrapConstants {
      * @param contractAddress 32-byte AccountId32 destination of the transfer (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
     function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal {
-        require(delegateAddress == STAKE_INFO_DELEGATE || delegateAddress == LIMIT_PRICE_DELEGATE, "Invalid delegate address");
+        if (delegateAddress != STAKE_INFO_DELEGATE && delegateAddress != LIMIT_PRICE_DELEGATE) revert InvalidDelegate();
         bytes memory payload = new bytes(36);
         payload[0] = bytes1(BALANCES_PALLET_INDEX);
         payload[1] = bytes1(TRANSFER_ALL_CALL_INDEX);
@@ -176,12 +193,10 @@ contract StakeWrap is StakeWrapConstants {
 
         // Forward enough gas so the precompile can execute and return revert data on failure
         uint256 gasForward = gasleft();
-        if (gasForward < 100000) {
-            revert("Proxy call: insufficient gas");
-        }
+        if (gasForward < 100000) revert ProxyInsufficientGas();
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = IPROXY_ADDRESS.call{gas: gasForward}(data);
-        if (!success) revert ("withDrawFromDelegateFailed");
+        if (!success) revert WithdrawFromDelegateFailed();
     }
 
 
@@ -214,7 +229,7 @@ contract StakeWrap is StakeWrapConstants {
                     revert(add(32, returnData), returndata_size)
                 }
             }
-            revert("addStake call failed");
+            revert StakingCallFailed();
         }
     }
 
@@ -254,7 +269,7 @@ contract StakeWrap is StakeWrapConstants {
                     revert(add(32, returnData), returndata_size)
                 }
             }
-            revert("addStakeLimit call failed");
+            revert StakingCallFailed();
         }
     }
 
@@ -294,7 +309,7 @@ contract StakeWrap is StakeWrapConstants {
                     revert(add(32, returnData), returndata_size)
                 }
             }
-            revert("removeStakeLimit call failed");
+            revert StakingCallFailed();
         }
     }
 
@@ -327,7 +342,7 @@ contract StakeWrap is StakeWrapConstants {
                     revert(add(32, returnData), returndata_size)
                 }
             }
-            revert("removeStake call failed");
+            revert StakingCallFailed();
         }
     }
     
@@ -366,7 +381,7 @@ contract StakeWrap is StakeWrapConstants {
                     revert(add(32, returnData), returndata_size)
                 }
             }
-            revert("transferStake call failed");
+            revert StakingCallFailed();
         }
     }
     
@@ -406,7 +421,7 @@ contract StakeWrap is StakeWrapConstants {
                     revert(add(32, returnData), returndata_size)
                 }
             }
-            revert("moveStake call failed");
+            revert StakingCallFailed();
         }
     }
 
@@ -416,12 +431,12 @@ contract StakeWrap is StakeWrapConstants {
      * @param amount The amount of TAO to withdraw (in wei)
      */
     function withdraw(uint256 amount) public onlyOwner {
-        require(amount > 0, "Amount must be greater than 0");
+        if (amount == 0) revert AmountZero();
         // IBalanceTransferPrecompile.transfer(bytes32 destination) external payable;
         // Precompile hardcoded at 0x800
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = ISUBTENSOR_BALANCE_TRANSFER_ADDRESS.call{value: amount}(abi.encodeWithSignature("transfer(bytes32)", WITHDRAW_COLDKEY));
-        require(success, "Precompile transfer failed");
+        if (!success) revert PrecompileTransferFailed();
     }
 }
 
