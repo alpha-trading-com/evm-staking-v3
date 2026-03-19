@@ -59,7 +59,6 @@ from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit
 from bt_utils.fast_stake_unstake import (
     fast_stake_async,
     fast_unstake_async,
-    fast_stake_and_unstake_async,
 )
 
 app = FastAPI(title="StakeWrap Control", version="1.0.0")
