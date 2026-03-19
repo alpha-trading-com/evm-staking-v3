@@ -35,6 +35,19 @@ wallet2.coldkey_file.decrypt()
 
 NETWORK = "finney"
 
+# Global AsyncSubtensor (lazy-initialized, reused across calls; uses NETWORK)
+_async_subtensor = None
+
+
+async def get_async_subtensor() -> "bt.AsyncSubtensor":
+    """Return the global AsyncSubtensor, initializing on first use."""
+    global _async_subtensor
+    from bittensor.core.async_subtensor import AsyncSubtensor
+    if _async_subtensor is None:
+        _async_subtensor = AsyncSubtensor(network=NETWORK)
+        await _async_subtensor.initialize()
+    return _async_subtensor
+
 
 async def _block_cycle_for_execute_async(async_subtensor: bt.AsyncSubtensor) -> int:
     """Return (1 + block) % BLOCK_CYCLE for the block where execute() will run (next block)."""
@@ -56,28 +69,26 @@ async def fast_stake_async(
     if amount_rao == 0:
         return True, "Amount is 0"
 
-    from bittensor.core.async_subtensor import AsyncSubtensor
+    async_subtensor = await get_async_subtensor()
+    block_cycle = await _block_cycle_for_execute_async(async_subtensor)
+    amount_tao = amount_rao / RAO
 
-    async with AsyncSubtensor(network=network) as async_subtensor:
-        block_cycle = await _block_cycle_for_execute_async(async_subtensor)
-        amount_tao = amount_rao / RAO
+    if limit_price is None:
+        stake_info = netuid + MAX_NETUID * (amount_tao * 2)
+        limit_info = None
+    else:
+        stake_info = netuid + MAX_NETUID * (amount_tao * 2 - 1)
+        limit_price_scaled = int((limit_price + LIMIT_PRICE_SCALE - 1) / LIMIT_PRICE_SCALE)
+        limit_info = limit_price_scaled * BLOCK_CYCLE + block_cycle
 
-        if limit_price is None:
-            stake_info = netuid + MAX_NETUID * (amount_tao * 2)
-            limit_info = None
-        else:
-            stake_info = netuid + MAX_NETUID * (amount_tao * 2 - 1)
-            limit_price_scaled = int((limit_price + LIMIT_PRICE_SCALE - 1) / LIMIT_PRICE_SCALE)
-            limit_info = limit_price_scaled * BLOCK_CYCLE + block_cycle
-
-        stake_info_encoded = stake_info * BLOCK_CYCLE + block_cycle
-        return await send_stake_info_async(
-            async_subtensor,
-            wallet1,
-            wallet2,
-            stake_info_encoded,
-            limit_info,
-        )
+    stake_info_encoded = stake_info * BLOCK_CYCLE + block_cycle
+    return await send_stake_info_async(
+        async_subtensor,
+        wallet1,
+        wallet2,
+        stake_info_encoded,
+        limit_info,
+    )
 
 
 async def fast_unstake_async(
@@ -86,14 +97,12 @@ async def fast_unstake_async(
     network: str = NETWORK,
 ) -> Tuple[bool, str]:
     """Submit fast unstake (MevShield). Returns (success, message). Async."""
-    from bittensor.core.async_subtensor import AsyncSubtensor
-
-    async with AsyncSubtensor(network=network) as async_subtensor:
-        block_cycle = await _block_cycle_for_execute_async(async_subtensor)
-        stake_info = netuid * BLOCK_CYCLE + block_cycle
-        return await send_stake_info_async(
-            async_subtensor, wallet1, wallet2, stake_info, None
-        )
+    async_subtensor = await get_async_subtensor()
+    block_cycle = await _block_cycle_for_execute_async(async_subtensor)
+    stake_info = netuid * BLOCK_CYCLE + block_cycle
+    return await send_stake_info_async(
+        async_subtensor, wallet1, wallet2, stake_info, None
+    )
 
 
 async def fast_stake_and_unstake_async(
