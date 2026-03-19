@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Deploy the StakeWrap contract to the blockchain.
-After deploy, calls setContractAccountId32() so execute() can use packed params (no contractAddress in calldata).
+After deploy, calls setContractAccountId32() and setBaseFeesRao() so execute() can use packed params.
 """
 
 import os
@@ -124,13 +124,15 @@ def main():
     print(f"\nDeployment info saved to deployment.json")
     print(f"Contract Address: {contract_address}")
 
-    # Set contract's AccountId32 (required for execute(); saves calldata every block)
+    # Set contract's AccountId32 and base fees (required for execute(); set once after deploy)
     from evm import contract_address_bytes32
+    from bt_utils.constants import STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO
     contract_account_id32 = contract_address_bytes32(contract_address)
     deployed = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
+    nonce = w3.eth.get_transaction_count(account.address)
     set_tx = deployed.functions.setContractAccountId32(contract_account_id32).build_transaction({
         "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
+        "nonce": nonce,
         "gas": 100000,
         "gasPrice": w3.eth.gas_price,
     })
@@ -141,6 +143,20 @@ def main():
     if set_receipt["status"] != 1:
         raise RuntimeError("setContractAccountId32 failed")
     print("contractAccountId32 set.")
+    nonce += 1
+    base_fees_tx = deployed.functions.setBaseFeesRao(STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO).build_transaction({
+        "from": account.address,
+        "nonce": nonce,
+        "gas": 100000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed_bf = account.sign_transaction(base_fees_tx)
+    bf_hash = w3.eth.send_raw_transaction(signed_bf.raw_transaction)
+    print(f"Setting base fees (stakeInfo={STAKE_INFO_BASE_FEE_RAO}, limitPrice={LIMIT_PRICE_BASE_FEE_RAO} rao)... tx {bf_hash.hex()}")
+    bf_receipt = w3.eth.wait_for_transaction_receipt(bf_hash)
+    if bf_receipt["status"] != 1:
+        raise RuntimeError("setBaseFeesRao failed")
+    print("setBaseFeesRao done.")
 
 
 if __name__ == '__main__':

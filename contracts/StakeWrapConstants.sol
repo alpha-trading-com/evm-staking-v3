@@ -24,8 +24,4 @@ contract StakeWrapConstants {
     uint256 internal constant MAX_STAKE_AMOUNT = 1000; // 1000 TAO
     uint256 internal constant MAX_DELEGATE_BALANCE = RAO * 2; // 2 TAO
     uint256 internal constant LIMIT_PRICE_SCALE = 10000;
-
-    /// Base fees (rao) for MevShield announce_next_key; same every block, so in contract to save calldata.
-    uint256 internal constant STAKE_INFO_BASE_FEE_RAO = 1_061_771;
-    uint256 internal constant LIMIT_PRICE_BASE_FEE_RAO = 1_061_770;
 }

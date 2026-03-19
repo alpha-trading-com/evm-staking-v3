@@ -103,7 +103,7 @@ python3 scripts/compile_deploy_add_proxy.py
 This script:
 
 1. **Compiles** the smart contract (`npm run compile`).
-2. **Deploys** it (uses `PRIVATE_KEY` and `RPC_URL` from `.env`, writes `deployment.json`), then calls **setContractAccountId32** so `execute()` uses packed params (smaller calldata).
+2. **Deploys** it (uses `PRIVATE_KEY` and `RPC_URL` from `.env`, writes `deployment.json`), then calls **setContractAccountId32** and **setBaseFeesRao** so `execute()` uses packed params (smaller calldata).
 3. **Adds the contract as proxy (Any)** for the two delegate wallets (`DELETEGATE_1`, `DELETEGATE_2` from `bt_utils/constants.py`): for each wallet it removes existing proxies, then adds the contract’s SS58 as proxy. You will be prompted to unlock each coldkey.
 
 Ensure the delegate wallets exist under `~/.bittensor/wallets/` (e.g. names `soon` and `soon_2` if that’s what you set in `bt_utils/constants.py`). To only add/update proxies and skip compile and deploy (using existing `deployment.json`):

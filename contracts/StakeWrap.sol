@@ -26,6 +26,7 @@ contract StakeWrap is StakeWrapConstants {
     error StakingCallFailed();
     error ContractAccountId32NotSet();
     error ContractAccountId32AlreadySet();
+    error BaseFeesNotSet();
 
     address public owner;
     /// If set, this address may call execute() so owner can use the same chain for other txs without nonce conflict.
@@ -33,6 +34,8 @@ contract StakeWrap is StakeWrapConstants {
     uint64 private _lastExecBlock; // packed in same slot as executor (gas: 1 slot)
     /// Contract's AccountId32 (evm:address); set once after deploy so execute() calldata is smaller.
     bytes32 public contractAccountId32;
+    /// Base fees (rao) for MevShield; set once after deploy so execute() calldata is smaller. Packed: high 128 = stakeInfo, low 128 = limitPrice.
+    uint256 private _baseFeesRao;
 
     constructor() {
         owner = msg.sender;
@@ -42,6 +45,11 @@ contract StakeWrap is StakeWrapConstants {
     function setContractAccountId32(bytes32 _id) external onlyOwner {
         if (contractAccountId32 != bytes32(0)) revert ContractAccountId32AlreadySet();
         contractAccountId32 = _id;
+    }
+
+    /// Set base fees (rao) for stake-info and limit-price delegates. Owner can call again to update. Saves calldata in execute().
+    function setBaseFeesRao(uint256 stakeInfoBaseFeeRao, uint256 limitPriceBaseFeeRao) external onlyOwner {
+        _baseFeesRao = (stakeInfoBaseFeeRao << 128) | (limitPriceBaseFeeRao & type(uint128).max);
     }
 
     modifier onlyOwner() {
@@ -62,12 +70,13 @@ contract StakeWrap is StakeWrapConstants {
     receive() external payable {}
 
     /// packedBalances: high 128 bits = stakeInfoDelegateBalance, low 128 = limitPriceDelegateBalance.
-    /// Base fees are contract constants (STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO) to save calldata.
+    /// Base fees are set once via setBaseFeesRao() to save calldata.
     function execute(
         uint64 execBlock,
         uint256 packedBalances
     ) external onlyOwnerOrExecutor {
         if (contractAccountId32 == bytes32(0)) revert ContractAccountId32NotSet();
+        if (_baseFeesRao == 0) revert BaseFeesNotSet();
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
         if (block.number != execBlock) revert Expired();
@@ -77,7 +86,9 @@ contract StakeWrap is StakeWrapConstants {
 
         if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
 
-        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, originalStakeInfoDelegateBalance, STAKE_INFO_BASE_FEE_RAO);
+        uint256 stakeInfoBaseFeeRao = _baseFeesRao >> 128;
+        uint256 limitPriceBaseFeeRao = uint128(_baseFeesRao);
+        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, originalStakeInfoDelegateBalance, stakeInfoBaseFeeRao);
 
         if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
         uint256 stakingInfo;
@@ -96,7 +107,7 @@ contract StakeWrap is StakeWrapConstants {
         bool limit = (remainingStakeInfo & 1) == 1;
 
         if (limit) {
-            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, originalLimitPriceDelegateBalance, LIMIT_PRICE_BASE_FEE_RAO);
+            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, originalLimitPriceDelegateBalance, limitPriceBaseFeeRao);
             if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
             uint256 limitPrice;
             unchecked { limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE; }

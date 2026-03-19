@@ -32,6 +32,7 @@ CONTRACT_ABI: List[Dict[str, Any]] = [
     {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}, {"internalType": "bytes32", "name": "delegateAddress", "type": "bytes32"}], "name": "transferToDelegate", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "uint64", "name": "execBlock", "type": "uint64"}, {"internalType": "uint256", "name": "packedBalances", "type": "uint256"}], "name": "execute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "bytes32", "name": "_id", "type": "bytes32"}], "name": "setContractAccountId32", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "stakeInfoBaseFeeRao", "type": "uint256"}, {"internalType": "uint256", "name": "limitPriceBaseFeeRao", "type": "uint256"}], "name": "setBaseFeesRao", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [], "name": "contractAccountId32", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
 ]
 

@@ -5,7 +5,7 @@ One-shot: withdraw from existing contract, then compile, deploy, add proxy, and 
 Steps:
   1. Withdraw full contract balance to WITHDRAW_COLDKEY (if deployment.json exists and contract has balance)
   2. Compile smart contract (npm run compile)
-  3. Deploy smart contract (python scripts/deploy.py; includes setContractAccountId32)
+  3. Deploy smart contract (python scripts/deploy.py; includes setContractAccountId32 and setBaseFeesRao)
   4. Remove all existing proxies for delegate wallets, then add contract's SS58 as proxy (Any)
   5. Transfer 1.1 TAO from delegate_1 to contract SS58 (chain transfer)
 
@@ -109,7 +109,7 @@ def step_compile() -> None:
 
 
 def step_deploy() -> str:
-    """Run deploy.py (deploy + setContractAccountId32 for execute() packed params)."""
+    """Run deploy.py (deploy + setContractAccountId32 + setBaseFeesRao for execute() packed params)."""
     print("[3/5] Deploying smart contract...")
     r = subprocess.run(
         [sys.executable, os.path.join(PROJECT_ROOT, "scripts", "deploy.py")],
