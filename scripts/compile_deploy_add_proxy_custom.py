@@ -26,14 +26,13 @@ import sys
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(PROJECT_ROOT)
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
-except ImportError:
-    pass
 
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+from dotenv import load_dotenv
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+
 from web3 import Web3
 from eth_account import Account
 from evm import h160_to_ss58
@@ -125,10 +124,8 @@ def step_deploy() -> str:
     return contract_address
 
 
-def step_add_proxy(contract_address: str) -> None:
+def step_add_proxy(contract_ss58: str) -> None:
     print("[4/5] Adding contract as proxy (Any) for delegate wallets...")
-    contract_ss58 = h160_to_ss58(contract_address)
-    print(f"      Contract EVM:  {contract_address}")
     print(f"      Contract SS58: {contract_ss58}")
 
     import bittensor as bt
@@ -192,8 +189,9 @@ def main():
     step_withdraw_all()
     step_compile()
     contract_address = step_deploy()
+
     contract_ss58 = h160_to_ss58(contract_address)
-    step_add_proxy(contract_address)
+    step_add_proxy(contract_ss58)
     step_transfer_to_contract(contract_ss58)
     print("All steps completed.")
 

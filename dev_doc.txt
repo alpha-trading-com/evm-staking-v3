@@ -13,7 +13,7 @@ python3 scripts/interact.py stake \
   --netuid 64 \
   --amount 0.6
 
-python3 scripts/interact.py removeStake --hotkey 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21 --netuid 65 --amount 216.57
+python3 scripts/interact.py removeStake --hotkey 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21 --netuid 64 --amount 11.27
 
 
 
