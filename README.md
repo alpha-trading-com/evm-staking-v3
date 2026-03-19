@@ -32,7 +32,8 @@ Create a `.env` file in the project root. Required and optional variables:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `PRIVATE_KEY` | Yes | EVM private key (hex, no 0x) used to deploy and as contract owner |
+| `PRIVATE_KEY` | Yes | EVM private key (hex, no 0x) used to deploy and as contract owner; also used by the UI for stake/unstake/withdraw |
+| `EXECUTOR_PRIVATE_KEY` | No | Optional separate key for auto_execute; avoids nonce conflict with owner (see Executor below) |
 | `RPC_URL` | No | EVM RPC (default: `https://test.finney.opentensor.ai/`) |
 | `BITTENSOR_NETWORK` | No | Bittensor network for auto_execute (default: `finney`) |
 
@@ -81,17 +82,47 @@ python3 scripts/compile_deploy_add_proxy.py --skip-compile --skip-deploy
 
 This starts the FastAPI app with uvicorn on **port 9000** (see `run_server.sh`). Open http://localhost:9000 (or http://&lt;host&gt;:9000). The UI uses HTTP Basic auth; credentials are configured in `app/core/config.py` (e.g. `ADMIN_HASH` for user `admin`).
 
-## 6. (Optional) Run auto-execute
+## 6. (Optional) Executor and auto-execute
 
-For automatic `execute()` on each new Bittensor block (requires contract ownership and delegate balances ≤ 2 TAO):
+The contract allows an optional **executor** address. When set, that wallet (instead of the owner) can call `execute()`, so the owner can use the same chain for stake/unstake/withdraw from the UI without nonce conflicts with the auto-execute loop.
+
+### 6.1 Set the executor (owner only, one-time)
+
+As the contract owner, set the executor to the wallet you will use for auto-execute:
+
+```bash
+# Set executor to the address that will run auto_execute (use that wallet’s address or its private key)
+export EXECUTOR_ADDRESS=0x...   # executor wallet address
+python3 scripts/set_executor.py
+```
+
+Or derive the address from the executor key (do not put `EXECUTOR_PRIVATE_KEY` in the same env as the script; use a separate terminal or unset after):
+
+```bash
+export EXECUTOR_PRIVATE_KEY=0x...   # executor wallet key
+python3 scripts/set_executor.py
+```
+
+To clear the executor (only the owner can call `execute()` again):
+
+```bash
+python3 scripts/set_executor.py --clear
+```
+
+### 6.2 Run auto-execute
+
+For automatic `execute()` on each new Bittensor block (delegate balances must be ≤ 2 TAO):
 
 ```bash
 python3 bt_utils/auto_execute.py
 ```
 
-Uses `PRIVATE_KEY`, `RPC_URL`, and `BITTENSOR_NETWORK` from `.env`. Run from project root so `deployment.json` and imports resolve.
+- If **`EXECUTOR_PRIVATE_KEY`** is set in `.env`, that wallet is used; it must be the contract’s current executor (set in 6.1).
+- If not set, **`PRIVATE_KEY`** (owner) is used.
 
-**While this script is running**, you can use **fast stake**, **fast stake limit**, and **fast unstake** (via the UI or API). Those operations send stake/unstake intent via MevShield; the auto-execute loop picks up delegate balances each block and calls the contract’s `execute()`, which applies the staking/unstaking on chain.
+Run from project root so `deployment.json` and imports resolve. The UI can turn execution on/off via the **Executor** toggle; when ON, the script sends `execute()` each block when enabled.
+
+**While this script is running**, you can use **fast stake**, **fast stake limit**, and **fast unstake** (via the UI or API). Those operations send stake/unstake intent via MevShield; the auto-execute loop calls the contract’s `execute()`, which applies the staking/unstaking on chain.
 
 ## Summary
 
@@ -99,4 +130,4 @@ Uses `PRIVATE_KEY`, `RPC_URL`, and `BITTENSOR_NETWORK` from `.env`. Run from pro
 2. Set `STAKE_INFO_DELEGATE` and `LIMIT_PRICE_DELEGATE` in `contracts/StakeWrapConstants.sol`; set `WITHDRAW_COLDKEY` to a separate coldkey you keep safe. Keep delegate balances ≤ 2 TAO.
 3. Run `python3 scripts/compile_deploy_add_proxy.py` (after `npm install` once)—it compiles, deploys, and adds the contract as proxy for the delegate wallets.
 4. `./run_server.sh` for the UI (port 9000).
-5. Optionally run `bt_utils/auto_execute.py` for per-block execute.
+5. Optionally set an executor with `python3 scripts/set_executor.py` (owner only), then run `bt_utils/auto_execute.py` for per-block execute (use `EXECUTOR_PRIVATE_KEY` in `.env` to avoid nonce conflict with the owner UI).
