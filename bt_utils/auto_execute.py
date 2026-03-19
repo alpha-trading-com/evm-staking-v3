@@ -69,11 +69,19 @@ def main():
     load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    private_key = os.getenv("PRIVATE_KEY")
+    executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
+    owner_key = os.getenv("PRIVATE_KEY")
     network = os.getenv("BITTENSOR_NETWORK", "finney")
 
-    if not private_key:
-        raise SystemExit("PRIVATE_KEY environment variable is required")
+    # Prefer executor wallet to avoid nonce conflict with owner (stake/unstake/withdraw from UI).
+    if executor_key:
+        private_key = executor_key
+        use_executor_wallet = True
+    elif owner_key:
+        private_key = owner_key
+        use_executor_wallet = False
+    else:
+        raise SystemExit("Set EXECUTOR_PRIVATE_KEY (recommended) or PRIVATE_KEY for the execute() signer")
 
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     if not w3.is_connected():
@@ -84,9 +92,18 @@ def main():
     contract = get_contract(w3, contract_address)
     account = Account.from_key(private_key)
 
-    owner = contract.functions.owner().call()
-    if owner.lower() != account.address.lower():
-        raise SystemExit(f"Account {account.address} is not contract owner {owner}")
+    if use_executor_wallet:
+        executor_addr = contract.functions.executor().call()
+        if not executor_addr or executor_addr == "0x0000000000000000000000000000000000000000":
+            raise SystemExit("Contract has no executor set. Owner must call setExecutor(executorAddress) first.")
+        if executor_addr.lower() != account.address.lower():
+            raise SystemExit(f"Account {account.address} is not contract executor {executor_addr}")
+        print("Using executor wallet (EXECUTOR_PRIVATE_KEY)")
+    else:
+        owner = contract.functions.owner().call()
+        if owner.lower() != account.address.lower():
+            raise SystemExit(f"Account {account.address} is not contract owner {owner}")
+        print("Using owner wallet (PRIVATE_KEY)")
 
     contract_addr_b32 = contract_address_bytes32(contract_address)
     print(f"Contract: {contract_address}")

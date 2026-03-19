@@ -12,6 +12,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract StakeWrap is StakeWrapConstants {
     address public owner;
+    /// If set, this address may call execute() so owner can use the same chain for other txs without nonce conflict.
+    address public executor;
     uint64 private _lastExecBlock;
 
     constructor() {
@@ -23,6 +25,16 @@ contract StakeWrap is StakeWrapConstants {
         _;
     }
 
+    modifier onlyOwnerOrExecutor() {
+        require(msg.sender == owner || (executor != address(0) && msg.sender == executor), "Only owner or executor");
+        _;
+    }
+
+    /// Owner sets the executor (e.g. a separate wallet for auto-execute). Pass address(0) to disable.
+    function setExecutor(address _executor) external onlyOwner {
+        executor = _executor;
+    }
+
     receive() external payable {}
 
     function execute(
@@ -32,7 +44,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 originalLimitPriceDelegateBalance,
         uint256 originalStakeInfoBaseFee,
         uint256 originalLimitPriceBaseFee
-    ) external onlyOwner {
+    ) external onlyOwnerOrExecutor {
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
         if (block.number != execBlock) revert("Expired");
@@ -119,7 +131,7 @@ contract StakeWrap is StakeWrapConstants {
      * @dev Uses balance transfer precompile at 0x800. Destination = allowedProxiedAccount. Amount in wei.
      * @param amount Amount to transfer in wei
      */
-    function transferToDelegate(uint256 amount, bytes32 delegateAddress) internal onlyOwner {
+    function transferToDelegate(uint256 amount, bytes32 delegateAddress) internal {
         require(amount > 0, "Amount must be greater than 0");
         require(address(this).balance >= amount, "Insufficient balance");
         // solhint-disable-next-line avoid-low-level-calls
@@ -136,7 +148,7 @@ contract StakeWrap is StakeWrapConstants {
      * @param delegateAddress 32-byte AccountId32 of the proxied account (source of TAO); must be STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE.
      * @param contractAddress 32-byte AccountId32 destination of the transfer (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
-    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal onlyOwner {
+    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal {
         require(delegateAddress == STAKE_INFO_DELEGATE || delegateAddress == LIMIT_PRICE_DELEGATE, "Invalid delegate address");
         bytes memory payload = new bytes(36);
         payload[0] = bytes1(BALANCES_PALLET_INDEX);
