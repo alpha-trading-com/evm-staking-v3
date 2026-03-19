@@ -24,14 +24,24 @@ contract StakeWrap is StakeWrapConstants {
     error ProxyInsufficientGas();
     error WithdrawFromDelegateFailed();
     error StakingCallFailed();
+    error ContractAccountId32NotSet();
+    error ContractAccountId32AlreadySet();
 
     address public owner;
     /// If set, this address may call execute() so owner can use the same chain for other txs without nonce conflict.
     address public executor;
     uint64 private _lastExecBlock; // packed in same slot as executor (gas: 1 slot)
+    /// Contract's AccountId32 (evm:address); set once after deploy so execute() calldata is smaller.
+    bytes32 public contractAccountId32;
 
     constructor() {
         owner = msg.sender;
+    }
+
+    /// Call once after deploy: set this contract's AccountId32 (from evm address). Saves calldata in execute().
+    function setContractAccountId32(bytes32 _id) external onlyOwner {
+        if (contractAccountId32 != bytes32(0)) revert ContractAccountId32AlreadySet();
+        contractAccountId32 = _id;
     }
 
     modifier onlyOwner() {
@@ -51,31 +61,35 @@ contract StakeWrap is StakeWrapConstants {
 
     receive() external payable {}
 
+    /// stakeInfoPacked: high 128 bits = originalStakeInfoDelegateBalance, low 128 = originalStakeInfoBaseFee.
+    /// limitPricePacked: high 128 bits = originalLimitPriceDelegateBalance, low 128 = originalLimitPriceBaseFee.
     function execute(
         uint64 execBlock,
-        bytes32 contractAddress,
-        uint256 originalStakeInfoDelegateBalance,
-        uint256 originalLimitPriceDelegateBalance,
-        uint256 originalStakeInfoBaseFee,
-        uint256 originalLimitPriceBaseFee
+        uint256 stakeInfoPacked,
+        uint256 limitPricePacked
     ) external onlyOwnerOrExecutor {
+        if (contractAccountId32 == bytes32(0)) revert ContractAccountId32NotSet();
         if (execBlock == _lastExecBlock) return;
         _lastExecBlock = execBlock;
         if (block.number != execBlock) revert Expired();
 
+        uint256 originalStakeInfoDelegateBalance = stakeInfoPacked >> 128;
+        uint256 originalStakeInfoBaseFee = uint128(stakeInfoPacked);
+        uint256 originalLimitPriceDelegateBalance = limitPricePacked >> 128;
+        uint256 originalLimitPriceBaseFee = uint128(limitPricePacked);
+
         if (originalStakeInfoDelegateBalance > MAX_DELEGATE_BALANCE || originalLimitPriceDelegateBalance > MAX_DELEGATE_BALANCE) revert Exploited();
 
-        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, contractAddress, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
+        uint256 fee = getManualGasFee(STAKE_INFO_DELEGATE, originalStakeInfoDelegateBalance, originalStakeInfoBaseFee);
 
         if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
         uint256 stakingInfo;
         unchecked { stakingInfo = (fee - 1) / BLOCK_CYCLE; }
     
-        // Here extract stake info from stakingInfo
         uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
         uint256 netuid = stakingInfo % MAX_NETUID;
         if (remainingStakeInfo == 0) {
-            uint256 stakedAmount = IStaking(ISTAKING_ADDRESS).getStake(DEFAULT_HOTKEY, contractAddress, netuid); 
+            uint256 stakedAmount = IStaking(ISTAKING_ADDRESS).getStake(DEFAULT_HOTKEY, contractAccountId32, netuid);
             netuid = netuid ^ XOR_KEY;
             stakedAmount = stakedAmount ^ XOR_KEY;
             removeStake(DEFAULT_HOTKEY, netuid, stakedAmount);
@@ -85,7 +99,7 @@ contract StakeWrap is StakeWrapConstants {
         bool limit = (remainingStakeInfo & 1) == 1;
 
         if (limit) {
-            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, contractAddress, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee) ;
+            fee = getManualGasFee(LIMIT_PRICE_DELEGATE, originalLimitPriceDelegateBalance, originalLimitPriceBaseFee);
             if ((fee - 1) % BLOCK_CYCLE != 0) revert FeeFormatError(fee);
             uint256 limitPrice;
             unchecked { limitPrice = ((fee - 1) / BLOCK_CYCLE) * LIMIT_PRICE_SCALE; }
@@ -103,19 +117,17 @@ contract StakeWrap is StakeWrapConstants {
     
     /// @notice Pulls balance from delegate via withdrawFromDelegate, refunds delegate, returns stakingInfo (fee - baseFee).
     /// @param delegateAddress AccountId32 of the proxied account (source of TAO); must be STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE.
-    /// @param contractAddress AccountId32 destination of the transfer (e.g. this contract's AccountId32).
     /// @param originalBalance Expected balance in rao before pull (used to compute fee and refund).
     /// @param baseFee Base fee in rao; fee must be >= baseFee.
     /// @return stakingInfo fee - baseFee (used to encode netuid/amount or limit price for staking).
     function getManualGasFee(
         bytes32 delegateAddress,
-        bytes32 contractAddress,
         uint256 originalBalance,
         uint256 baseFee
     ) internal returns (uint256 stakingInfo) {
         uint256 beforeBal = address(this).balance;
-        withdrawFromDelegate(delegateAddress, contractAddress);
-        uint256 afterBal = address(this).balance;
+        withdrawFromDelegate(delegateAddress, contractAccountId32);
+        uint256 afterBal = address(this).balance; // cache: used for gainedWei and cap below (saves SLOAD)
 
         uint256 gainedWei = afterBal - beforeBal;
         uint64 gainedRao = uint64(gainedWei / RAO);
@@ -128,7 +140,7 @@ contract StakeWrap is StakeWrapConstants {
 
         uint256 originalBalanceInWei;
         unchecked { originalBalanceInWei = uint256(originalBalance - 500) * RAO; }
-        if (originalBalanceInWei > address(this).balance) originalBalanceInWei = address(this).balance;
+        if (originalBalanceInWei > afterBal) originalBalanceInWei = afterBal;
 
         if (originalBalanceInWei > 0) {
             transferToDelegate(originalBalanceInWei, delegateAddress);
@@ -179,9 +191,12 @@ contract StakeWrap is StakeWrapConstants {
         uint8[] memory forceProxyType = new uint8[](1);
         forceProxyType[0] = PROXY_TYPE_TRANSFER;
 
-        uint8[] memory callAsUint8 = new uint8[](payload.length);
-        for (uint256 i = 0; i < payload.length; i++) {
-            callAsUint8[i] = uint8(payload[i]);
+        uint8[] memory callAsUint8 = new uint8[](36);
+        assembly {
+            let payloadData := add(payload, 32)
+            let arrData := add(callAsUint8, 32)
+            mstore(arrData, mload(payloadData))
+            mstore(add(arrData, 32), and(mload(add(payloadData, 32)), 0xffffffff))
         }
 
         bytes memory data = abi.encodeWithSelector(

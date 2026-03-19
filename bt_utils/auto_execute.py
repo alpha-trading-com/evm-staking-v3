@@ -24,7 +24,8 @@ ROOT_DIR = os.path.dirname(_THIS_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from evm import contract_address_bytes32, get_contract, load_deployment
+from evm import get_contract, load_deployment
+from evm.stake_wrap import pack_execute_params
 from bt_utils.constants import (
     STAKE_INFO_DELEGATE,
     LIMIT_PRICE_DELEGATE,
@@ -105,9 +106,7 @@ def main():
             raise SystemExit(f"Account {account.address} is not contract owner {owner}")
         print("Using owner wallet (PRIVATE_KEY)")
 
-    contract_addr_b32 = contract_address_bytes32(contract_address)
     print(f"Contract: {contract_address}")
-    print(f"Contract AccountId32: 0x{contract_addr_b32.hex()}")
     print(f"Delegates: STAKE_INFO={STAKE_INFO_DELEGATE}, LIMIT_PRICE={LIMIT_PRICE_DELEGATE}")
 
 
@@ -141,14 +140,14 @@ def main():
                     # (otherwise we often mine in current+1 and revert Expired())
                     exec_block = current + 1
                     print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
-
+                    stake_info_packed, limit_price_packed = pack_execute_params(
+                        stake_info_balance, stake_info_base_fee,
+                        limit_price_balance, limit_price_base_fee,
+                    )
                     tx = contract.functions.execute(
                         exec_block,
-                        contract_addr_b32,
-                        stake_info_balance,
-                        limit_price_balance,
-                        stake_info_base_fee,
-                        limit_price_base_fee,
+                        stake_info_packed,
+                        limit_price_packed,
                     ).build_transaction({
                         "from": account.address,
                         "nonce": nonce,
@@ -169,13 +168,14 @@ def main():
                 limit_price_balance = clamp_balance(chain_balances[1])
                 print(f"Base fees (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
                 exec_block = current + 2
+                stake_info_packed, limit_price_packed = pack_execute_params(
+                    stake_info_balance, stake_info_base_fee,
+                    limit_price_balance, limit_price_base_fee,
+                )
                 tx = contract.functions.execute(
                     exec_block,
-                    contract_addr_b32,
-                    stake_info_balance,
-                    limit_price_balance,
-                    stake_info_base_fee,
-                    limit_price_base_fee,
+                    stake_info_packed,
+                    limit_price_packed,
                 ).build_transaction({
                     "from": account.address,
                     "nonce": nonce,

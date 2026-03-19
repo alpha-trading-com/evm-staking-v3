@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """
 Deploy the StakeWrap contract to the blockchain.
+After deploy, calls setContractAccountId32() so execute() can use packed params (no contractAddress in calldata).
 """
 
 import os
+import sys
 import json
 from web3 import Web3
 from eth_account import Account
 from dotenv import load_dotenv
+
+# Project root for evm imports
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 load_dotenv()
 
@@ -113,9 +120,27 @@ def main():
     
     with open('deployment.json', 'w') as f:
         json.dump(deployment_info, f, indent=2)
-    
+
     print(f"\nDeployment info saved to deployment.json")
     print(f"Contract Address: {contract_address}")
+
+    # Set contract's AccountId32 (required for execute(); saves calldata every block)
+    from evm import contract_address_bytes32
+    contract_account_id32 = contract_address_bytes32(contract_address)
+    deployed = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
+    set_tx = deployed.functions.setContractAccountId32(contract_account_id32).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 100000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed_set = account.sign_transaction(set_tx)
+    set_hash = w3.eth.send_raw_transaction(signed_set.raw_transaction)
+    print(f"Setting contractAccountId32... tx {set_hash.hex()}")
+    set_receipt = w3.eth.wait_for_transaction_receipt(set_hash)
+    if set_receipt["status"] != 1:
+        raise RuntimeError("setContractAccountId32 failed")
+    print("contractAccountId32 set.")
 
 
 if __name__ == '__main__':

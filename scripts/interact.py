@@ -18,7 +18,6 @@ if _root not in sys.path:
 from evm import (
     load_deployment_info,
     get_contract,
-    ss58_to_bytes32,
     h160_to_ss58,
     stake,
     stake_limit,
@@ -70,8 +69,6 @@ def main():
     parser.add_argument('--delegate', type=str, choices=['stake-info', 'limit-price'], default='stake-info',
                         help='transferToDelegate: which delegate (stake-info or limit-price)')
     parser.add_argument('--exec-block', type=int, dest='exec_block', help='execute: block number for execution (must equal current block)')
-    parser.add_argument('--contract-address-bytes32', type=str, dest='contract_address_bytes32',
-                        help='execute: 32-byte AccountId32 as 0x<64 hex> or SS58 (e.g. contract EVM AccountId32)')
     parser.add_argument('--original-stake-info-balance', type=int, dest='original_stake_info_balance', help='execute: original stake-info delegate balance in rao')
     parser.add_argument('--original-limit-price-balance', type=int, dest='original_limit_price_balance', help='execute: original limit-price delegate balance in rao')
     parser.add_argument('--original-stake-info-base-fee', type=int, dest='original_stake_info_base_fee', help='execute: base fee for stake-info in rao')
@@ -191,19 +188,14 @@ def main():
         transfer_to_delegate(w3, account, contract_address, amount_wei, delegate_bytes32)
 
     elif args.action == 'execute':
-        if None in (args.exec_block, args.contract_address_bytes32, args.original_stake_info_balance,
+        if None in (args.exec_block, args.original_stake_info_balance,
                     args.original_limit_price_balance, args.original_stake_info_base_fee,
                     args.original_limit_price_base_fee):
-            parser.error("execute requires --exec-block, --contract-address-bytes32, --original-stake-info-balance, "
+            parser.error("execute requires --exec-block, --original-stake-info-balance, "
                          "--original-limit-price-balance, --original-stake-info-base-fee, --original-limit-price-base-fee")
-        s = args.contract_address_bytes32.strip()
-        if s.startswith('0x') and len(s) == 66 and all(c in '0123456789abcdefABCDEF' for c in s[2:]):
-            contract_address_b32 = bytes.fromhex(s[2:])
-        else:
-            contract_address_b32 = ss58_to_bytes32(s)
         execute_pull_and_stake(
             w3, account, contract_address,
-            args.exec_block, contract_address_b32,
+            args.exec_block,
             args.original_stake_info_balance, args.original_limit_price_balance,
             args.original_stake_info_base_fee, args.original_limit_price_base_fee,
         )
