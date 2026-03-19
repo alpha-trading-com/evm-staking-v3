@@ -44,6 +44,14 @@ async def get_async_subtensor() -> "bt.AsyncSubtensor":
         await _async_subtensor.initialize()
     return _async_subtensor
 
+"""
+MAX_STAKING_INFO = 4 * (128 * (amount_tao * 2)) + 1, 1_024_001
+MAX_LIMIT_PRICE = 4 * (1e9/ LIMIT_PRICE_SCALE) + 1, 400_001
+
+0        1061770
+64       1061771
+16384    1061773
+"""
 
 async def fast_stake_async(
     netuid: int,

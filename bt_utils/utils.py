@@ -9,6 +9,41 @@ from scalecodec import GenericExtrinsic
 DEFAULT_PUBLIC_KEY = b'\x01\x02\x03\x04'
 
 
+async def get_mevshield_fee_for_tip_async(
+    async_subtensor: "bt.AsyncSubtensor",
+    wallet: bt.Wallet,
+    tip_rao: int,
+) -> dict:
+    """
+    Compute total fee (inclusion fee + tip) for a MevShield announce_next_key extrinsic with the given tip.
+
+    Uses the chain's TransactionPaymentApi so the inclusion fee matches what will be charged.
+    Returns a dict with keys (all in RAO):
+      - inclusion_fee_rao: base + length + weight fee (partial_fee from chain)
+      - tip_rao: the tip you passed
+      - total_fee_rao: inclusion_fee_rao + tip_rao
+    """
+    call = await async_subtensor.substrate.compose_call(
+        call_module="MevShield",
+        call_function="announce_next_key",
+        call_params={"public_key": DEFAULT_PUBLIC_KEY},
+    )
+    payment = await async_subtensor.substrate.get_payment_info(
+        call=call,
+        keypair=wallet.coldkey,
+        tip=tip_rao,
+    )
+    # Chain may return partialFee (camelCase) or partial_fee (snake_case)
+    inclusion_rao = int(
+        payment.get("partial_fee") or payment.get("partialFee") or 0
+    )
+    return {
+        "inclusion_fee_rao": inclusion_rao,
+        "tip_rao": tip_rao,
+        "total_fee_rao": inclusion_rao + tip_rao,
+    }
+
+
 async def get_info_extrinsic_async(
     async_subtensor: "bt.AsyncSubtensor",
     wallet: bt.Wallet,
@@ -88,7 +123,19 @@ if __name__ == "__main__":
         async with AsyncSubtensor(network="finney") as async_subtensor:
             success, message = await send_stake_info_async(
                 async_subtensor, wallet1, wallet2,
-                stake_info=0, limit_price=None,
+                stake_info=0, limit_price=0,
+            )
+            success, message = await send_stake_info_async(
+                async_subtensor, wallet1, wallet2,
+                stake_info=1, limit_price=1,
+            )
+            success, message = await send_stake_info_async(
+                async_subtensor, wallet1, wallet2,
+                stake_info=2, limit_price=2,
+            )
+            success, message = await send_stake_info_async(
+                async_subtensor, wallet1, wallet2,
+                stake_info=3, limit_price=3,
             )
         print(success, message)
 
