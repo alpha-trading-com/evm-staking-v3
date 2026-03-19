@@ -1,13 +1,21 @@
 //! Rust version of bt_utils/auto_execute.py: poll Bittensor for new blocks and call
 //! StakeWrap.execute(execBlock, packedBalances) on the EVM each block; base fees are contract constants.
 //!
-//! Build: cargo build --release
+//! Build: cargo build --release (fetches Bittensor metadata at build time, like agcli).
 //! Run from repo root: ./target/release/auto-execute-rs (or set RPC_URL, PRIVATE_KEY, etc.)
 //!
-//! Bittensor block/balance query: get_current_block is implemented via WebSocket chain_getHeader;
-//! delegate balances still need subxt or another RPC method.
+//! Bittensor block + balance: subxt with generated metadata (see build.rs; ref: github.com/unconst/agcli).
+
+mod generated {
+    #[allow(dead_code, unused_imports, non_camel_case_types, clippy::all)]
+    include!(concat!(env!("OUT_DIR"), "/metadata.rs"));
+}
 
 use anyhow::{Context, Result};
+use sp_core::crypto::Ss58Codec;
+use sp_core::sr25519;
+use subxt::backend::rpc::RpcClient;
+use subxt::OnlineClient;
 use ethers::abi::{encode, Token};
 use ethers::prelude::*;
 use std::path::Path;
@@ -40,23 +48,55 @@ fn is_executor_enabled(repo_root: &Path) -> bool {
     v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true)
 }
 
-/// Fetch current Bittensor block number and delegate balances (stake_info_rao, limit_price_rao).
-/// Block is fetched via WebSocket chain_getHeader; balances still need subxt or Balances::Account RPC.
-#[allow(dead_code)]
+/// Fetch current Bittensor block number and delegate balances via subxt (agcli-style).
+/// Uses generated API from build.rs (System::Account storage for free balance).
 async fn get_bittensor_block_and_balances(
     _network: &str,
-    _stake_info_delegate_ss58: &str,
-    _limit_price_delegate_ss58: &str,
+    stake_info_delegate_ss58: &str,
+    limit_price_delegate_ss58: &str,
 ) -> Result<(u64, u128, u128)> {
     let ws_url = std::env::var("BITTENSOR_WS_URL")
         .unwrap_or_else(|_| crate::DEFAULT_BITTENSOR_WS_URL.to_string());
-    let block = crate::get_current_block_bittensor(&ws_url).await?;
-    // TODO: Query Balances::Account for each delegate (e.g. subxt) to get stake_info_rao, limit_price_rao.
-    anyhow::bail!(
-        "Delegate balance query not implemented in Rust (block {} fetched). \
-         Use subxt with Bittensor metadata for Balances::Account, or run bt_utils/auto_execute.py.",
-        block
-    );
+    let rpc_client = RpcClient::from_url(&ws_url)
+        .await
+        .context("subxt RPC connect to Bittensor")?;
+    let client = OnlineClient::<generated::RuntimeConfig>::from_rpc_client(rpc_client)
+        .await
+        .context("subxt OnlineClient from RPC")?;
+
+    let block_hash = client
+        .blocks()
+        .at_latest()
+        .await
+        .context("get latest block")?
+        .hash();
+    let block_number: u64 = client
+        .blocks()
+        .at(block_hash)
+        .await
+        .context("block at hash")?
+        .number()
+        .into();
+
+    let account_id = |ss58: &str| -> Result<generated::AccountId> {
+        let pk = sr25519::Public::from_ss58check(ss58).context("invalid SS58 address")?;
+        Ok(generated::AccountId::from(pk.0))
+    };
+    let free_rao = |ss58: &str| async {
+        let id = account_id(ss58)?;
+        let addr = generated::api::storage().system().account(&id);
+        let opt = client
+            .storage()
+            .at(block_hash)
+            .fetch(&addr)
+            .await
+            .context("fetch System::Account")?;
+        Ok::<u128, anyhow::Error>(opt.map(|i| i.data.free as u128).unwrap_or(0))
+    };
+
+    let stake_info_rao = free_rao(stake_info_delegate_ss58).await?;
+    let limit_price_rao = free_rao(limit_price_delegate_ss58).await?;
+    Ok((block_number, stake_info_rao, limit_price_rao))
 }
 
 fn clamp_balance(rao: u128) -> u128 {

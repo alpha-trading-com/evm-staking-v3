@@ -6,12 +6,12 @@ Rust reimplementation of `bt_utils/auto_execute.py`: on each new Bittensor block
 
 ## Status
 
-- **EVM side:** Implemented (ethers-rs: connect, build execute calldata, sign, send). Uses same env as Python: `RPC_URL`, `EXECUTOR_PRIVATE_KEY` or `PRIVATE_KEY`, `EXECUTOR_GAS_LIMIT`, `EXECUTOR_GAS_PRICE_MULTIPLIER`, `deployment.json`.
-- **Bittensor side:** **Block only.** Current block is fetched via WebSocket `chain_getHeader` (same as Python). Delegate balances are not implemented; `get_bittensor_block_and_balances()` fetches the block then returns an error. You can:
-  1. **Implement it in Rust** using [subxt](https://docs.rs/subxt) with Bittensor/Finney metadata to query current block and `Balances::Account` for the two delegate SS58 addresses, or use raw JSON-RPC (`chain_getBlock`, and balance storage keys).
-  2. **Keep using the Python script** (`python3 bt_utils/auto_execute.py`) which already has Bittensor support via the `bittensor` crate.
+- **EVM side:** Implemented (ethers-rs: connect, build execute calldata, sign, send). Same env as Python: `RPC_URL`, `EXECUTOR_PRIVATE_KEY` or `PRIVATE_KEY`, `EXECUTOR_GAS_LIMIT`, `EXECUTOR_GAS_PRICE_MULTIPLIER`, `deployment.json`.
+- **Bittensor side:** Implemented via [subxt](https://docs.rs/subxt) with generated runtime API (same approach as [agcli](https://github.com/unconst/agcli/tree/main/src)). At **build time** (`build.rs`) the crate fetches Bittensor/Finney metadata and generates type-safe storage access; at runtime we query current block and `System::Account` (free balance) for the two delegate SS58 addresses. The `get_block` binary still uses a raw WebSocket `chain_getHeader` call (no subxt) for a quick block-only test.
 
 ## Build and run
+
+**First build** fetches Bittensor chain metadata (requires network). Set `METADATA_CHAIN_ENDPOINT` to use a different WS URL, or `SKIP_METADATA_FETCH=1` to reuse cached metadata.
 
 From the **repo root** (so `deployment.json` and `.env` are found):
 
@@ -38,8 +38,8 @@ Same as the Python script:
 
 - `RPC_URL` – EVM RPC (contract chain).
 - `EXECUTOR_PRIVATE_KEY` or `PRIVATE_KEY` – signer for `execute()`.
-- `BITTENSOR_NETWORK` – e.g. `finney` (used once balance query is implemented).
-- `BITTENSOR_WS_URL` – optional; WebSocket URL for Bittensor (default: Finney entrypoint). Used for `chain_getHeader` block fetch.
+- `BITTENSOR_NETWORK` – e.g. `finney` (informational).
+- `BITTENSOR_WS_URL` – optional; WebSocket URL for Bittensor (default: Finney entrypoint). Used for subxt connection and for `get_block` binary (`chain_getHeader`).
 - `EXECUTOR_GAS_LIMIT`, `EXECUTOR_GAS_PRICE_MULTIPLIER` – optional.
 - `executor_enabled.json` in repo root – read each block; if `enabled: false`, do not send the tx.
 
