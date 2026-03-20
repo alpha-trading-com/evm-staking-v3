@@ -24,9 +24,9 @@ async def get_mevshield_fee_for_tip_async(
       - total_fee_rao: inclusion_fee_rao + tip_rao
     """
     call = await async_subtensor.substrate.compose_call(
-        call_module="MevShield",
-        call_function="announce_next_key",
-        call_params={"public_key": DEFAULT_PUBLIC_KEY},
+        call_module="System",
+        call_function="set_heap_pages",
+        call_params={"pages": 0},
     )
     payment = await async_subtensor.substrate.get_payment_info(
         call=call,

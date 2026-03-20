@@ -40,3 +40,7 @@ if (!success && returnData.length > 0) {
 So **0x2f9548ac is the error selector from the IStaking precompile** (or the chain’s staking logic), not from StakeWrap. The precompile reverted and that revert was passed through.
 
 To interpret it you’d need the precompile/chain’s error definitions (e.g. Bittensor staking precompile ABI or docs).
+
+## `Failed 0x95d3b896`
+
+**0x95d3b896 is not a StakeWrap error** (StakeWrap’s NoOperation() is 0xd3b896be). So this selector comes from a precompile or other contract that StakeWrap calls (e.g. IStaking, Proxy, or balance transfer). Check which function you called and look up 0x95d3b896 in that precompile’s error definitions.
