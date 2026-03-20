@@ -99,8 +99,9 @@ async def fast_unstake_async(
 if __name__ == "__main__":
     async def main():
         #return await fast_unstake_async(127)
-        return await fast_stake_async(127, 1 * 10**9, 0.004 * 10**9)
+        # return await fast_stake_async(127, 1 * 10**9)
         # return await fast_stake_async(128, 1000 * 10**9)
+        return await fast_stake_async(127, 1 * 10**9, 0.008 * 10**9)
 
     success, message = asyncio.run(main())
     print(success, message)

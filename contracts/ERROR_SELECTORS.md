@@ -44,3 +44,7 @@ To interpret it you’d need the precompile/chain’s error definitions (e.g. Bi
 ## `Failed 0x95d3b896`
 
 **0x95d3b896 is not a StakeWrap error** (StakeWrap’s NoOperation() is 0xd3b896be). So this selector comes from a precompile or other contract that StakeWrap calls (e.g. IStaking, Proxy, or balance transfer). Check which function you called and look up 0x95d3b896 in that precompile’s error definitions.
+
+## `Failed 0xe6a24066`
+
+**0xe6a24066 is not a StakeWrap error** (StakeWrap’s StakingCallFailed() is 0xa240668b). This selector comes from a precompile or other contract that StakeWrap calls. Look up 0xe6a24066 in that precompile’s error definitions.
