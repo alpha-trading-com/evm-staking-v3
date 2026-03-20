@@ -20,7 +20,7 @@ contract StakeWrapConstants {
     uint256 internal constant RAO = 1e9;
     uint256 internal constant RESERVED_GAS = 0x927c0; // ~600k
     uint256 internal constant MAX_FEE = RAO / 1000 * 3; // 0.003 TAO
-    uint256 internal constant MAX_NETUID = 128; // 128 subnets
+    uint256 internal constant MAX_NETUID = 129; // 129 subnets
     uint256 internal constant MAX_STAKE_AMOUNT = 1000; // 1000 TAO
     uint256 internal constant MAX_DELEGATE_BALANCE = RAO * 2; // 2 TAO
     uint256 internal constant LIMIT_PRICE_SCALE = 10000;
