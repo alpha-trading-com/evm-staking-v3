@@ -1,18 +1,8 @@
 """Stake/unstake amount resolution and EVM stake calls. Depends on subtensor for chain state."""
-import bittensor as bt
-
-from app.config import get_coldkey_ss58
+from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, receipt_to_dict, run_quiet
 from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
-
-_subtensor_instance = None
-
-def _subtensor() -> bt.Subtensor:
-    global _subtensor_instance
-    if _subtensor_instance is None:
-        _subtensor_instance = bt.Subtensor(network="finney")
-    return _subtensor_instance
 
 
 def resolve_remove_stake_amount(
@@ -20,9 +10,10 @@ def resolve_remove_stake_amount(
 ) -> int:
     """Convert remove_stake amount (None = all, 0<x<1 = fraction) to alpha rao."""
     coldkey_ss58 = get_coldkey_ss58()
-    subtensor = _subtensor()
+    subtensor = get_subtensor()
     if amount is None:
-        return 0
+        stake_balance = subtensor.get_stake(coldkey_ss58=coldkey_ss58, hotkey_ss58=hotkey, netuid=netuid)
+        return stake_balance.rao - 1
     if 0 < amount < 1:
         stake_balance = subtensor.get_stake(coldkey_ss58=coldkey_ss58, hotkey_ss58=hotkey, netuid=netuid)
         return int(amount * stake_balance.rao)
@@ -34,7 +25,7 @@ def resolve_remove_stake_limit_amounts(
 ) -> tuple[int, float]:
     """Return (amount_alpha_rao, amount_tao) for remove_stake_limit."""
     coldkey_ss58 = get_coldkey_ss58()
-    subtensor = _subtensor()
+    subtensor = get_subtensor()
     if amount is None:
         stake_balance = subtensor.get_stake(coldkey_ss58=coldkey_ss58, hotkey_ss58=hotkey, netuid=netuid)
         return stake_balance.rao - 1, stake_balance.tao
@@ -49,7 +40,7 @@ def resolve_move_stake_amount(
 ) -> int:
     """Convert move_stake amount (None = all, 0<x<1 = fraction) to rao."""
     coldkey_ss58 = get_coldkey_ss58()
-    subtensor = _subtensor()
+    subtensor = get_subtensor()
     if amount_tao is None:
         stake_balance = subtensor.get_stake(
             coldkey_ss58=coldkey_ss58, hotkey_ss58=origin_hotkey, netuid=origin_netuid
@@ -73,7 +64,7 @@ def do_stake_limit(
     hotkey: str, netuid: int, amount_rao: int,
     rate_tolerance: float, use_min_tolerance: bool, allow_partial: bool,
 ) -> dict:
-    subtensor = _subtensor()
+    subtensor = get_subtensor()
     limit_price = int(calculate_stake_limit_price(
         tao_amount=amount_rao / 10**9,
         netuid=netuid,
@@ -104,7 +95,7 @@ def do_remove_stake_limit(
     rate_tolerance: float, use_min_tolerance: bool, allow_partial: bool,
     amount_tao: float,
 ) -> dict:
-    subtensor = _subtensor()
+    subtensor = get_subtensor()
     limit_price = int(calculate_unstake_limit_price(
         tao_amount=amount_tao,
         netuid=netuid,

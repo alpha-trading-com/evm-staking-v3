@@ -9,7 +9,8 @@ Or: ./run_server.sh
 Structure (SOC):
   app/
     main.py         – bootstrap, create app, include routers
-    config.py       – REPO_ROOT, get_coldkey_ss58()
+    config.py       – REPO_ROOT
+    globals.py      – cached state (subtensor, coldkey_ss58, w3/contract)
     schemas.py      – Pydantic request bodies
     auth.py         – HTTP Basic auth
     services/       – business logic (evm, executor, stake, fast_stake, stake_info)

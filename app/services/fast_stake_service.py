@@ -9,13 +9,9 @@ from utils.tolerance import (
     get_stake_min_tolerance,
     get_unstake_min_tolerance,
 )
+from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, run_quiet, receipt_to_dict
 from evm import remove_stake
-
-
-def _subtensor():
-    import bittensor as bt
-    return bt.Subtensor(network="finney")
 
 
 async def do_fast_stake(netuid: int, amount_rao: int) -> Tuple[bool, str]:
@@ -35,7 +31,7 @@ async def do_fast_stake_limit(
         netuid=netuid,
         min_tolerance_staking=use_min_tolerance,
         default_rate_tolerance=rate_tolerance,
-        subtensor=_subtensor(),
+        subtensor=get_subtensor(),
     ))
     success, message = await fast_stake_async(netuid, amount_rao, limit_price)
     return success, message, limit_price if success else None
@@ -53,11 +49,9 @@ async def do_fast_stake_and_unstake(
     success, message = await fast_stake_async(netuid, amount_rao, limit_price)
     if not success:
         return False, message
-    w3, account, contract_address, _ = get_w3_account_contract()
+    w3, account, contract_address, contract = get_w3_account_contract()
     # Unstake all for this netuid (contract expects alpha amount; we pull max)
-    from app.config import get_coldkey_ss58
-    import bittensor as bt
-    subtensor = bt.Subtensor(network="finney")
+    subtensor = get_subtensor()
     stake_balance = subtensor.get_stake(
         coldkey_ss58=get_coldkey_ss58(),
         hotkey_ss58=DEFAULT_HOTKEY,
@@ -69,6 +63,7 @@ async def do_fast_stake_and_unstake(
         DEFAULT_HOTKEY,
         netuid,
         amount_alpha_rao,
+        contract=contract,
     )
     return True, f"Fast stake submitted; unstake tx {receipt_to_dict(receipt).get('transactionHash', '')}"
 
@@ -78,9 +73,9 @@ def calc_min_tolerance_stake(tao_amount: float, netuid: int) -> Tuple[int, float
     limit_price = int(calculate_stake_limit_price(
         tao_amount=tao_amount, netuid=netuid,
         min_tolerance_staking=True, default_rate_tolerance=0.0,
-        subtensor=_subtensor(),
+        subtensor=get_subtensor(),
     ))
-    rate = get_stake_min_tolerance(tao_amount, netuid, _subtensor())
+    rate = get_stake_min_tolerance(tao_amount, netuid, get_subtensor())
     return limit_price, rate
 
 
@@ -89,7 +84,7 @@ def calc_min_tolerance_unstake(tao_amount: float, netuid: int) -> Tuple[int, flo
     limit_price = int(calculate_unstake_limit_price(
         tao_amount=tao_amount, netuid=netuid,
         min_tolerance_unstaking=True, default_rate_tolerance=0.0,
-        subtensor=_subtensor(),
+        subtensor=get_subtensor(),
     ))
-    rate = get_unstake_min_tolerance(tao_amount, netuid, _subtensor())
+    rate = get_unstake_min_tolerance(tao_amount, netuid, get_subtensor())
     return limit_price, rate

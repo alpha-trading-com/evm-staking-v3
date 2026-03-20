@@ -1,14 +1,14 @@
 """Stake info for coldkey (stakes list, balances)."""
-from app.config import get_coldkey_ss58
+from bittensor import Balance
+
+from app.globals import get_coldkey_ss58, get_subtensor
+from utils.stake_list_v2 import get_amount_with_sim_swap
 
 
 def get_stake_info_response() -> dict:
     """Build /api/stake-info response with stakes, coldkey, balances."""
-    import bittensor as bt
-    from utils.stake_list_v2 import get_amount_with_sim_swap
-
     coldkey_ss58 = get_coldkey_ss58()
-    subtensor = bt.Subtensor(network="finney")
+    subtensor = get_subtensor()
     stake_infos = subtensor.get_stake_info_for_coldkey(coldkey_ss58=coldkey_ss58)
     subnet_infos = subtensor.all_subnets()
     balance = subtensor.get_balance(coldkey_ss58)
@@ -29,7 +29,6 @@ def get_stake_info_response() -> dict:
             "hotkey_ss58": info.hotkey_ss58,
         })
 
-    from bittensor import Balance
     total_staked_value_balance = Balance.from_tao(total_staked_value)
     total_value = total_staked_value_balance + balance
 
