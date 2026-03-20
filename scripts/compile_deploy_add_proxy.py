@@ -4,7 +4,7 @@ One-shot: compile contract, deploy contract, add contract's SS58 as proxy (Any) 
 
 Steps:
   1. Compile smart contract (npm run compile)
-  2. Deploy smart contract (python scripts/deploy.py) — requires PRIVATE_KEY, writes deployment.json, then calls setContractAccountId32 and setBaseFeesRao
+  2. Deploy smart contract (python scripts/deploy.py) — requires PRIVATE_KEY, writes deployment.json, then calls setContractAccountId32, setBaseFeesRao, and setExecutor (executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override)
   3. Remove all existing proxies for the proxy wallet, then add contract's SS58 as proxy (type Any) — may prompt for wallet password
 
 Requires:
