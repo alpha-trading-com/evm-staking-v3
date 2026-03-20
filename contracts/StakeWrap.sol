@@ -301,7 +301,7 @@ contract StakeWrap is StakeWrapConstants {
      * @param hotkey The hotkey public key (32 bytes)
      * @param netuid The subnet ID (XOR encoded)
      * @param limitPrice The price limit in rao per alpha (XOR encoded)
-     * @param amount The amount to unstake in alpha (NOT rao!) (XOR encoded)
+     * @param amount The amount to unstake in alpha (XOR encoded); 0 = unstake all
      * @param allowPartial Whether to allow partial unstake
      */
     function removeStakeLimit(
@@ -315,7 +315,13 @@ contract StakeWrap is StakeWrapConstants {
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
-        
+
+        if (amount == 0) {
+            if (contractAccountId32 == bytes32(0)) revert ContractAccountId32NotSet();
+            amount = IStaking(ISTAKING_ADDRESS).getStake(hotkey, contractAccountId32, netuid);
+            if (amount == 0) revert AmountZero();
+        }
+
         bytes memory data = abi.encodeWithSelector(
             IStaking.removeStakeLimit.selector,
             hotkey,
@@ -340,7 +346,7 @@ contract StakeWrap is StakeWrapConstants {
      * @notice Unstake alpha tokens (returns TAO)
      * @param hotkey The hotkey public key (32 bytes)
      * @param netuid The subnet ID (XOR encoded)
-     * @param amount The amount to unstake in alpha (NOT rao!) (XOR encoded)
+     * @param amount The amount to unstake in alpha (XOR encoded); 0 = unstake all
      */
     function removeStake(
         bytes32 hotkey,
@@ -350,7 +356,13 @@ contract StakeWrap is StakeWrapConstants {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
-        
+
+        if (amount == 0) {
+            if (contractAccountId32 == bytes32(0)) revert ContractAccountId32NotSet();
+            amount = IStaking(ISTAKING_ADDRESS).getStake(hotkey, contractAccountId32, netuid);
+            if (amount == 0) revert AmountZero();
+        }
+
         bytes memory data = abi.encodeWithSelector(
             IStaking.removeStake.selector,
             hotkey,

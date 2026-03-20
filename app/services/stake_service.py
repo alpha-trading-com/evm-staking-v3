@@ -18,8 +18,7 @@ def resolve_remove_stake_amount(
     coldkey_ss58 = get_coldkey_ss58()
     subtensor = _subtensor()
     if amount is None:
-        stake_balance = subtensor.get_stake(coldkey_ss58=coldkey_ss58, hotkey_ss58=hotkey, netuid=netuid)
-        return stake_balance.rao - 1
+        return 0
     if 0 < amount < 1:
         stake_balance = subtensor.get_stake(coldkey_ss58=coldkey_ss58, hotkey_ss58=hotkey, netuid=netuid)
         return int(amount * stake_balance.rao)
