@@ -21,6 +21,8 @@ import time
 
 from web3 import Web3
 from eth_account import Account
+from dotenv import load_dotenv
+from async_substrate_interface.sync_substrate import SubstrateInterface
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(_THIS_DIR)
@@ -37,10 +39,23 @@ from bt_utils.constants import (
 
 DEFAULT_BITTENSOR_WS_URL = "wss://entrypoint-finney.opentensor.ai:443"
 
+BLOCK_DATA_FETCH_PAYLOAD = json.dumps({
+    "jsonrpc": "2.0",
+    "method": "chain_getHeader",
+    "params": [None],
+    "id": 0,
+})
 
 def get_current_block(substrate) -> int:
-    """Current Bittensor block number (uses substrate's chain_getHeader)."""
-    return substrate.get_block_number(None)
+    """Current Bittensor block number via direct WS chain_getHeader (fast)."""
+    ws = substrate.ws
+    ws.send(BLOCK_DATA_FETCH_PAYLOAD)
+    raw = ws.recv()
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8")
+    response = json.loads(raw)
+    num = response["result"]["number"]
+    return int(num, 0)  # 0 = auto (hex or decimal)
 
 
 def _get_balance_rao(substrate, ss58: str) -> int:
@@ -87,8 +102,6 @@ def is_executor_enabled() -> bool:
 
 
 def main():
-    from dotenv import load_dotenv
-    from async_substrate_interface.sync_substrate import SubstrateInterface
 
     load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
@@ -139,6 +152,12 @@ def main():
         raise SystemExit(f"Failed to connect to Bittensor WS {ws_url}: {e}")
 
     last_block = get_current_block(substrate)
+    print(last_block)
+    while True:
+        current = get_current_block(substrate)
+        print(current)
+        time.sleep(1)
+    return
     chain_balances = get_delegate_balances_from_chain(substrate)
     stake_info_balance = chain_balances[0]
     limit_price_balance = chain_balances[1]
@@ -150,6 +169,7 @@ def main():
     nonce = w3.eth.get_transaction_count(account.address)
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
+    print(last_block)
     while True:
         try:
             current = get_current_block(substrate)
