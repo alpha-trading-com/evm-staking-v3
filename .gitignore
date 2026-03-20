@@ -11,3 +11,9 @@ __pycache__/
 venv/
 venv/
 executor_enabled.json
+
+# Rust / Cargo
+target/
+**/target/
+*.pdb
+*.rs.bk
