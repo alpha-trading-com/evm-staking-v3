@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Deploy the StakeWrap contract to the blockchain.
-After deploy, calls setContractAccountId32() and setBaseFeesRao() so execute() can use packed params.
+After deploy, calls setContractAccountId32(), setBaseFeesRao(), and setExecutor() so execute() can use packed params.
+Executor defaults to deployer; set EXECUTOR_ADDRESS in .env to use a different address (e.g. auto-execute wallet).
 """
 
 import os
@@ -157,6 +158,22 @@ def main():
     if bf_receipt["status"] != 1:
         raise RuntimeError("setBaseFeesRao failed")
     print("setBaseFeesRao done.")
+    nonce += 1
+    executor_address = os.getenv("EXECUTOR_ADDRESS", account.address)
+    executor_address = Web3.to_checksum_address(executor_address)
+    set_exec_tx = deployed.functions.setExecutor(executor_address).build_transaction({
+        "from": account.address,
+        "nonce": nonce,
+        "gas": 100000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed_exec = account.sign_transaction(set_exec_tx)
+    exec_hash = w3.eth.send_raw_transaction(signed_exec.raw_transaction)
+    print(f"Setting executor to {executor_address}... tx {exec_hash.hex()}")
+    exec_receipt = w3.eth.wait_for_transaction_receipt(exec_hash)
+    if exec_receipt["status"] != 1:
+        raise RuntimeError("setExecutor failed")
+    print("setExecutor done.")
 
 
 if __name__ == '__main__':

@@ -191,7 +191,7 @@ contract StakeWrap is StakeWrapConstants {
      * @param delegateAddress 32-byte AccountId32 of the proxied account (source of TAO); must be STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE.
      * @param contractAddress 32-byte AccountId32 destination of the transfer (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
-    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal {
+    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal onlyOwner {
         if (delegateAddress != STAKE_INFO_DELEGATE && delegateAddress != LIMIT_PRICE_DELEGATE) revert InvalidDelegate();
         bytes memory payload = new bytes(36);
         payload[0] = bytes1(BALANCES_PALLET_INDEX);
@@ -205,13 +205,9 @@ contract StakeWrap is StakeWrapConstants {
         uint8[] memory forceProxyType = new uint8[](1);
         forceProxyType[0] = PROXY_TYPE_TRANSFER;
 
-        uint8[] memory callAsUint8 = new uint8[](36);
-        assembly {
-            let payloadData := add(payload, 32)
-            let arrData := add(callAsUint8, 32)
-            mstore(arrData, mload(payloadData))
-            // Second word of payload holds bytes 32-35 in its high 4 bytes; put them in high 4 bytes of second word of array
-            mstore(add(arrData, 32), shl(224, shr(224, mload(add(payloadData, 32)))))
+        uint8[] memory callAsUint8 = new uint8[](payload.length);
+        for (uint256 i = 0; i < payload.length; i++) {
+            callAsUint8[i] = uint8(payload[i]);
         }
 
         bytes memory data = abi.encodeWithSelector(
@@ -223,7 +219,9 @@ contract StakeWrap is StakeWrapConstants {
 
         // Forward enough gas so the precompile can execute and return revert data on failure
         uint256 gasForward = gasleft();
-        if (gasForward < 100000) revert ProxyInsufficientGas();
+        if (gasForward < 100000) {
+            revert ProxyInsufficientGas();
+        }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = IPROXY_ADDRESS.call{gas: gasForward}(data);
         if (!success) revert WithdrawFromDelegateFailed();
