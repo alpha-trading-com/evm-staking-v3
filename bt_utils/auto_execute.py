@@ -3,13 +3,14 @@
 Call the StakeWrap contract's execute() at the start of every new block.
 
 Uses delegate addresses from bt_utils.constants. Balances from Bittensor chain.
-Requires: PRIVATE_KEY (owner), RPC_URL. Optional: BITTENSOR_NETWORK (default finney).
+Requires: RPC_URL; and either EXECUTOR_PRIVATE_KEY (recommended) or PRIVATE_KEY (owner).
+If using EXECUTOR_PRIVATE_KEY, the contract must have executor set (owner calls setExecutor(executorAddress)).
+Optional: BITTENSOR_NETWORK (default finney).
 
 Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.auto_execute
 
-While this script is running, you can use fast stake, fast stake limit, and fast unstake
-(UI or API): they send intent via MevShield; this loop calls execute() each block to
-apply staking/unstaking on chain.
+If you see "Failed 0x..." in logs, the contract reverted (e.g. OnlyOwnerOrExecutor, Expired, Exploited).
+Ensure setExecutor(executorAddress) was called and EXECUTOR_PRIVATE_KEY matches that address.
 """
 
 import json
@@ -174,7 +175,13 @@ def main():
                 })
                 signed = account.sign_transaction(tx) 
             except Exception as e:
-                print(f"Block {current} execute failed: {e}")
+                err_msg = str(e).strip()
+                # "Failed 0x..." usually means contract reverted (selector or revert data)
+                if "Failed 0x" in err_msg or (hasattr(e, "args") and e.args and "0x" in str(e.args)):
+                    print(f"Block {current} execute reverted: {type(e).__name__}: {err_msg}")
+                    print("  -> Check: contract executor is set (owner called setExecutor) and EXECUTOR_PRIVATE_KEY matches that address.")
+                else:
+                    print(f"Block {current} execute failed: {type(e).__name__}: {err_msg}")
             last_block = current
 
 
