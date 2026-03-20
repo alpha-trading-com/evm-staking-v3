@@ -305,6 +305,13 @@
     <section class="panel" id="panel-settings">
       <h2>Settings</h2>
 
+      <h3 style="margin: 0 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Contract config</h3>
+      <small class="hint">Read-only values from the deployed StakeWrap contract.</small>
+      <button type="button" class="refresh-btn" onclick="loadContractConfig()" style="margin-top: 0.5rem;">Refresh</button>
+      <div id="contract-config-container" class="wallet-footer" style="margin-top: 0.75rem;">
+        <div class="loading">Load Settings to see contract config.</div>
+      </div>
+
       <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Tolerance offset</h3>
       <small class="hint">Used when "Use Minimum Tolerance" is checked (stake/unstake limit). Number (e.g. 0.001) or multiplier *1.2.</small>
       <label>Tolerance offset</label>
@@ -492,7 +499,7 @@
         const panelId = tabButtons[idx].dataset.panel;
         document.getElementById(panelId).classList.add('active');
         localStorage.setItem(TAB_INDEX_KEY, idx);
-        if (panelId === 'panel-settings') loadSettings();
+        if (panelId === 'panel-settings') { loadSettings(); loadContractConfig(); }
       }
     }
 
@@ -835,6 +842,30 @@
       el.style.display = 'block';
       el.className = 'result ' + (ok ? 'ok' : 'err');
       el.textContent = text;
+    }
+
+    async function loadContractConfig() {
+      const container = document.getElementById('contract-config-container');
+      if (!container) return;
+      container.innerHTML = '<div class="loading">Loading contract config...</div>';
+      try {
+        const r = await fetch('/api/contract-config');
+        const j = await r.json();
+        if (!j.ok) {
+          container.innerHTML = '<div class="result err">' + (j.error || 'Failed to load') + '</div>';
+          return;
+        }
+        let html = '<div class="wallet-footer-title">Contract</div>';
+        html += '<div class="wallet-footer-content">';
+        html += '<div><strong>Address:</strong> ' + j.contract + '</div>';
+        html += '<div><strong>contractAccountId32:</strong> <code style="word-break: break-all; font-size: 0.8rem;">' + j.contract_account_id32 + '</code></div>';
+        html += '<div><strong>stakeInfoBaseFeeRao:</strong> ' + j.stake_info_base_fee_rao + '</div>';
+        html += '<div><strong>limitPriceBaseFeeRao:</strong> ' + j.limit_price_base_fee_rao + '</div>';
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<div class="result err">' + String(e) + '</div>';
+      }
     }
 
     async function loadSettings() {

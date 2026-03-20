@@ -52,6 +52,12 @@ contract StakeWrap is StakeWrapConstants {
         _baseFeesRao = (stakeInfoBaseFeeRao << 128) | (limitPriceBaseFeeRao & type(uint128).max);
     }
 
+    /// Read packed base fees (rao). Returns (stakeInfoBaseFeeRao, limitPriceBaseFeeRao).
+    function getBaseFeesRao() external view returns (uint256 stakeInfoBaseFeeRao, uint256 limitPriceBaseFeeRao) {
+        stakeInfoBaseFeeRao = _baseFeesRao >> 128;
+        limitPriceBaseFeeRao = uint128(_baseFeesRao);
+    }
+
     modifier onlyOwner() {
         if (msg.sender != owner) revert OnlyOwner();
         _;

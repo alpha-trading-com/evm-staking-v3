@@ -32,3 +32,25 @@ async def api_status(_: str = Depends(get_current_username)):
         "balance_tao": balance_tao,
         "chain_id": w3.eth.chain_id,
     }
+
+
+@router.get("/contract-config")
+async def api_contract_config(_: str = Depends(get_current_username)):
+    """Read-only: contract address, contractAccountId32, base fees (stakeInfoBaseFeeRao, limitPriceBaseFeeRao)."""
+    try:
+        w3, account, contract_address, contract = get_w3_account_contract()
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+    try:
+        contract_account_id32_raw = contract.functions.contractAccountId32().call()
+        contract_account_id32 = ("0x" + contract_account_id32_raw.hex()) if hasattr(contract_account_id32_raw, "hex") else str(contract_account_id32_raw)
+        stake_info_base_fee_rao, limit_price_base_fee_rao = contract.functions.getBaseFeesRao().call()
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+    return {
+        "ok": True,
+        "contract": contract_address,
+        "contract_account_id32": contract_account_id32,
+        "stake_info_base_fee_rao": stake_info_base_fee_rao,
+        "limit_price_base_fee_rao": limit_price_base_fee_rao,
+    }
