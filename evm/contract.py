@@ -35,16 +35,23 @@ def load_deployment_info() -> Dict[str, Any]:
     return load_deployment()
 
 
+_abi_cache: Optional[List[Dict]] = None
+
+
 def get_stake_wrap_abi(project_root: Optional[str] = None) -> Optional[List[Dict]]:
     """
-    Load StakeWrap ABI from Hardhat artifact. Returns None if artifact is missing.
+    Load StakeWrap ABI from Hardhat artifact (cached after first load). Returns None if artifact is missing.
     """
+    global _abi_cache
+    if _abi_cache is not None:
+        return _abi_cache
     root = project_root or PROJECT_ROOT
     artifact_path = os.path.join(root, "artifacts", "contracts", "StakeWrap.sol", "StakeWrap.json")
     if not os.path.exists(artifact_path):
         return None
     with open(artifact_path, "r") as f:
-        return json.load(f).get("abi")
+        _abi_cache = json.load(f).get("abi")
+    return _abi_cache
 
 
 def get_contract(w3, contract_address: str, abi: Optional[List] = None, project_root: Optional[str] = None):

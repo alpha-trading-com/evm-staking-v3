@@ -64,8 +64,8 @@ def resolve_move_stake_amount(
 
 
 def do_stake(hotkey: str, netuid: int, amount_rao: int) -> dict:
-    w3, account, contract_address = get_w3_account_contract()
-    receipt = run_quiet(stake, w3, account, contract_address, hotkey, netuid, amount_rao)
+    w3, account, contract_address, contract = get_w3_account_contract()
+    receipt = run_quiet(stake, w3, account, contract_address, hotkey, netuid, amount_rao, contract=contract)
     return {"ok": True, "receipt": receipt_to_dict(receipt)}
 
 
@@ -81,18 +81,20 @@ def do_stake_limit(
         default_rate_tolerance=rate_tolerance,
         subtensor=subtensor,
     ))
-    w3, account, contract_address = get_w3_account_contract()
+    w3, account, contract_address, contract = get_w3_account_contract()
     receipt = run_quiet(
         stake_limit, w3, account, contract_address,
         hotkey, netuid, limit_price, amount_rao, allow_partial,
+        contract=contract,
     )
     return {"ok": True, "receipt": receipt_to_dict(receipt), "limit_price_used": limit_price}
 
 
 def do_remove_stake(hotkey: str, netuid: int, amount_alpha_rao: int) -> dict:
-    w3, account, contract_address = get_w3_account_contract()
+    w3, account, contract_address, contract = get_w3_account_contract()
     receipt = run_quiet(
-        remove_stake, w3, account, contract_address, hotkey, netuid, amount_alpha_rao
+        remove_stake, w3, account, contract_address, hotkey, netuid, amount_alpha_rao,
+        contract=contract,
     )
     return {"ok": True, "receipt": receipt_to_dict(receipt)}
 
@@ -110,19 +112,21 @@ def do_remove_stake_limit(
         default_rate_tolerance=rate_tolerance,
         subtensor=subtensor,
     ))
-    w3, account, contract_address = get_w3_account_contract()
+    w3, account, contract_address, contract = get_w3_account_contract()
     receipt = run_quiet(
         remove_stake_limit, w3, account, contract_address,
         hotkey, netuid, limit_price, amount_alpha_rao, allow_partial,
+        contract=contract,
     )
     return {"ok": True, "receipt": receipt_to_dict(receipt), "limit_price_used": limit_price}
 
 
 def do_transfer_stake(hotkey: str, origin_netuid: int, destination_netuid: int, amount_rao: int) -> dict:
-    w3, account, contract_address = get_w3_account_contract()
+    w3, account, contract_address, contract = get_w3_account_contract()
     receipt = run_quiet(
         transfer_stake, w3, account, contract_address,
         hotkey, origin_netuid, destination_netuid, amount_rao,
+        contract=contract,
     )
     return {"ok": True, "receipt": receipt_to_dict(receipt)}
 
@@ -131,15 +135,16 @@ def do_move_stake(
     origin_hotkey: str, destination_hotkey: str,
     origin_netuid: int, destination_netuid: int, amount_rao: int,
 ) -> dict:
-    w3, account, contract_address = get_w3_account_contract()
+    w3, account, contract_address, contract = get_w3_account_contract()
     receipt = run_quiet(
         move_stake, w3, account, contract_address,
         origin_hotkey, destination_hotkey, origin_netuid, destination_netuid, amount_rao,
+        contract=contract,
     )
     return {"ok": True, "receipt": receipt_to_dict(receipt)}
 
 
 def do_withdraw(amount_wei: int) -> dict:
-    w3, account, contract_address = get_w3_account_contract()
-    receipt = run_quiet(withdraw, w3, account, contract_address, amount_wei)
+    w3, account, contract_address, contract = get_w3_account_contract()
+    receipt = run_quiet(withdraw, w3, account, contract_address, amount_wei, contract=contract)
     return {"ok": True, "receipt": receipt_to_dict(receipt)}

@@ -54,19 +54,12 @@ def get_contract(w3, contract_address: str, abi: Optional[List] = None):
     return _evm_get_contract(w3, contract_address, abi=abi)
 
 
-def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int):
-    """Stake tokens. amount in rao."""
-    contract = get_contract(w3, contract_address)
-    contract_balance_wei = w3.eth.get_balance(contract_address)
-    contract_balance_tao = Web3.from_wei(contract_balance_wei, "ether")
-    amount_tao = amount / 10**9
-    print(f"Contract balance: {contract_balance_tao} TAO ({contract_balance_wei} wei)")
-    print(f"Staking amount: {amount_tao} TAO ({amount} rao)")
-    amount_wei = amount * 10**9
-    if contract_balance_wei < amount_wei:
-        raise ValueError(f"Insufficient contract balance: need {amount} rao ({amount_tao} TAO), have {contract_balance_wei} wei ({contract_balance_tao} TAO)")
+def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int, contract=None):
+    """Stake tokens. amount in rao. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     hotkey = ss58_to_bytes32(hotkey)
-    print(f"Staking {amount / 10**9} TAO ({amount} rao) to netuid {netuid}")
+    print(f"Staking {amount} rao to netuid {netuid}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
     tx = contract.functions.stake(hotkey, xor_encode(netuid), xor_encode(amount)).build_transaction({
         "from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
@@ -92,9 +85,10 @@ def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amou
     return receipt
 
 
-def stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int, limit_price: int, amount: int, allow_partial: bool):
-    """Stake with limit price. amount in rao."""
-    contract = get_contract(w3, contract_address)
+def stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int, limit_price: int, amount: int, allow_partial: bool, contract=None):
+    """Stake with limit price. amount in rao. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     hotkey = ss58_to_bytes32(hotkey)
     tx = contract.functions.stakeLimit(hotkey, xor_encode(netuid), xor_encode(limit_price), xor_encode(amount), allow_partial).build_transaction({
         "from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
@@ -108,9 +102,10 @@ def stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int
     return receipt
 
 
-def remove_stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int, limit_price: int, amount: int, allow_partial: bool):
-    """Remove stake with limit price. amount in ALPHA tokens."""
-    contract = get_contract(w3, contract_address)
+def remove_stake_limit(w3, account: Account, contract_address: str, hotkey, netuid: int, limit_price: int, amount: int, allow_partial: bool, contract=None):
+    """Remove stake with limit price. amount in ALPHA tokens. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     hotkey = ss58_to_bytes32(hotkey)
     print(f"Unstaking {amount} ALPHA tokens from netuid {netuid} with limit price {limit_price}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
@@ -126,9 +121,10 @@ def remove_stake_limit(w3, account: Account, contract_address: str, hotkey, netu
     return receipt
 
 
-def remove_stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int):
-    """Remove stake (unstake alpha). amount in ALPHA tokens."""
-    contract = get_contract(w3, contract_address)
+def remove_stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int, contract=None):
+    """Remove stake (unstake alpha). amount in ALPHA tokens. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     hotkey = ss58_to_bytes32(hotkey)
     print(f"Unstaking {amount} ALPHA tokens from netuid {netuid}")
     print(f"Hotkey (bytes32): 0x{hotkey.hex()}")
@@ -144,9 +140,10 @@ def remove_stake(w3, account: Account, contract_address: str, hotkey, netuid: in
     return receipt
 
 
-def transfer_stake(w3, account: Account, contract_address: str, hotkey, origin_netuid: int, destination_netuid: int, amount: int):
-    """Transfer stake to predefined WITHDRAW_COLDKEY. amount in rao."""
-    contract = get_contract(w3, contract_address)
+def transfer_stake(w3, account: Account, contract_address: str, hotkey, origin_netuid: int, destination_netuid: int, amount: int, contract=None):
+    """Transfer stake to predefined WITHDRAW_COLDKEY. amount in rao. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     try:
         withdraw_coldkey_bytes32 = contract.functions.WITHDRAW_COLDKEY().call()
         print(f"Withdraw coldkey (bytes32): 0x{withdraw_coldkey_bytes32.hex()}")
@@ -169,9 +166,10 @@ def transfer_stake(w3, account: Account, contract_address: str, hotkey, origin_n
     return receipt
 
 
-def move_stake(w3, account: Account, contract_address: str, origin_hotkey, destination_hotkey, origin_netuid: int, destination_netuid: int, amount: int):
-    """Move stake from one hotkey to another. amount in rao."""
-    contract = get_contract(w3, contract_address)
+def move_stake(w3, account: Account, contract_address: str, origin_hotkey, destination_hotkey, origin_netuid: int, destination_netuid: int, amount: int, contract=None):
+    """Move stake from one hotkey to another. amount in rao. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     origin_hotkey = ss58_to_bytes32(origin_hotkey)
     destination_hotkey = ss58_to_bytes32(destination_hotkey)
     print(f"Moving {amount / 10**9} TAO ({amount} rao) worth of stake")
@@ -189,9 +187,10 @@ def move_stake(w3, account: Account, contract_address: str, origin_hotkey, desti
     return receipt
 
 
-def transfer_to_delegate(w3, account: Account, contract_address: str, amount_wei: int, delegate_address_bytes32: bytes):
-    """Transfer TAO from contract to a delegate (STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE). amount in wei."""
-    contract = get_contract(w3, contract_address)
+def transfer_to_delegate(w3, account: Account, contract_address: str, amount_wei: int, delegate_address_bytes32: bytes, contract=None):
+    """Transfer TAO from contract to a delegate. amount in wei. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     try:
         owner = contract.functions.owner().call()
         if owner.lower() != account.address.lower():
@@ -219,9 +218,10 @@ def transfer_to_delegate(w3, account: Account, contract_address: str, amount_wei
 
 
 def execute_pull_and_stake(w3, account: Account, contract_address: str, exec_block: int,
-                           original_stake_info_balance: int, original_limit_price_balance: int):
-    """Call execute(execBlock, packedBalances). Balances in rao; delegate balances must be <= 2 TAO. Base fees are contract constants."""
-    contract = get_contract(w3, contract_address)
+                           original_stake_info_balance: int, original_limit_price_balance: int, contract=None):
+    """Call execute(execBlock, packedBalances). Balances in rao; delegate balances must be <= 2 TAO. Pass contract to reuse a cached instance."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
     try:
         owner = contract.functions.owner().call()
         if owner.lower() != account.address.lower():
@@ -250,16 +250,11 @@ def execute_pull_and_stake(w3, account: Account, contract_address: str, exec_blo
     return receipt
 
 
-def withdraw(w3, account: Account, contract_address: str, amount: int):
-    """Withdraw TAO from contract to WITHDRAW_COLDKEY. amount in wei."""
+def withdraw(w3, account: Account, contract_address: str, amount: int, contract=None):
+    """Withdraw TAO from contract to WITHDRAW_COLDKEY. amount in wei. Pass contract to reuse a cached instance."""
     if amount is None:
         raise ValueError("Amount is required. Use: withdraw --amount <TAO>")
-    artifact_path = STAKE_WRAP_ARTIFACT_PATH
-    if os.path.exists(artifact_path):
-        with open(artifact_path, "r") as f:
-            full_abi = json.load(f).get("abi")
-        contract = w3.eth.contract(address=contract_address, abi=full_abi)
-    else:
+    if contract is None:
         contract = get_contract(w3, contract_address)
     try:
         owner = contract.functions.owner().call()

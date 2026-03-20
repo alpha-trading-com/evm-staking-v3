@@ -15,7 +15,7 @@ from evm import (
     CONTRACT_ABI,
 )
 
-_w3_cache: tuple[Web3, Account, str] | None = None
+_w3_cache: tuple[Web3, Account, str, Any] | None = None
 _w3_cache_lock = threading.Lock()
 
 
@@ -40,15 +40,15 @@ def _make_w3_connection(rpc_url: str) -> Web3:
     return w3
 
 
-def get_w3_account_contract() -> tuple[Web3, Account, str]:
-    """Return (w3, account, contract_address), reusing cached connection when still connected."""
+def get_w3_account_contract() -> tuple[Web3, Account, str, Any]:
+    """Return (w3, account, contract_address, contract), reusing cached connection and contract when still connected."""
     global _w3_cache
     with _w3_cache_lock:
         if _w3_cache is not None:
-            w3, account, contract_address = _w3_cache
+            w3, account, contract_address, contract = _w3_cache
             try:
                 if w3.is_connected():
-                    return w3, account, contract_address
+                    return w3, account, contract_address, contract
             except Exception:
                 pass
             _w3_cache = None
@@ -61,12 +61,19 @@ def get_w3_account_contract() -> tuple[Web3, Account, str]:
         account = Account.from_key(private_key)
         info = load_deployment_info()
         contract_address = Web3.to_checksum_address(info["contract_address"])
-        _w3_cache = (w3, account, contract_address)
-        return w3, account, contract_address
+        abi = get_stake_wrap_abi() or CONTRACT_ABI
+        contract = evm_get_contract(w3, contract_address, abi=abi)
+        _w3_cache = (w3, account, contract_address, contract)
+        return w3, account, contract_address, contract
 
 
 def get_contract(w3: Web3, contract_address: str) -> Any:
-    """StakeWrap contract instance; uses artifact ABI when available."""
+    """StakeWrap contract instance. Uses cached instance when (w3, contract_address) matches cache; ABI is cached."""
+    with _w3_cache_lock:
+        if _w3_cache is not None:
+            cached_w3, _, cached_addr, contract = _w3_cache
+            if cached_w3 is w3 and cached_addr == contract_address:
+                return contract
     abi = get_stake_wrap_abi() or CONTRACT_ABI
     return evm_get_contract(w3, contract_address, abi=abi)
 

@@ -53,7 +53,7 @@ async def do_fast_stake_and_unstake(
     success, message = await fast_stake_async(netuid, amount_rao, limit_price)
     if not success:
         return False, message
-    w3, account, contract_address = get_w3_account_contract()
+    w3, account, contract_address, _ = get_w3_account_contract()
     # Unstake all for this netuid (contract expects alpha amount; we pull max)
     from app.config import get_coldkey_ss58
     import bittensor as bt
