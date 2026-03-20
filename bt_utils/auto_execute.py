@@ -152,12 +152,7 @@ def main():
         raise SystemExit(f"Failed to connect to Bittensor WS {ws_url}: {e}")
 
     last_block = get_current_block(substrate)
-    print(last_block)
-    while True:
-        current = get_current_block(substrate)
-        print(current)
-        time.sleep(1)
-    return
+    
     chain_balances = get_delegate_balances_from_chain(substrate)
     stake_info_balance = chain_balances[0]
     limit_price_balance = chain_balances[1]
@@ -169,7 +164,6 @@ def main():
     nonce = w3.eth.get_transaction_count(account.address)
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
-    print(last_block)
     while True:
         try:
             current = get_current_block(substrate)
