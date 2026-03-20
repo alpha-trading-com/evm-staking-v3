@@ -5,9 +5,10 @@ One-shot: withdraw from existing contract, then compile, deploy, add proxy, and 
 Steps:
   1. Withdraw full contract balance to WITHDRAW_COLDKEY (if deployment.json exists and contract has balance)
   2. Compile smart contract (npm run compile)
-  3. Deploy smart contract (python scripts/deploy.py; includes setContractAccountId32, setBaseFeesRao, and setExecutor — executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override)
-  4. Remove all existing proxies for delegate wallets, then add contract's SS58 as proxy (Any)
-  5. Transfer 1.1 TAO from delegate_1 to contract SS58 (chain transfer)
+  3. Deploy smart contract (python scripts/deploy.py; includes setContractAccountId32 and setBaseFeesRao)
+  4. Set executor on contract (setExecutor; executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override)
+  5. Remove all existing proxies for delegate wallets, then add contract's SS58 as proxy (Any)
+  6. Transfer 1.1 TAO from delegate_1 to contract SS58 (chain transfer)
 
 Requires:
   - PRIVATE_KEY in .env (for deploy and withdraw)
@@ -37,6 +38,11 @@ from web3 import Web3
 from eth_account import Account
 from evm import h160_to_ss58
 from bt_utils.constants import DELETEGATE_1, DELETEGATE_2
+
+# Minimal ABI for setExecutor(address)
+SET_EXECUTOR_ABI = [
+    {"inputs": [{"internalType": "address", "name": "_executor", "type": "address"}], "name": "setExecutor", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+]
 
 # Minimal ABI for owner(), balance, and withdraw(uint256)
 WITHDRAW_ABI = [
@@ -97,7 +103,7 @@ def step_withdraw_all() -> None:
 
 
 def step_compile() -> None:
-    print("[2/5] Compiling smart contract...")
+    print("[2/6] Compiling smart contract...")
     r = subprocess.run(
         ["npm", "run", "compile"],
         cwd=PROJECT_ROOT,
@@ -110,7 +116,7 @@ def step_compile() -> None:
 
 def step_deploy() -> str:
     """Run deploy.py (deploy + setContractAccountId32 + setBaseFeesRao for execute() packed params)."""
-    print("[3/5] Deploying smart contract...")
+    print("[3/6] Deploying smart contract...")
     r = subprocess.run(
         [sys.executable, os.path.join(PROJECT_ROOT, "scripts", "deploy.py")],
         cwd=PROJECT_ROOT,
@@ -125,8 +131,40 @@ def step_deploy() -> str:
     return contract_address
 
 
+def step_set_executor(contract_address: str) -> None:
+    """Call setExecutor on the contract. Executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override."""
+    print("[4/6] Setting executor on contract...")
+    private_key = os.getenv("PRIVATE_KEY")
+    if not private_key:
+        print("      PRIVATE_KEY not set; skipping setExecutor.\n")
+        return
+    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    if not w3.is_connected():
+        print("      RPC not connected; skipping setExecutor.\n")
+        return
+    account = Account.from_key(private_key)
+    executor_address = os.getenv("EXECUTOR_ADDRESS", account.address)
+    executor_address = Web3.to_checksum_address(executor_address)
+    contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=SET_EXECUTOR_ABI)
+    tx = contract.functions.setExecutor(executor_address).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 100000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    print(f"      setExecutor({executor_address}) tx {tx_hash.hex()}")
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    if receipt["status"] != 1:
+        print("      ERROR: setExecutor failed.", file=sys.stderr)
+        sys.exit(1)
+    print("      Executor set.\n")
+
+
 def step_add_proxy(contract_ss58: str) -> None:
-    print("[4/5] Adding contract as proxy (Any) for delegate wallets...")
+    print("[5/6] Adding contract as proxy (Any) for delegate wallets...")
     print(f"      Contract SS58: {contract_ss58}")
 
     import bittensor as bt
@@ -163,7 +201,7 @@ def step_add_proxy(contract_ss58: str) -> None:
 
 def step_transfer_to_contract(contract_ss58: str) -> None:
     """Transfer 1.1 TAO from delegate_1 to contract SS58 (chain transfer)."""
-    print("[5/5] Transferring 1.1 TAO from delegate_1 to contract SS58...")
+    print("[6/6] Transferring 1.1 TAO from delegate_1 to contract SS58...")
     import bittensor as bt
     from bittensor.utils.balance import Balance
 
@@ -188,6 +226,7 @@ def main():
     step_withdraw_all()
     step_compile()
     contract_address = step_deploy()
+    step_set_executor(contract_address)
 
     contract_ss58 = h160_to_ss58(contract_address)
     step_add_proxy(contract_ss58)

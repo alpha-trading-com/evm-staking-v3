@@ -4,8 +4,9 @@ One-shot: compile contract, deploy contract, add contract's SS58 as proxy (Any) 
 
 Steps:
   1. Compile smart contract (npm run compile)
-  2. Deploy smart contract (python scripts/deploy.py) — requires PRIVATE_KEY, writes deployment.json, then calls setContractAccountId32, setBaseFeesRao, and setExecutor (executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override)
-  3. Remove all existing proxies for the proxy wallet, then add contract's SS58 as proxy (type Any) — may prompt for wallet password
+  2. Deploy smart contract (python scripts/deploy.py) — requires PRIVATE_KEY, writes deployment.json, then calls setContractAccountId32 and setBaseFeesRao
+  3. Set executor on contract (setExecutor; executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override)
+  4. Remove all existing proxies for the proxy wallet, then add contract's SS58 as proxy (type Any) — may prompt for wallet password
 
 Requires:
   - PRIVATE_KEY in .env (for deploy)
@@ -35,15 +36,21 @@ except ImportError:
 # H160→SS58 via evm package (Blake2b-256(b"evm:" || h160))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+from web3 import Web3
+from eth_account import Account
 from evm import h160_to_ss58
 from bt_utils.constants import (
     DELETEGATE_1,
     DELETEGATE_2,
 )
 
+SET_EXECUTOR_ABI = [
+    {"inputs": [{"internalType": "address", "name": "_executor", "type": "address"}], "name": "setExecutor", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+]
+
 
 def step_compile() -> None:
-    print("[1/3] Compiling smart contract...")
+    print("[1/4] Compiling smart contract...")
     r = subprocess.run(
         ["npm", "run", "compile"],
         cwd=PROJECT_ROOT,
@@ -56,7 +63,7 @@ def step_compile() -> None:
 
 def step_deploy() -> str:
     """Run deploy.py (deploy + setContractAccountId32 + setBaseFeesRao for execute() packed params)."""
-    print("[2/3] Deploying smart contract...")
+    print("[2/4] Deploying smart contract...")
     r = subprocess.run(
         [sys.executable, os.path.join(PROJECT_ROOT, "scripts", "deploy.py")],
         cwd=PROJECT_ROOT,
@@ -71,8 +78,40 @@ def step_deploy() -> str:
     return contract_address
 
 
+def step_set_executor(contract_address: str) -> None:
+    """Call setExecutor on the contract. Executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override."""
+    print("[3/4] Setting executor on contract...")
+    private_key = os.getenv("PRIVATE_KEY")
+    if not private_key:
+        print("      PRIVATE_KEY not set; skipping setExecutor.\n")
+        return
+    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    if not w3.is_connected():
+        print("      RPC not connected; skipping setExecutor.\n")
+        return
+    account = Account.from_key(private_key)
+    executor_address = os.getenv("EXECUTOR_ADDRESS", account.address)
+    executor_address = Web3.to_checksum_address(executor_address)
+    contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=SET_EXECUTOR_ABI)
+    tx = contract.functions.setExecutor(executor_address).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 100000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    print(f"      setExecutor({executor_address}) tx {tx_hash.hex()}")
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    if receipt["status"] != 1:
+        print("      ERROR: setExecutor failed.", file=sys.stderr)
+        sys.exit(1)
+    print("      Executor set.\n")
+
+
 def step_add_proxy(contract_address: str) -> None:
-    print("[3/3] Adding contract as proxy (Any) for proxy wallet...")
+    print("[4/4] Adding contract as proxy (Any) for proxy wallet...")
     contract_ss58 = h160_to_ss58(contract_address)
     print(f"      Contract EVM:  {contract_address}")
     print(f"      Contract SS58: {contract_ss58}")
@@ -119,6 +158,7 @@ def main():
 
     step_compile()
     contract_address = step_deploy()
+    step_set_executor(contract_address)
     step_add_proxy(contract_address)
 
     print("All steps completed.")
