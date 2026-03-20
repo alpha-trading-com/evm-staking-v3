@@ -2,10 +2,11 @@
 """
 Call the StakeWrap contract's execute() at the start of every new block.
 
-Uses delegate addresses from bt_utils.constants. Balances from Bittensor chain.
+Uses delegate addresses from bt_utils.constants. Balances from Bittensor chain
+via SubstrateInterface over BITTENSOR_WS_URL (no bittensor.Subtensor).
 Requires: RPC_URL; and either EXECUTOR_PRIVATE_KEY (recommended) or PRIVATE_KEY (owner).
 If using EXECUTOR_PRIVATE_KEY, the contract must have executor set (owner calls setExecutor(executorAddress)).
-Optional: BITTENSOR_NETWORK (default finney).
+Optional: BITTENSOR_WS_URL (default wss://entrypoint-finney.opentensor.ai:443).
 
 Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.auto_execute
 
@@ -16,6 +17,7 @@ Ensure setExecutor(executorAddress) was called and EXECUTOR_PRIVATE_KEY matches 
 import json
 import os
 import sys
+import time
 
 from web3 import Web3
 from eth_account import Account
@@ -31,25 +33,45 @@ from bt_utils.constants import (
     STAKE_INFO_DELEGATE,
     LIMIT_PRICE_DELEGATE,
     EXECUTOR_ENABLED_FILENAME,
-    MAX_DELEGATE_BALANCE_RAO,
 )
 
-# Contract: MAX_DELEGATE_BALANCE = 2 TAO
+DEFAULT_BITTENSOR_WS_URL = "wss://entrypoint-finney.opentensor.ai:443"
 
-import bittensor as bt
 
-def get_delegate_balances_from_chain(subtensor: bt.Subtensor, network: str):
+def get_current_block(substrate) -> int:
+    """Current Bittensor block number (uses substrate's chain_getHeader)."""
+    return substrate.get_block_number(None)
+
+
+def _get_balance_rao(substrate, ss58: str) -> int:
+    """One account's free balance (rao) via substrate.query(System::Account). Uses runtime metadata for correct decode."""
+    result = substrate.query(
+        module="System",
+        storage_function="Account",
+        params=[ss58],
+    )
+    if result is None:
+        return 0
+    # result can be dict or ScaleObj with .value (decoded AccountInfo)
+    obj = getattr(result, "value", result)
+    data = obj.get("data") if isinstance(obj, dict) else None
+    if not data:
+        return 0
+    free = data.get("free") if isinstance(data, dict) else None
+    if free is None:
+        return 0
+    return int(free)
+
+
+def get_delegate_balances_from_chain(substrate) -> tuple[int, int]:
     """
-    Query Bittensor chain for free balance (in rao) of STAKE_INFO_DELEGATE and LIMIT_PRICE_DELEGATE.
+    Query Bittensor chain for free balance (rao) of STAKE_INFO_DELEGATE and LIMIT_PRICE_DELEGATE.
+    Uses SubstrateInterface.query (same as bittensor subtensor.get_balance, correct key + decode).
     Returns (stake_info_balance_rao, limit_price_balance_rao).
     """
-    b1 = subtensor.get_balance(STAKE_INFO_DELEGATE)
-    b2 = subtensor.get_balance(LIMIT_PRICE_DELEGATE)
-    return (b1.rao, b2.rao)
-
-def clamp_balance(rao):
-    """Cap at MAX_DELEGATE_BALANCE (2 TAO) to avoid Exploited() revert."""
-    return min(rao, MAX_DELEGATE_BALANCE_RAO)
+    b1 = _get_balance_rao(substrate, STAKE_INFO_DELEGATE)
+    b2 = _get_balance_rao(substrate, LIMIT_PRICE_DELEGATE)
+    return (b1, b2)
 
 
 def is_executor_enabled() -> bool:
@@ -63,25 +85,17 @@ def is_executor_enabled() -> bool:
     except Exception:
         return True
 
-def get_current_block(subtensor: bt.Subtensor):
-    ws = subtensor.substrate.ws
-    payload = {
-        "jsonrpc": "2.0", "method": "chain_getHeader", "params": [None], "id": 0
-    }
-    get_block_ws_data = json.dumps(payload)
-
-    ws.send(get_block_ws_data)
-    response = json.loads(ws.recv())
-    return int(response["result"]["number"],0)
 
 def main():
     from dotenv import load_dotenv
+    from async_substrate_interface.sync_substrate import SubstrateInterface
+
     load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
+    ws_url = os.getenv("BITTENSOR_WS_URL", DEFAULT_BITTENSOR_WS_URL)
     executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
     owner_key = os.getenv("PRIVATE_KEY")
-    network = os.getenv("BITTENSOR_NETWORK", "finney")
 
     # Prefer executor wallet to avoid nonce conflict with owner (stake/unstake/withdraw from UI).
     if executor_key:
@@ -118,16 +132,18 @@ def main():
     print(f"Contract: {contract_address}")
     print(f"Delegates: STAKE_INFO={STAKE_INFO_DELEGATE}, LIMIT_PRICE={LIMIT_PRICE_DELEGATE}")
 
+    # SubstrateInterface over WS (same key/decode as bittensor, no bt.Subtensor)
+    try:
+        substrate = SubstrateInterface(url=ws_url)
+    except Exception as e:
+        raise SystemExit(f"Failed to connect to Bittensor WS {ws_url}: {e}")
 
-    subtensor = bt.Subtensor(network=network)
-    last_block = subtensor.get_current_block()
-    # Resolve balances from chain (required)
-    chain_balances = get_delegate_balances_from_chain(subtensor, network)
-    stake_info_balance = clamp_balance(chain_balances[0])
-    limit_price_balance = clamp_balance(chain_balances[1])
+    last_block = get_current_block(substrate)
+    chain_balances = get_delegate_balances_from_chain(substrate)
+    stake_info_balance = chain_balances[0]
+    limit_price_balance = chain_balances[1]
     print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
 
-    # Gas: use EXECUTOR_GAS_LIMIT in .env to cap (e.g. 400000); otherwise 600_000. Lower = cheaper if chain uses less.
     gas_limit = int(os.getenv("EXECUTOR_GAS_LIMIT", "600000"))
     print("Polling for new blocks (Bittensor chain)...")
 
@@ -135,15 +151,18 @@ def main():
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
     while True:
-        current = get_current_block(subtensor)
-        if current > last_block:  # beginning of new block
+        try:
+            current = get_current_block(substrate)
+        except Exception as e:
+            print(f"get_current_block failed: {e}")
+            time.sleep(2)
+            continue
+        if current > last_block:
             try:
                 if signed is None:
-                    chain_balances = get_delegate_balances_from_chain(subtensor, network)
-                    stake_info_balance = clamp_balance(chain_balances[0])
-                    limit_price_balance = clamp_balance(chain_balances[1])
-                    # Use next block as execBlock so the tx is expected in the block it will be mined in
-                    # (otherwise we often mine in current+1 and revert Expired())
+                    chain_balances = get_delegate_balances_from_chain(substrate)
+                    stake_info_balance = chain_balances[0]
+                    limit_price_balance = chain_balances[1]
                     exec_block = current + 1
                     print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
                     packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
@@ -153,7 +172,7 @@ def main():
                         "gas": gas_limit,
                         "gasPrice": w3.eth.gas_price,
                     })
-                    signed = account.sign_transaction(tx) 
+                    signed = account.sign_transaction(tx)
                 if is_executor_enabled_flag:
                     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
                     print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
@@ -161,10 +180,9 @@ def main():
 
                 is_executor_enabled_flag = is_executor_enabled()
 
-                # prepare next block
-                chain_balances = get_delegate_balances_from_chain(subtensor, network)
-                stake_info_balance = clamp_balance(chain_balances[0])
-                limit_price_balance = clamp_balance(chain_balances[1])
+                chain_balances = get_delegate_balances_from_chain(substrate)
+                stake_info_balance = chain_balances[0]
+                limit_price_balance = chain_balances[1]
                 exec_block = current + 2
                 packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
                 tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
@@ -173,16 +191,17 @@ def main():
                     "gas": gas_limit,
                     "gasPrice": w3.eth.gas_price,
                 })
-                signed = account.sign_transaction(tx) 
+                signed = account.sign_transaction(tx)
             except Exception as e:
                 err_msg = str(e).strip()
-                # "Failed 0x..." usually means contract reverted (selector or revert data)
                 if "Failed 0x" in err_msg or (hasattr(e, "args") and e.args and "0x" in str(e.args)):
                     print(f"Block {current} execute reverted: {type(e).__name__}: {err_msg}")
                     print("  -> Check: contract executor is set (owner called setExecutor) and EXECUTOR_PRIVATE_KEY matches that address.")
                 else:
                     print(f"Block {current} execute failed: {type(e).__name__}: {err_msg}")
             last_block = current
+
+        time.sleep(2)
 
 
 if __name__ == "__main__":

@@ -2,27 +2,22 @@
 //! StakeWrap.execute(execBlock, packedBalances) on the EVM each block; base fees are contract constants.
 //!
 //! Env: RPC_URL (EVM); EXECUTOR_PRIVATE_KEY (recommended) or PRIVATE_KEY (owner); EXECUTOR_GAS_LIMIT (default 600000);
-//! BITTENSOR_WS_URL (for subxt); STAKE_INFO_DELEGATE_SS58 / LIMIT_PRICE_DELEGATE_SS58 (optional, match bt_utils/constants.py).
+//! BITTENSOR_WS_URL (direct WS RPC, like Python); STAKE_INFO_DELEGATE_SS58 / LIMIT_PRICE_DELEGATE_SS58 (optional, match bt_utils/constants.py).
 //! executor_enabled.json in repo root: {"enabled": true/false} to allow/skip sending (default true if missing).
 //!
-//! Build: cargo build --release (fetches Bittensor metadata at build time, like agcli).
+//! Build: cargo build --release
 //! Run from repo root: ./target/release/auto-execute-rs
 //!
 //! If you see "execute reverted" with 0x..., the contract reverted (e.g. OnlyOwnerOrExecutor, Expired, Exploited).
 //! Ensure setExecutor(executorAddress) was called and EXECUTOR_PRIVATE_KEY matches that address.
 
-mod generated {
-    #[allow(dead_code, unused_imports, non_camel_case_types, clippy::all)]
-    include!(concat!(env!("OUT_DIR"), "/metadata.rs"));
-}
-
 use anyhow::{Context, Result};
-use sp_core::crypto::Ss58Codec;
-use sp_core::sr25519;
-use subxt::backend::rpc::RpcClient;
-use subxt::OnlineClient;
+use auto_execute_rs::{
+    get_current_block_bittensor, get_delegate_balances_bittensor, DEFAULT_BITTENSOR_WS_URL,
+};
 use ethers::abi::{encode, Token};
 use ethers::prelude::*;
+use ethers::types::transaction::eip2718::TypedTransaction;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -68,80 +63,18 @@ fn is_executor_enabled(repo_root: &Path) -> bool {
     v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true)
 }
 
-type BittensorClient = OnlineClient<generated::RuntimeConfig>;
-
-/// Connect to Bittensor via subxt and return the client.
-async fn bittensor_client(ws_url: &str) -> Result<BittensorClient> {
-    let rpc_client = RpcClient::from_url(ws_url)
-        .await
-        .context("subxt RPC connect to Bittensor")?;
-    OnlineClient::<generated::RuntimeConfig>::from_rpc_client(rpc_client)
-        .await
-        .context("subxt OnlineClient from RPC")
-}
-
-/// Fetch current Bittensor block number and hash via subxt.
-async fn get_current_block_number(client: &BittensorClient) -> Result<(u64, subxt::blocks::BlockHash<generated::RuntimeConfig>)> {
-    let block_hash = client
-        .blocks()
-        .at_latest()
-        .await
-        .context("get latest block")?
-        .hash();
-    let block_number: u64 = client
-        .blocks()
-        .at(block_hash)
-        .await
-        .context("block at hash")?
-        .number()
-        .into();
-    Ok((block_number, block_hash))
-}
-
-/// Fetch delegate free balances (rao) at the given block via System::Account storage.
-async fn get_delegate_balances_at_block(
-    client: &BittensorClient,
-    block_hash: subxt::blocks::BlockHash<generated::RuntimeConfig>,
-    stake_info_delegate_ss58: &str,
-    limit_price_delegate_ss58: &str,
-) -> Result<(u128, u128)> {
-    let account_id = |ss58: &str| -> Result<generated::AccountId> {
-        let pk = sr25519::Public::from_ss58check(ss58).context("invalid SS58 address")?;
-        Ok(generated::AccountId::from(pk.0))
-    };
-    let free_rao = |ss58: &str| async {
-        let id = account_id(ss58)?;
-        let addr = generated::api::storage().system().account(&id);
-        let opt = client
-            .storage()
-            .at(block_hash)
-            .fetch(&addr)
-            .await
-            .context("fetch System::Account")?;
-        Ok::<u128, anyhow::Error>(opt.map(|i| i.data.free as u128).unwrap_or(0))
-    };
-    let stake_info_rao = free_rao(stake_info_delegate_ss58).await?;
-    let limit_price_rao = free_rao(limit_price_delegate_ss58).await?;
-    Ok((stake_info_rao, limit_price_rao))
-}
-
-/// Fetch current Bittensor block number and delegate balances (composes block + balances).
+/// Fetch current Bittensor block number and delegate balances via direct WS RPC (like Python).
 async fn get_bittensor_block_and_balances(
     _network: &str,
     stake_info_delegate_ss58: &str,
     limit_price_delegate_ss58: &str,
 ) -> Result<(u64, u128, u128)> {
     let ws_url = std::env::var("BITTENSOR_WS_URL")
-        .unwrap_or_else(|_| crate::DEFAULT_BITTENSOR_WS_URL.to_string());
-    let client = bittensor_client(&ws_url).await?;
-    let (block_number, block_hash) = get_current_block_number(&client).await?;
-    let (stake_info_rao, limit_price_rao) = get_delegate_balances_at_block(
-        &client,
-        block_hash,
-        stake_info_delegate_ss58,
-        limit_price_delegate_ss58,
-    )
-    .await?;
+        .unwrap_or_else(|_| DEFAULT_BITTENSOR_WS_URL.to_string());
+    let block_number = get_current_block_bittensor(&ws_url).await?;
+    let (stake_info_rao, limit_price_rao) =
+        get_delegate_balances_bittensor(&ws_url, stake_info_delegate_ss58, limit_price_delegate_ss58)
+            .await?;
     Ok((block_number, stake_info_rao, limit_price_rao))
 }
 
@@ -158,7 +91,8 @@ async fn contract_view_address<M: Middleware>(
     let tx = TransactionRequest::new()
         .to(contract_address)
         .data(selector);
-    let bytes = client.call(&tx, None).await.context("contract view call")?;
+    let typed_tx: TypedTransaction = tx.into();
+    let bytes = client.call(&typed_tx, None).await.context("contract view call")?;
     let b = bytes.as_ref();
     if b.len() >= 32 {
         Ok(Address::from_slice(&b[b.len() - 20..]))
