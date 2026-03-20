@@ -6,9 +6,13 @@ from app.services.evm_service import get_w3_account_contract, receipt_to_dict, r
 from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
 
+_subtensor_instance = None
 
 def _subtensor() -> bt.Subtensor:
-    return bt.Subtensor(network="finney")
+    global _subtensor_instance
+    if _subtensor_instance is None:
+        _subtensor_instance = bt.Subtensor(network="finney")
+    return _subtensor_instance
 
 
 def resolve_remove_stake_amount(
