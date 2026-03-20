@@ -5,7 +5,6 @@ from app.services.evm_service import (
     receipt_to_dict,
     run_quiet,
 )
-from app.services.executor_service import read_executor_enabled, set_executor_enabled
 from app.services.stake_service import (
     resolve_remove_stake_amount,
     resolve_remove_stake_limit_amounts,
@@ -33,8 +32,6 @@ __all__ = [
     "get_contract",
     "receipt_to_dict",
     "run_quiet",
-    "read_executor_enabled",
-    "set_executor_enabled",
     "resolve_remove_stake_amount",
     "resolve_remove_stake_limit_amounts",
     "resolve_move_stake_amount",

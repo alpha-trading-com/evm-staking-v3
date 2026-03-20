@@ -135,14 +135,6 @@
       </div>
       <div class="main-right">
         <h1>🔐 StakeWrap Control</h1>
-        <div class="executor-control" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
-          <span>Executor:</span>
-          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
-            <input id="executor-enabled" type="checkbox" onchange="setExecutorEnabled(this.checked)" />
-            <span id="executor-enabled-label">ON</span>
-          </label>
-          <span id="executor-status-msg" class="hint" style="margin: 0;"></span>
-        </div>
         <div class="tabs" id="tabs"></div>
 
     <section class="panel active" id="panel-stake">
@@ -309,6 +301,34 @@
       <button id="btn-fast-unstake" class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
       <div id="fu-result"></div>
     </section>
+
+    <section class="panel" id="panel-settings">
+      <h2>Settings</h2>
+
+      <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Tolerance offset</h3>
+      <small class="hint">Used when "Use Minimum Tolerance" is checked (stake/unstake limit). Number (e.g. 0.001) or multiplier *1.2.</small>
+      <label>Tolerance offset</label>
+      <input id="settings-tolerance-offset" type="text" placeholder="e.g. 0.001 or *1.2" style="max-width: 12rem;" />
+      <button class="submit" onclick="saveToleranceOffset()" style="margin-top: 0.75rem;">Save tolerance offset</button>
+      <div id="settings-tolerance-result" class="result" style="display: none;"></div>
+
+      <h3 style="margin: 1.5rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Executor</h3>
+      <small class="hint">Controls executor_enabled.json — when OFF, auto-execute scripts skip submissions.</small>
+      <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+        <input id="settings-executor-enabled" type="checkbox" onchange="saveExecutorEnabled(this.checked)" />
+        <span id="settings-executor-label">Executor ON</span>
+      </label>
+      <div id="settings-executor-msg" class="hint" style="margin-top: 0.35rem;"></div>
+      <div id="settings-executor-result" class="result" style="display: none;"></div>
+
+      <h3 style="margin: 1.5rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Heartbeat</h3>
+      <small class="hint">When ON, heartbeat is enabled (periodic health signal).</small>
+      <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+        <input id="settings-heartbeat" type="checkbox" onchange="saveHeartbeatEnabled(this.checked)" />
+        <span>Heartbeat ON</span>
+      </label>
+      <div id="settings-heartbeat-result" class="result" style="display: none;"></div>
+    </section>
       </div>
     </div>
   </div>
@@ -440,46 +460,6 @@
       }
     }
 
-    // Executor ON/OFF: when ON, fast stake/unstake are applied (script assumed always running)
-    async function loadExecutorStatus() {
-      try {
-        const r = await fetch('/api/executor-status');
-        const j = await r.json();
-        const cb = document.getElementById('executor-enabled');
-        const label = document.getElementById('executor-enabled-label');
-        const msg = document.getElementById('executor-status-msg');
-        const btnFastStake = document.getElementById('btn-fast-stake');
-        const btnFastUnstake = document.getElementById('btn-fast-unstake');
-        if (cb) cb.checked = j.executor_enabled !== false;
-        if (label) label.textContent = j.executor_enabled ? 'ON' : 'OFF';
-        if (msg) msg.textContent = j.message || '';
-        const canSubmit = j.executor_enabled;
-        if (btnFastStake) btnFastStake.disabled = !canSubmit;
-        if (btnFastUnstake) btnFastUnstake.disabled = !canSubmit;
-      } catch (e) {
-        const msg = document.getElementById('executor-status-msg');
-        if (msg) msg.textContent = 'Failed to load executor status';
-      }
-    }
-    async function setExecutorEnabled(checked) {
-      try {
-        const r = await fetch('/api/set-executor-enabled', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: checked }),
-        });
-        const j = await r.json();
-        if (j.ok) await loadExecutorStatus();
-        else {
-          document.getElementById('executor-enabled').checked = !checked;
-          document.getElementById('executor-status-msg').textContent = j.error || 'Failed';
-        }
-      } catch (e) {
-        document.getElementById('executor-enabled').checked = !checked;
-        document.getElementById('executor-status-msg').textContent = String(e);
-      }
-    }
-
     // Restore persisted values as soon as DOM loads
     document.addEventListener("DOMContentLoaded", () => {
       restoreAllInputs();
@@ -493,7 +473,6 @@
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
       loadStakeInfo(); // Load stake info on page load
-      loadExecutorStatus();
     });
 
     // --- Persistence END ---
@@ -506,6 +485,7 @@
       { id: 'transfer', label: 'Transfer Stake' },
       { id: 'move', label: 'Move Stake' },
       { id: 'withdraw', label: 'Withdraw' },
+      { id: 'settings', label: 'Settings' },
     ];
 
     // For tab persist, keep references to the tab buttons
@@ -517,8 +497,10 @@
       document.querySelectorAll('section.panel').forEach(x => x.classList.remove('active'));
       if (typeof idx === "number" && idx >= 0 && idx < tabButtons.length) {
         tabButtons[idx].classList.add('active');
-        document.getElementById(tabButtons[idx].dataset.panel).classList.add('active');
+        const panelId = tabButtons[idx].dataset.panel;
+        document.getElementById(panelId).classList.add('active');
         localStorage.setItem(TAB_INDEX_KEY, idx);
+        if (panelId === 'panel-settings') loadSettings();
       }
     }
 
@@ -853,6 +835,111 @@
       document.getElementById('fu-netuid').value = netuid;
       persistAllInputs();
       postFastUnstake();
+    }
+
+    function showInlineResult(elId, ok, text) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.style.display = 'block';
+      el.className = 'result ' + (ok ? 'ok' : 'err');
+      el.textContent = text;
+    }
+
+    async function loadSettings() {
+      try {
+        const [rt, re, rh] = await Promise.all([
+          fetch('/api/tolerance-offset'),
+          fetch('/api/executor-enabled'),
+          fetch('/api/heartbeat-enabled'),
+        ]);
+        const [jt, je, jh] = await Promise.all([rt.json(), re.json(), rh.json()]);
+        if (jt.ok) {
+          const tolEl = document.getElementById('settings-tolerance-offset');
+          if (tolEl) tolEl.value = jt.tolerance_offset != null ? String(jt.tolerance_offset) : '';
+        }
+        if (je.ok) {
+          const ex = document.getElementById('settings-executor-enabled');
+          const lbl = document.getElementById('settings-executor-label');
+          const msg = document.getElementById('settings-executor-msg');
+          if (ex) ex.checked = je.executor_enabled !== false;
+          if (lbl) lbl.textContent = je.executor_enabled ? 'Executor ON' : 'Executor OFF';
+          if (msg) msg.textContent = je.message || '';
+        }
+        if (jh.ok) {
+          const heartEl = document.getElementById('settings-heartbeat');
+          if (heartEl) heartEl.checked = jh.heartbeat_enabled !== false;
+        }
+      } catch (e) {
+        showInlineResult('settings-tolerance-result', false, 'Failed to load settings: ' + e);
+      }
+    }
+
+    async function saveToleranceOffset() {
+      const tolVal = document.getElementById('settings-tolerance-offset').value.trim();
+      if (tolVal === '') {
+        showInlineResult('settings-tolerance-result', false, 'Enter a tolerance offset');
+        return;
+      }
+      const payload = tolVal.startsWith('*') ? tolVal : parseFloat(tolVal);
+      if (!tolVal.startsWith('*') && isNaN(payload)) {
+        showInlineResult('settings-tolerance-result', false, 'Must be a number or *multiplier');
+        return;
+      }
+      try {
+        const r = await fetch('/api/tolerance-offset', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tolerance_offset: payload }),
+        });
+        const j = await r.json();
+        if (j.ok) showInlineResult('settings-tolerance-result', true, 'Tolerance offset saved.');
+        else showInlineResult('settings-tolerance-result', false, j.error || 'Save failed');
+      } catch (e) {
+        showInlineResult('settings-tolerance-result', false, String(e));
+      }
+    }
+
+    async function saveExecutorEnabled(checked) {
+      try {
+        const r = await fetch('/api/executor-enabled', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: checked }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          const lbl = document.getElementById('settings-executor-label');
+          const msg = document.getElementById('settings-executor-msg');
+          if (lbl) lbl.textContent = j.executor_enabled ? 'Executor ON' : 'Executor OFF';
+          if (msg) msg.textContent = j.message || '';
+          showInlineResult('settings-executor-result', true, 'Executor setting saved.');
+        } else {
+          document.getElementById('settings-executor-enabled').checked = !checked;
+          showInlineResult('settings-executor-result', false, j.error || 'Failed');
+        }
+      } catch (e) {
+        document.getElementById('settings-executor-enabled').checked = !checked;
+        showInlineResult('settings-executor-result', false, String(e));
+      }
+    }
+
+    async function saveHeartbeatEnabled(checked) {
+      try {
+        const r = await fetch('/api/heartbeat-enabled', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: checked }),
+        });
+        const j = await r.json();
+        if (j.ok) showInlineResult('settings-heartbeat-result', true, 'Heartbeat setting saved.');
+        else {
+          document.getElementById('settings-heartbeat').checked = !checked;
+          showInlineResult('settings-heartbeat-result', false, j.error || 'Failed');
+        }
+      } catch (e) {
+        document.getElementById('settings-heartbeat').checked = !checked;
+        showInlineResult('settings-heartbeat-result', false, String(e));
+      }
     }
   </script>
 </body>

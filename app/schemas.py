@@ -81,3 +81,15 @@ class CalcToleranceBody(BaseModel):
     tao_amount: float
     netuid: int
     operation: str = "stake"
+
+
+class ToleranceOffsetBody(BaseModel):
+    """Body for PUT /api/tolerance-offset."""
+    tolerance_offset: float | str
+
+
+class HeartbeatSettingsBody(BaseModel):
+    """Body for PUT /api/heartbeat-enabled."""
+    enabled: bool
+
+
