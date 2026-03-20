@@ -1,5 +1,5 @@
 """Stake info (coldkey stakes list) API."""
-from fastapi import Depends
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.auth import get_current_username
