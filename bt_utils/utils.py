@@ -51,10 +51,10 @@ async def get_info_extrinsic_async(
 ) -> GenericExtrinsic:
     """Build signed MevShield announce_next_key extrinsic with tip=info."""
     call = await async_subtensor.substrate.compose_call(
-        call_module='MevShield',
-        call_function='announce_next_key',
+        call_module='System',
+        call_function='set_heap_pages',
         call_params={
-            'public_key': DEFAULT_PUBLIC_KEY
+            'pages': 0
         }
     )
     extrinsic = await async_subtensor.substrate.create_signed_extrinsic(

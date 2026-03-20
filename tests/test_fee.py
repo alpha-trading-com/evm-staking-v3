@@ -71,7 +71,7 @@ async def find_all_diff_changes(
 
 async def main():
     async with bt.AsyncSubtensor(network="finney") as async_subtensor:
-        wallet = bt.Wallet(name="test_proxy")
+        wallet = bt.Wallet(name="proxy")
         wallet.unlock_coldkey()
         print("Finding tip_rao positions where diff (inclusion fee) changes...")
         changes = await find_all_diff_changes(
