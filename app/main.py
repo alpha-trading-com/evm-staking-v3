@@ -14,7 +14,7 @@ Structure (SOC):
     schemas.py      – Pydantic request bodies
     auth.py         – HTTP Basic auth
     services/       – business logic (evm, executor, stake, fast_stake, stake_info)
-    routers/        – ui, executor, tolerance-offset, heartbeat (settings), status, stake, fast, tolerance, stake_info
+    routers/        – ui, executor, tolerance-offset, status, stake, fast, tolerance, stake_info
 """
 import os
 import sys
@@ -30,7 +30,7 @@ load_dotenv(REPO_ROOT / ".env")
 
 from fastapi import FastAPI
 
-from app.routers import ui, executor, status, stake, fast, tolerance, stake_info, settings, tolerance_offset
+from app.routers import ui, executor, status, stake, fast, tolerance, stake_info, tolerance_offset
 
 app = FastAPI(title="StakeWrap Control", version="1.0.0")
 
@@ -41,5 +41,4 @@ app.include_router(stake.router)
 app.include_router(fast.router)
 app.include_router(tolerance.router)
 app.include_router(stake_info.router)
-app.include_router(settings.router)
 app.include_router(tolerance_offset.router)

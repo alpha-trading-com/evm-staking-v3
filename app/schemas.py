@@ -88,8 +88,3 @@ class ToleranceOffsetBody(BaseModel):
     tolerance_offset: float | str
 
 
-class HeartbeatSettingsBody(BaseModel):
-    """Body for PUT /api/heartbeat-enabled."""
-    enabled: bool
-
-

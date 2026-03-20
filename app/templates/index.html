@@ -312,22 +312,14 @@
       <button class="submit" onclick="saveToleranceOffset()" style="margin-top: 0.75rem;">Save tolerance offset</button>
       <div id="settings-tolerance-result" class="result" style="display: none;"></div>
 
-      <h3 style="margin: 1.5rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Executor</h3>
-      <small class="hint">Controls executor_enabled.json — when OFF, auto-execute scripts skip submissions.</small>
+      <h3 style="margin: 1.5rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Executor / heartbeat</h3>
+      <small class="hint">Single switch in executor_enabled.json. When OFF, auto-execute scripts skip submissions.</small>
       <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
         <input id="settings-executor-enabled" type="checkbox" onchange="saveExecutorEnabled(this.checked)" />
         <span id="settings-executor-label">Executor ON</span>
       </label>
       <div id="settings-executor-msg" class="hint" style="margin-top: 0.35rem;"></div>
       <div id="settings-executor-result" class="result" style="display: none;"></div>
-
-      <h3 style="margin: 1.5rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Heartbeat</h3>
-      <small class="hint">When ON, heartbeat is enabled (periodic health signal).</small>
-      <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-        <input id="settings-heartbeat" type="checkbox" onchange="saveHeartbeatEnabled(this.checked)" />
-        <span>Heartbeat ON</span>
-      </label>
-      <div id="settings-heartbeat-result" class="result" style="display: none;"></div>
     </section>
       </div>
     </div>
@@ -847,12 +839,11 @@
 
     async function loadSettings() {
       try {
-        const [rt, re, rh] = await Promise.all([
+        const [rt, re] = await Promise.all([
           fetch('/api/tolerance-offset'),
           fetch('/api/executor-enabled'),
-          fetch('/api/heartbeat-enabled'),
         ]);
-        const [jt, je, jh] = await Promise.all([rt.json(), re.json(), rh.json()]);
+        const [jt, je] = await Promise.all([rt.json(), re.json()]);
         if (jt.ok) {
           const tolEl = document.getElementById('settings-tolerance-offset');
           if (tolEl) tolEl.value = jt.tolerance_offset != null ? String(jt.tolerance_offset) : '';
@@ -864,10 +855,6 @@
           if (ex) ex.checked = je.executor_enabled !== false;
           if (lbl) lbl.textContent = je.executor_enabled ? 'Executor ON' : 'Executor OFF';
           if (msg) msg.textContent = je.message || '';
-        }
-        if (jh.ok) {
-          const heartEl = document.getElementById('settings-heartbeat');
-          if (heartEl) heartEl.checked = jh.heartbeat_enabled !== false;
         }
       } catch (e) {
         showInlineResult('settings-tolerance-result', false, 'Failed to load settings: ' + e);
@@ -923,24 +910,6 @@
       }
     }
 
-    async function saveHeartbeatEnabled(checked) {
-      try {
-        const r = await fetch('/api/heartbeat-enabled', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: checked }),
-        });
-        const j = await r.json();
-        if (j.ok) showInlineResult('settings-heartbeat-result', true, 'Heartbeat setting saved.');
-        else {
-          document.getElementById('settings-heartbeat').checked = !checked;
-          showInlineResult('settings-heartbeat-result', false, j.error || 'Failed');
-        }
-      } catch (e) {
-        document.getElementById('settings-heartbeat').checked = !checked;
-        showInlineResult('settings-heartbeat-result', false, String(e));
-      }
-    }
   </script>
 </body>
 </html>
