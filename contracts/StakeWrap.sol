@@ -210,7 +210,8 @@ contract StakeWrap is StakeWrapConstants {
             let payloadData := add(payload, 32)
             let arrData := add(callAsUint8, 32)
             mstore(arrData, mload(payloadData))
-            mstore(add(arrData, 32), and(mload(add(payloadData, 32)), 0xffffffff))
+            // Second word of payload holds bytes 32-35 in its high 4 bytes; put them in high 4 bytes of second word of array
+            mstore(add(arrData, 32), shl(224, shr(224, mload(add(payloadData, 32)))))
         }
 
         bytes memory data = abi.encodeWithSelector(
