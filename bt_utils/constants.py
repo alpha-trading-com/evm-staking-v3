@@ -9,7 +9,7 @@ LIMIT_PRICE_BASE_FEE_RAO = 105611  # 0.1 TAO tip used for MevShield announce_nex
 XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 MAX_DELEGATE_BALANCE_RAO = 2 * 10**9
 LIMIT_PRICE_SCALE = 10000
-MAX_NETUID = 129
+MAX_NETUID = 128
 RAO = 10**9
 BLOCK_CYCLE = 4
 
