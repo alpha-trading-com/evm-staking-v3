@@ -1,8 +1,11 @@
-WITHDRAW_COLDKEY = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"
-STAKE_INFO_DELEGATE = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"
-LIMIT_PRICE_DELEGATE = "5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDwhQBmA8dMwBX"
+import os
+
+from dotenv import load_dotenv
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_ROOT, ".env"))
+
 DEFAULT_HOTKEY = "5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21"
-CONTRACT_ADDRESS = "5HdMkS11gSdFhSWvUFscnoEdBo7hZX2Bp77ijK8PfRAEKXht"
 
 STAKE_INFO_BASE_FEE_RAO = 105612   # 0.1 TAO tip used for MevShield announce_next_key (stake-info)
 LIMIT_PRICE_BASE_FEE_RAO = 105611  # 0.1 TAO tip used for MevShield announce_next_key (limit-price)
@@ -12,11 +15,14 @@ LIMIT_PRICE_SCALE = 10000
 MAX_NETUID = 129
 RAO = 10**9
 BLOCK_CYCLE = 4
-
-# Deletegate wallets
-DELETEGATE_1 = "proxy"
-DELETEGATE_2 = "test_proxy"
-
-# Executor: UI can turn on/off via executor_enabled.json; auto_execute only submits when enabled
 EXECUTOR_ENABLED_FILENAME = "executor_enabled.json"
+
+
+
+
+STAKE_INFO_DELEGATE = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"
+LIMIT_PRICE_DELEGATE = "5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDwhQBmA8dMwBX"
+# Delegate wallet names (Bittensor coldkey names); override with DELETEGATE_1 / DELETEGATE_2 in .env
+DELETEGATE_1 = os.getenv("DELETEGATE_1", "proxy").strip() or "proxy"
+DELETEGATE_2 = os.getenv("DELETEGATE_2", "test_proxy").strip() or "test_proxy"
 
