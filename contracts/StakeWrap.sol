@@ -289,15 +289,9 @@ contract StakeWrap is StakeWrapConstants {
             allowPartial,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
         if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert StakingCallFailed();
+            return;
         }
     }
 
@@ -335,16 +329,8 @@ contract StakeWrap is StakeWrapConstants {
             allowPartial,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert StakingCallFailed();
-        }
+        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (success) return;
     }
 
     /**
@@ -374,16 +360,8 @@ contract StakeWrap is StakeWrapConstants {
             amount,
             netuid
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert StakingCallFailed();
-        }
+        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (success) return;
     }
     
     /**
@@ -413,16 +391,8 @@ contract StakeWrap is StakeWrapConstants {
             destination_netuid,
             amount
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert StakingCallFailed();
-        }
+        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (success) return;
     }
     
     /**
@@ -453,16 +423,8 @@ contract StakeWrap is StakeWrapConstants {
             destination_netuid,
             amount
         );
-        (bool success, bytes memory returnData) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (!success) {
-            if (returnData.length > 0) {
-                assembly {
-                    let returndata_size := mload(returnData)
-                    revert(add(32, returnData), returndata_size)
-                }
-            }
-            revert StakingCallFailed();
-        }
+        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (success) return;
     }
 
     /**
