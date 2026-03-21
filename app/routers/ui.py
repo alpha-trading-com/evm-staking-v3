@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth import get_current_username
-from app.config import REPO_ROOT
+from app.core.config import REPO_ROOT
 
 router = APIRouter(tags=["ui"])
 templates = Jinja2Templates(directory=str(REPO_ROOT / "app" / "templates"))

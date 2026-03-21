@@ -217,6 +217,8 @@ def main():
                     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
                     print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
                     nonce += 1
+                else:
+                    print("Executor is disabled. Skipping execute.")
 
                 is_executor_enabled_flag = is_executor_enabled()
 
