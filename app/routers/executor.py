@@ -38,7 +38,7 @@ def _executor_status_dict() -> dict:
 
 
 @router.get("/executor-enabled")
-async def api_get_executor_enabled(_: str = Depends(get_current_username)):
+async def api_get_executor_enabled():
     """Return whether auto-execute / executor submissions are allowed (executor_enabled.json)."""
     return _executor_status_dict()
 

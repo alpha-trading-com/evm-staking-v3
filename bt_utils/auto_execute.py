@@ -7,6 +7,8 @@ via SubstrateInterface over BITTENSOR_WS_URL (no bittensor.Subtensor).
 Requires: RPC_URL; and either EXECUTOR_PRIVATE_KEY (recommended) or PRIVATE_KEY (owner).
 If using EXECUTOR_PRIVATE_KEY, the contract must have executor set (owner calls setExecutor(executorAddress)).
 Optional: BITTENSOR_WS_URL (default wss://entrypoint-finney.opentensor.ai:443).
+Optional: EXECUTOR_API_BASE_URL (e.g. http://127.0.0.1:8000) — reads executor on/off from
+GET /api/executor-enabled (no auth). If unset or request fails, falls back to executor_enabled.json.
 
 Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.auto_execute
 
@@ -18,6 +20,8 @@ import json
 import os
 import sys
 import time
+import urllib.error
+import urllib.request
 
 from web3 import Web3
 from eth_account import Account
@@ -89,7 +93,7 @@ def get_delegate_balances_from_chain(substrate) -> tuple[int, int]:
     return (b1, b2)
 
 
-def is_executor_enabled() -> bool:
+def _is_executor_enabled_from_file() -> bool:
     """True if executor_enabled.json has "enabled": true. Default True if file missing."""
     path = os.path.join(ROOT_DIR, EXECUTOR_ENABLED_FILENAME)
     if not os.path.isfile(path):
@@ -99,6 +103,28 @@ def is_executor_enabled() -> bool:
             return json.load(f).get("enabled", True)
     except Exception:
         return True
+
+
+def is_executor_enabled() -> bool:
+    """
+    When EXECUTOR_API_BASE_URL is set, fetch from the uvicorn app:
+    GET {base}/api/executor-enabled (unauthenticated; matches api_get_executor_enabled).
+
+    Otherwise, or on any failure, use executor_enabled.json (local file).
+    """
+    base = os.getenv("EXECUTOR_API_BASE_URL", "").strip().rstrip("/")
+    if base:
+        url = f"{base}/api/executor-enabled"
+        try:
+            req = urllib.request.Request(url, method="GET")
+            timeout = float(os.getenv("EXECUTOR_API_TIMEOUT", "5"))
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            if data.get("ok") is True and "executor_enabled" in data:
+                return bool(data["executor_enabled"])
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, ValueError, TypeError):
+            pass
+    return _is_executor_enabled_from_file()
 
 
 def main():
