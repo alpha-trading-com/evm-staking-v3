@@ -1,38 +1,17 @@
 """Executor on/off API and executor_enabled.json read/write."""
-import json
-
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.auth import get_current_username
-from app.config import REPO_ROOT
 from app.schemas import SetExecutorEnabledBody
-from bt_utils.constants import EXECUTOR_ENABLED_FILENAME
+from app.core.config import set_executor_enabled
+from app.core.config import settings
 
 router = APIRouter(prefix="/api", tags=["executor"])
 
 
-def read_executor_enabled() -> bool:
-    """True if executor_enabled.json has \"enabled\": true. Default True if file missing."""
-    path = REPO_ROOT / EXECUTOR_ENABLED_FILENAME
-    if not path.is_file():
-        return True
-    try:
-        with open(path) as f:
-            return json.load(f).get("enabled", True)
-    except Exception:
-        return True
-
-
-def set_executor_enabled(enabled: bool) -> None:
-    """Write executor_enabled.json. Raises on IO error."""
-    path = REPO_ROOT / EXECUTOR_ENABLED_FILENAME
-    with open(path, "w") as f:
-        json.dump({"enabled": enabled}, f)
-
-
 def _executor_status_dict() -> dict:
-    enabled = read_executor_enabled()
+    enabled = settings.EXECUTOR_ENABLED
     msg = "Executor is OFF. Turn ON so fast stake/unstake are applied." if not enabled else "Executor ON."
     return {"ok": True, "executor_enabled": enabled, "message": msg}
 
@@ -48,6 +27,7 @@ async def api_put_executor_enabled(body: SetExecutorEnabledBody, _: str = Depend
     """Turn executor (execute() submissions) on or off."""
     try:
         set_executor_enabled(body.enabled)
+        settings.EXECUTOR_ENABLED = body.enabled
         msg = (
             "Executor is OFF. Turn ON so fast stake/unstake are applied."
             if not body.enabled
