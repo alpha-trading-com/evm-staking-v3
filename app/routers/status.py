@@ -47,10 +47,19 @@ async def api_contract_config(_: str = Depends(get_current_username)):
         stake_info_base_fee_rao, limit_price_base_fee_rao = contract.functions.getBaseFeesRao().call()
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+    staking_unstaking_enabled = None
+    staking_gate_configured = None
+    try:
+        staking_unstaking_enabled = bool(contract.functions.stakingUnstakingEnabled().call())
+        staking_gate_configured = bool(contract.functions.stakingGateConfigured().call())
+    except Exception:
+        pass
     return {
         "ok": True,
         "contract": contract_address,
         "contract_account_id32": contract_account_id32,
         "stake_info_base_fee_rao": stake_info_base_fee_rao,
         "limit_price_base_fee_rao": limit_price_base_fee_rao,
+        "staking_unstaking_enabled": staking_unstaking_enabled,
+        "staking_gate_configured": staking_gate_configured,
     }

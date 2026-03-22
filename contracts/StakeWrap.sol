@@ -27,6 +27,11 @@ contract StakeWrap is StakeWrapConstants {
     error ContractAccountId32NotSet();
     error ContractAccountId32AlreadySet();
     error BaseFeesNotSet();
+    error StakingUnstakingDisabled();
+    error StakingGateNotConfigured();
+    error WrongStakingGatePassword();
+    error StakingGateAlreadyConfigured();
+    error InvalidStakingGateHash();
 
     address public owner;
     /// If set, this address may call execute() so owner can use the same chain for other txs without nonce conflict.
@@ -36,9 +41,37 @@ contract StakeWrap is StakeWrapConstants {
     bytes32 public contractAccountId32;
     /// Base fees (rao) for MevShield; set once after deploy so execute() calldata is smaller. Packed: high 128 = stakeInfo, low 128 = limitPrice.
     uint256 private _baseFeesRao;
+    /// When false, stake/unstake/move/transfer-stake paths and execute() staking logic are blocked (withdraw and other owner ops still work).
+    bool public stakingUnstakingEnabled = false;
+    /// keccak256(bytes(utf8 password)); once set, only password-protected toggle can change stakingUnstakingEnabled.
+    bytes32 private _stakingGatePasswordHash;
 
     constructor() {
         owner = msg.sender;
+    }
+
+    /// @notice True after owner has set a non-zero staking gate hash (one-time).
+    function stakingGateConfigured() external view returns (bool) {
+        return _stakingGatePasswordHash != bytes32(0);
+    }
+
+    /// @notice One-time: store hash of the UTF-8 password used later with setStakingUnstakingEnabled. Use keccak256(bytes(password)) off-chain.
+    function setStakingGatePasswordHash(bytes32 hash) external onlyOwner {
+        if (_stakingGatePasswordHash != bytes32(0)) revert StakingGateAlreadyConfigured();
+        if (hash == bytes32(0)) revert InvalidStakingGateHash();
+        _stakingGatePasswordHash = hash;
+    }
+
+    /// @notice Enable or disable contract staking/unstaking; requires correct password (hash match).
+    function setStakingUnstakingEnabled(bool enabled, string calldata password) external onlyOwner {
+        if (_stakingGatePasswordHash == bytes32(0)) revert StakingGateNotConfigured();
+        if (keccak256(bytes(password)) != _stakingGatePasswordHash) revert WrongStakingGatePassword();
+        stakingUnstakingEnabled = enabled;
+    }
+
+    modifier whenStakingUnstakingEnabled() {
+        if (!stakingUnstakingEnabled) revert StakingUnstakingDisabled();
+        _;
     }
 
     /// Call once after deploy: set this contract's AccountId32 (from evm address). Saves calldata in execute().
@@ -80,7 +113,7 @@ contract StakeWrap is StakeWrapConstants {
     function execute(
         uint64 execBlock,
         uint256 packedBalances
-    ) external onlyOwnerOrExecutor {
+    ) external onlyOwnerOrExecutor whenStakingUnstakingEnabled {
         if (contractAccountId32 == bytes32(0)) revert ContractAccountId32NotSet();
         if (_baseFeesRao == 0) revert BaseFeesNotSet();
         if (execBlock == _lastExecBlock) return;
@@ -238,7 +271,7 @@ contract StakeWrap is StakeWrapConstants {
         bytes32 hotkey,
         uint256 netuid,
         uint256 amount
-    ) public onlyOwner {
+    ) public onlyOwner whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
@@ -275,7 +308,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 limitPrice,
         uint256 amount,
         bool allowPartial
-    ) public onlyOwner {
+    ) public onlyOwner whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
@@ -309,7 +342,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 limitPrice,
         uint256 amount,
         bool allowPartial
-    ) public onlyOwner {
+    ) public onlyOwner whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
@@ -343,7 +376,7 @@ contract StakeWrap is StakeWrapConstants {
         bytes32 hotkey,
         uint256 netuid,
         uint256 amount
-    ) public onlyOwner {
+    ) public onlyOwner whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
@@ -409,7 +442,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 origin_netuid,
         uint256 destination_netuid,
         uint256 amount
-    ) public onlyOwner {
+    ) public onlyOwner whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         origin_netuid = origin_netuid ^ XOR_KEY;
         destination_netuid = destination_netuid ^ XOR_KEY;

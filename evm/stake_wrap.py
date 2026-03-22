@@ -34,6 +34,10 @@ CONTRACT_ABI: List[Dict[str, Any]] = [
     {"inputs": [{"internalType": "bytes32", "name": "_id", "type": "bytes32"}], "name": "setContractAccountId32", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "uint256", "name": "stakeInfoBaseFeeRao", "type": "uint256"}, {"internalType": "uint256", "name": "limitPriceBaseFeeRao", "type": "uint256"}], "name": "setBaseFeesRao", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [], "name": "contractAccountId32", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "stakingUnstakingEnabled", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "stakingGateConfigured", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [{"internalType": "bytes32", "name": "hash", "type": "bytes32"}], "name": "setStakingGatePasswordHash", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "bool", "name": "enabled", "type": "bool"}, {"internalType": "string", "name": "password", "type": "string"}], "name": "setStakingUnstakingEnabled", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
 ]
 
 
@@ -247,6 +251,48 @@ def execute_pull_and_stake(w3, account: Account, contract_address: str, exec_blo
     print(f"Transaction confirmed in block: {receipt.blockNumber}")
     if receipt.status != 0:
         print("✅ execute succeeded.")
+    return receipt
+
+
+def hash_staking_gate_password(password: str) -> bytes:
+    """Match StakeWrap: keccak256(bytes(utf8 password))."""
+    return bytes(Web3.keccak(text=password))
+
+
+def set_staking_gate_password_hash(
+    w3, account: Account, contract_address: str, password_plain: str, contract=None
+):
+    """One-time: set gate hash from plaintext password (hashed with keccak256(bytes(...)))."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
+    h = hash_staking_gate_password(password_plain)
+    tx = contract.functions.setStakingGatePasswordHash(h).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 120000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    return receipt
+
+
+def set_staking_unstaking_enabled(
+    w3, account: Account, contract_address: str, enabled: bool, password: str, contract=None
+):
+    """Toggle staking/unstaking gate; requires gate to be configured and correct password."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
+    tx = contract.functions.setStakingUnstakingEnabled(enabled, password).build_transaction({
+        "from": account.address,
+        "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": 120000,
+        "gasPrice": w3.eth.gas_price,
+    })
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
     return receipt
 
 

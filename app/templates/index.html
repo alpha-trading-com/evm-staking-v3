@@ -134,6 +134,7 @@
         </div>
       </div>
       <div class="main-right">
+        <div id="evm-staking-gate-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
         <h1>🔐 StakeWrap Control</h1>
         <div class="tabs" id="tabs"></div>
 
@@ -158,7 +159,7 @@
       <label>Netuid</label>
       <div class="amount-input-row">
         <input id="stake-netuid" type="number" value="1" style="max-width: 8rem;" />
-        <button class="submit" onclick="postStakeOrLimit()" style="margin-top: 0;">Submit Stake</button>
+        <button type="button" id="btn-evm-stake-submit" class="submit" onclick="postStakeOrLimit()" style="margin-top: 0;">Submit Stake</button>
       </div>
       <label>Hotkey (SS58 or 0x...)</label>
       <input id="stake-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
@@ -192,7 +193,7 @@
       <label>Netuid</label>
       <div class="amount-input-row">
         <input id="rs-netuid" type="number" value="1" style="max-width: 8rem;" />
-        <button class="submit" onclick="postRemoveStakeOrLimit()" style="margin-top: 0;">Submit Unstake</button>
+        <button type="button" id="btn-evm-unstake-submit" class="submit" onclick="postRemoveStakeOrLimit()" style="margin-top: 0;">Submit Unstake</button>
       </div>
       <label>Hotkey</label>
       <input id="rs-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
@@ -227,7 +228,7 @@
       <input id="ts-dest" type="number" value="1" />
       <label>Hotkey</label>
       <input id="ts-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button class="submit" onclick="postTransferStake()">Submit Transfer Stake</button>
+      <button type="button" id="btn-evm-transfer-submit" class="submit" onclick="postTransferStake()">Submit Transfer Stake</button>
       <div id="ts-result"></div>
     </section>
 
@@ -244,7 +245,7 @@
       <input id="ms-origin-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
       <label>Destination Hotkey</label>
       <input id="ms-dest-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button class="submit" onclick="postMoveStake()">Submit Move Stake</button>
+      <button type="button" id="btn-evm-move-submit" class="submit" onclick="postMoveStake()">Submit Move Stake</button>
       <div id="ms-result"></div>
     </section>
 
@@ -312,6 +313,21 @@
         <div class="loading">Load Settings to see contract config.</div>
       </div>
 
+      <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Staking / unstaking gate (contract)</h3>
+      <small class="hint">Stores only a keccak256 hash on-chain. Toggling requires the password. Blocks EVM stake, unstake, transfer/move stake, and <code>execute()</code> staking. Withdraw and Fast Stake/Unstake are not blocked by this flag.</small>
+      <label style="margin-top: 0.75rem;">One-time: set gate password (stores hash)</label>
+      <input type="password" id="staking-gate-init-password" autocomplete="new-password" style="max-width: 24rem;" />
+      <button type="button" class="submit" onclick="postStakingGateInit()" style="margin-top: 0.5rem;">Initialize gate hash</button>
+      <label style="margin-top: 1rem;">Allow EVM staking / unstaking (after gate is set)</label>
+      <label style="margin-top: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+        <input id="staking-gate-enabled-apply" type="checkbox" checked />
+        <span>Enabled (unchecked = disabled on chain)</span>
+      </label>
+      <label>Password for toggle</label>
+      <input type="password" id="staking-gate-toggle-password" autocomplete="current-password" style="max-width: 24rem;" />
+      <button type="button" class="submit" onclick="postStakingGateToggle()" style="margin-top: 0.5rem;">Apply toggle</button>
+      <div id="staking-gate-result" class="result" style="display: none; margin-top: 0.75rem;"></div>
+
       <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Tolerance offset</h3>
       <small class="hint">Used when "Use Minimum Tolerance" is checked (stake/unstake limit). Number (e.g. 0.001) or multiplier *1.2.</small>
       <label>Tolerance offset</label>
@@ -333,6 +349,94 @@
   </div>
 
   <script>
+    window.evmStakingBlocked = false;
+
+    function applyEvmStakingGateUi(j) {
+      if (!j || j.ok !== true) return;
+      window.evmStakingBlocked = j.staking_unstaking_enabled === false;
+      ['btn-evm-stake-submit', 'btn-evm-unstake-submit', 'btn-evm-transfer-submit', 'btn-evm-move-submit'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = window.evmStakingBlocked;
+      });
+      const ban = document.getElementById('evm-staking-gate-banner');
+      if (ban) {
+        if (j.staking_unstaking_enabled === false) {
+          ban.style.display = 'block';
+          ban.textContent = 'EVM staking / unstaking / transfer / move stake are disabled on the contract (execute() staking blocked). Withdraw and Fast Stake/Unstake are not affected.';
+        } else {
+          ban.style.display = 'none';
+          ban.textContent = '';
+        }
+      }
+      const chk = document.getElementById('staking-gate-enabled-apply');
+      if (chk && j.staking_unstaking_enabled !== null && j.staking_unstaking_enabled !== undefined) {
+        chk.checked = !!j.staking_unstaking_enabled;
+      }
+    }
+
+    function assertEvmStakingAllowed(resultId) {
+      if (window.evmStakingBlocked) {
+        showResult(resultId, false, 'Contract staking/unstaking is disabled (re-enable in Settings with gate password).');
+        return false;
+      }
+      return true;
+    }
+
+    async function postStakingGateInit() {
+      const pw = document.getElementById('staking-gate-init-password');
+      const password = pw && pw.value ? pw.value : '';
+      if (!password) {
+        showInlineResult('staking-gate-result', false, 'Enter a password for the one-time gate hash.');
+        return;
+      }
+      showInlineResult('staking-gate-result', false, 'Submitting...');
+      try {
+        const r = await fetch('/api/staking-gate/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          showInlineResult('staking-gate-result', true, 'Gate hash set. Tx: ' + (j.receipt && j.receipt.transactionHash ? j.receipt.transactionHash : 'OK'));
+          if (pw) pw.value = '';
+          loadContractConfig();
+        } else {
+          showInlineResult('staking-gate-result', false, j.error || JSON.stringify(j));
+        }
+      } catch (e) {
+        showInlineResult('staking-gate-result', false, String(e));
+      }
+    }
+
+    async function postStakingGateToggle() {
+      const enabled = document.getElementById('staking-gate-enabled-apply').checked;
+      const pwEl = document.getElementById('staking-gate-toggle-password');
+      const password = pwEl && pwEl.value ? pwEl.value : '';
+      if (!password) {
+        showInlineResult('staking-gate-result', false, 'Enter the gate password.');
+        return;
+      }
+      showInlineResult('staking-gate-result', false, 'Submitting...');
+      try {
+        const r = await fetch('/api/staking-gate/enabled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled, password }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          showInlineResult('staking-gate-result', true, 'Updated. Tx: ' + (j.receipt && j.receipt.transactionHash ? j.receipt.transactionHash : 'OK'));
+          if (pwEl) pwEl.value = '';
+          loadContractConfig();
+        } else {
+          showInlineResult('staking-gate-result', false, j.error || JSON.stringify(j));
+        }
+      } catch (e) {
+        showInlineResult('staking-gate-result', false, String(e));
+      }
+    }
+
     // --- Persistence START ---
 
     // List of all input/checkbox element ids to persist
@@ -472,6 +576,10 @@
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
       loadStakeInfo(); // Load stake info on page load
+      fetch('/api/contract-config')
+        .then(r => r.json())
+        .then(j => { if (j.ok) applyEvmStakingGateUi(j); })
+        .catch(() => {});
     });
 
     // --- Persistence END ---
@@ -549,6 +657,7 @@
     }
 
     function postStakeOrLimit() {
+      if (!assertEvmStakingAllowed('stake-result')) return;
       const notLimited = document.getElementById('stake-not-limited').checked;
       if (notLimited) {
         postJson('/api/stake', {
@@ -597,6 +706,7 @@
       }
     }
     function postRemoveStakeOrLimit() {
+      if (!assertEvmStakingAllowed('rs-result')) return;
       const notLimited = document.getElementById('rs-not-limited').checked;
       if (notLimited) {
         const amountValue = document.getElementById('rs-amount').value.trim();
@@ -620,6 +730,7 @@
       }
     }
     function postRemoveStake() {
+      if (!assertEvmStakingAllowed('rs-result')) return;
       const amountValue = document.getElementById('rs-amount').value.trim();
       const amount = amountValue === '' ? null : parseInt(amountValue, 10);
       postJson('/api/remove-stake', {
@@ -660,6 +771,7 @@
       }
     }
     function postTransferStake() {
+      if (!assertEvmStakingAllowed('ts-result')) return;
       postJson('/api/transfer-stake', {
         hotkey: document.getElementById('ts-hotkey').value.trim(),
         origin_netuid: parseInt(document.getElementById('ts-origin').value, 10),
@@ -668,6 +780,7 @@
       }, 'ts-result');
     }
     function postMoveStake() {
+      if (!assertEvmStakingAllowed('ms-result')) return;
       const amountVal = document.getElementById('ms-amount').value.trim();
       postJson('/api/move-stake', {
         origin_hotkey: document.getElementById('ms-origin-hotkey').value.trim(),
@@ -861,8 +974,15 @@
         html += '<div><strong>contractAccountId32:</strong> <code style="word-break: break-all; font-size: 0.8rem;">' + j.contract_account_id32 + '</code></div>';
         html += '<div><strong>stakeInfoBaseFeeRao:</strong> ' + j.stake_info_base_fee_rao + '</div>';
         html += '<div><strong>limitPriceBaseFeeRao:</strong> ' + j.limit_price_base_fee_rao + '</div>';
+        if (j.staking_unstaking_enabled !== null && j.staking_unstaking_enabled !== undefined) {
+          html += '<div><strong>stakingUnstakingEnabled:</strong> ' + j.staking_unstaking_enabled + '</div>';
+        }
+        if (j.staking_gate_configured !== null && j.staking_gate_configured !== undefined) {
+          html += '<div><strong>stakingGateConfigured:</strong> ' + j.staking_gate_configured + '</div>';
+        }
         html += '</div>';
         container.innerHTML = html;
+        applyEvmStakingGateUi(j);
       } catch (e) {
         container.innerHTML = '<div class="result err">' + String(e) + '</div>';
       }

@@ -37,6 +37,14 @@ def main():
     print(f"stakeInfoBaseFeeRao:  {stake_info_base_fee_rao}")
     print(f"limitPriceBaseFeeRao: {limit_price_base_fee_rao}")
 
+    try:
+        enabled = contract.functions.stakingUnstakingEnabled().call()
+        configured = contract.functions.stakingGateConfigured().call()
+        print(f"stakingUnstakingEnabled: {enabled}")
+        print(f"stakingGateConfigured: {configured}")
+    except Exception:
+        pass
+
 
 if __name__ == "__main__":
     main()
