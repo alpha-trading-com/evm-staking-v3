@@ -49,9 +49,11 @@ async def api_contract_config(_: str = Depends(get_current_username)):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
     staking_unstaking_enabled = None
     staking_gate_configured = None
+    staking_gate_reads_ok = False
     try:
         staking_unstaking_enabled = bool(contract.functions.stakingUnstakingEnabled().call())
         staking_gate_configured = bool(contract.functions.stakingGateConfigured().call())
+        staking_gate_reads_ok = True
     except Exception:
         pass
     return {
@@ -62,4 +64,5 @@ async def api_contract_config(_: str = Depends(get_current_username)):
         "limit_price_base_fee_rao": limit_price_base_fee_rao,
         "staking_unstaking_enabled": staking_unstaking_enabled,
         "staking_gate_configured": staking_gate_configured,
+        "staking_gate_reads_ok": staking_gate_reads_ok,
     }

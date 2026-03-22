@@ -2,6 +2,9 @@ node_modules/
 artifacts/
 cache/
 .env
+# Local TLS key material (see run_server.sh)
+ssl/*.pem
+ssl/*.key
 deployment.json
 *.log
 .DS_Store

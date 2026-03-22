@@ -88,14 +88,3 @@ class ToleranceOffsetBody(BaseModel):
     tolerance_offset: float | str
 
 
-class InitStakingGateBody(BaseModel):
-    """One-time POST /api/staking-gate/init — stores keccak256(bytes(password)) on chain."""
-    password: str
-
-
-class SetStakingUnstakingEnabledBody(BaseModel):
-    """POST /api/staking-gate/enabled — toggle gate; must match hash set at init."""
-    enabled: bool
-    password: str
-
-
