@@ -12,9 +12,11 @@ from app.schemas import (
 from app.services.fast_stake_service import (
     do_fast_stake,
     do_fast_stake_limit,
+    do_fast_stake_limit_all_sn28,
     do_fast_unstake,
     do_fast_stake_and_unstake,
 )
+from app.services.stake_service import SN28_NETUID
 
 router = APIRouter(prefix="/api", tags=["fast"])
 
@@ -44,6 +46,27 @@ async def api_fast_stake_limit(body: FastStakeLimitBody, _: str = Depends(get_cu
         if success:
             return {"ok": True, "message": message, "limit_price_used": limit_price}
         return JSONResponse({"ok": False, "error": message}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@router.post("/fast-stake-limit-all-sn28")
+async def api_fast_stake_limit_all_sn28(_: str = Depends(get_current_username)):
+    """Fast stake-limit full spendable amount (same basis as EVM stake-all-SN28) to netuid 28, min tolerance."""
+    try:
+        success, message, limit_price, amount_rao, amount_tao = await do_fast_stake_limit_all_sn28()
+        if success:
+            return {
+                "ok": True,
+                "message": message,
+                "limit_price_used": limit_price,
+                "amount_rao": amount_rao,
+                "amount_tao": amount_tao,
+                "netuid": SN28_NETUID,
+            }
+        return JSONResponse({"ok": False, "error": message}, status_code=400)
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 

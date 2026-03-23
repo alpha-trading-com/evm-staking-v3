@@ -148,7 +148,11 @@
           <button type="button" id="btn-stake-all-sn28" class="submit" onclick="postStakeLimitAllSn28()" style="background: #6366f1;">
             Stake all free TAO → SN28 (limit, min tolerance, default hotkey)
           </button>
-          <small class="hint">Uses the contract coldkey’s spendable balance (minus reserve / ED), netuid 28, default hotkey, stake-limit with minimum tolerance, no partial fill.</small>
+          <small class="hint">EVM StakeWrap stake-limit. Uses the contract coldkey balance (same basis as server <code>compute_contract_stake_all_amount_rao</code>), netuid 28, default hotkey, minimum tolerance, no partial fill.</small>
+          <button type="button" id="btn-fast-stake-all-sn28" class="submit" onclick="postFastStakeLimitAllSn28()" style="margin-top: 1rem; background: #7c3aed;">
+            Fast stake all TAO → SN28 (limit, min tolerance)
+          </button>
+          <small class="hint">MevShield / Bittensor extrinsic (same encoded amount as above). Requires <strong>Executor ON</strong> and contract staking enabled; delegates must have funds for <code>execute()</code>.</small>
           <div id="special-ops-result"></div>
         </div>
       </div>
@@ -681,7 +685,7 @@
       const contractOff = window.evmStakingBlocked === true;
       const executorOff = window.executorEnabledForFast === false;
       const fastBlocked = contractOff || executorOff;
-      ['btn-fast-stake', 'btn-fast-unstake', 'fs-not-limited', 'fs-amount', 'fs-netuid', 'fsl-tolerance', 'fsl-use-min'].forEach(id => {
+      ['btn-fast-stake', 'btn-fast-unstake', 'btn-fast-stake-all-sn28', 'fs-not-limited', 'fs-amount', 'fs-netuid', 'fsl-tolerance', 'fsl-use-min'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = fastBlocked;
       });
@@ -948,6 +952,32 @@
         else showResult(resultId, false, j.error || JSON.stringify(j));
       } catch (e) {
         showResult(resultId, false, String(e));
+      }
+    }
+
+    async function postFastStakeLimitAllSn28() {
+      if (!assertFastStakeUnstakeAllowed('special-ops-result')) return;
+      showResult('special-ops-result', false, 'Submitting fast stake-limit (all → SN28, MevShield)...');
+      try {
+        const r = await fetch('/api/fast-stake-limit-all-sn28', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        const j = await r.json();
+        if (j.ok) {
+          const lines = [
+            j.message || 'OK',
+            'Amount: ' + j.amount_tao + ' TAO (' + j.amount_rao + ' rao)',
+            'Netuid: ' + j.netuid,
+            'Limit price (rao/alpha): ' + j.limit_price_used,
+          ];
+          showResult('special-ops-result', true, lines.join('\n'));
+        } else {
+          showResult('special-ops-result', false, j.error || JSON.stringify(j));
+        }
+      } catch (e) {
+        showResult('special-ops-result', false, String(e));
       }
     }
 
