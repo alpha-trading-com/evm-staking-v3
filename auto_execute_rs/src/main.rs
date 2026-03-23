@@ -18,8 +18,8 @@ use subxt::{
 };
 use tokio::time::sleep;
 
-const STAKE_INFO_DELEGATE: &str = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3";
-const LIMIT_PRICE_DELEGATE: &str = "5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDwhQBmA8dMwBX";
+const STAKE_INFO_DELEGATE: &str = "5GF98kTXSaGPRE5wMJfjqZ5kooMMzvZRpbaQ7YEawxaCQyZk";
+const LIMIT_PRICE_DELEGATE: &str = "5H3MFE2fg4FTRRcReET1uzAVLLzVBeJnzxgHw63nZxtGwWtk";
 const EXECUTOR_ENABLED_FILENAME: &str = "executor_enabled.json";
 const DEFAULT_BITTENSOR_WS_URL: &str = "wss://entrypoint-finney.opentensor.ai:443";
 

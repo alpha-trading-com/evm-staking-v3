@@ -24,7 +24,7 @@ def main():
 
     response = subtensor.add_proxy(
         wallet=real_account,
-        delegate_ss58="5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDwhQBmA8dMwBX",
+        delegate_ss58="5H3MFE2fg4FTRRcReET1uzAVLLzVBeJnzxgHw63nZxtGwWtk",
         proxy_type=ProxyType.Any,
         delay=0,
     )

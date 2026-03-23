@@ -2,7 +2,8 @@ npm run compile
 npm run deploy:upgradeable
 
 
-proxy_address: 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
+STAKE_INFO_DELEGATE: 5GF98kTXSaGPRE5wMJfjqZ5kooMMzvZRpbaQ7YEawxaCQyZk
+LIMIT_PRICE_DELEGATE: 5H3MFE2fg4FTRRcReET1uzAVLLzVBeJnzxgHw63nZxtGwWtk
 transfer_all: 050400f61493dee6f1db19f65636a240de526cda4693910b9d1ae19efbb05cc93dd06f01
 python3 scripts/interact.py pullFromProxiedAccount --encoded-call 0x050400f61493dee6f1db19f65636a240de526cda4693910b9d1ae19efbb05cc93dd06f01
 

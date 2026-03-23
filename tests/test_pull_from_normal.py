@@ -10,7 +10,7 @@ def main():
         call_module='Balances',
         call_function='transfer_all',
         call_params={
-            'dest': "5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDwhQBmA8dMwBX",
+            'dest': "5H3MFE2fg4FTRRcReET1uzAVLLzVBeJnzxgHw63nZxtGwWtk",
             'keep_alive': True,
         }
     )
@@ -20,7 +20,7 @@ def main():
         call_module='Proxy',
         call_function='proxy',
         call_params={
-            'real': "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3",
+            'real': "5GF98kTXSaGPRE5wMJfjqZ5kooMMzvZRpbaQ7YEawxaCQyZk",
             'force_proxy_type': ProxyType.Any.value,
             'call': call,
         }

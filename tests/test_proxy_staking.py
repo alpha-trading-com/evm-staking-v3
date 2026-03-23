@@ -7,7 +7,7 @@ def main():
     # --- Example parameters (edit these for your test) ---
     network = "finney"
     proxy_wallet_name = "test_proxy"  # delegate that was added as proxy
-    real = "5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3"  # delegator (real) SS58
+    real = "5GF98kTXSaGPRE5wMJfjqZ5kooMMzvZRpbaQ7YEawxaCQyZk"  # STAKE_INFO delegate SS58
     hotkey = "5Cd6htiu44dqQUUBoqu6B9kjPLs575XTCkwRf2mAhfpXsn11"  # hotkey to stake to
     netuid = 1
     amount_tao = 4.42

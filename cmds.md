@@ -154,11 +154,11 @@ Set the coldkey mnemonic or seed, then run:
 export COLDKEY_MNEMONIC="word1 word2 ..."
 # or: export COLDKEY_SEED="0x..."
 
-# Default: contract from deployment.json, coldkey 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
+# Default: contract from deployment.json; delegate SS58s in bt_utils/constants.py (STAKE_INFO / LIMIT_PRICE)
 python3 scripts/add_proxy_delegate.py
 
 # Override contract or coldkey
-python3 scripts/add_proxy_delegate.py --contract 0x3c62... --coldkey-ss58 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
+python3 scripts/add_proxy_delegate.py --contract 0x3c62... --coldkey-ss58 5GF98kTXSaGPRE5wMJfjqZ5kooMMzvZRpbaQ7YEawxaCQyZk
 
 # Dry run (no submit)
 python3 scripts/add_proxy_delegate.py --dry-run
