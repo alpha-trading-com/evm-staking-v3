@@ -12,15 +12,6 @@ from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit
 SN28_NETUID = 28
 
 
-def _balance_rao(bal) -> int:
-    if isinstance(bal, int):
-        return bal
-    r = getattr(bal, "rao", None)
-    if r is not None:
-        return int(r)
-    return int(bal)
-
-
 def compute_contract_stake_all_amount_rao() -> int:
     """
     Max TAO (rao) the StakeWrap contract coldkey can stake: free balance minus ED
