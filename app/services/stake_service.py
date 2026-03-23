@@ -1,4 +1,6 @@
 """Stake/unstake amount resolution and EVM stake calls. Depends on subtensor for chain state."""
+from web3 import Web3
+
 from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, receipt_to_dict, run_quiet
 from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw
@@ -134,7 +136,22 @@ def do_move_stake(
     return {"ok": True, "receipt": receipt_to_dict(receipt)}
 
 
-def do_withdraw(amount_wei: int) -> dict:
+def do_withdraw(amount_tao: float | None) -> dict:
+    """Withdraw TAO. amount_tao None = full contract native balance (wei). Otherwise amount in TAO (18-decimal wei conversion)."""
     w3, account, contract_address, contract = get_w3_account_contract()
+    balance_wei = w3.eth.get_balance(contract_address)
+    if amount_tao is None:
+        amount_wei = balance_wei
+    else:
+        if amount_tao <= 0:
+            raise ValueError("Amount must be positive, or omit it to withdraw the full contract balance.")
+        amount_wei = int(amount_tao * 10**18)
+    if amount_wei == 0:
+        raise ValueError("Contract balance is zero; nothing to withdraw.")
+    if amount_wei > balance_wei:
+        avail = Web3.from_wei(balance_wei, "ether")
+        raise ValueError(f"Withdraw amount exceeds contract balance ({avail} TAO available).")
     receipt = run_quiet(withdraw, w3, account, contract_address, amount_wei, contract=contract)
+    if receipt is None:
+        raise RuntimeError("Withdraw did not complete. Ensure the signer is the contract owner.")
     return {"ok": True, "receipt": receipt_to_dict(receipt)}

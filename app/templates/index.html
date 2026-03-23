@@ -220,9 +220,9 @@
 
     <section class="panel" id="panel-transfer">
       <h2>Transfer Stake</h2>
-      <small class="hint">Transfer stake to the predefined allowed coldkey only.</small>
+      <small class="hint">Transfer stake to the predefined allowed coldkey only. Leave amount empty to transfer the full stake on the origin netuid.</small>
       <label>Amount (TAO)</label>
-      <input id="ts-amount" type="number" step="any" placeholder="e.g. 0.1" />
+      <input id="ts-amount" type="number" step="any" placeholder="e.g. 0.1 — empty = transfer all" />
       <label>Origin Netuid</label>
       <input id="ts-origin" type="number" value="1" />
       <label>Destination Netuid</label>
@@ -252,9 +252,9 @@
 
     <section class="panel" id="panel-withdraw">
       <h2>Withdraw TAO</h2>
-      <small class="hint">Withdraw TAO from the contract (owner only).</small>
+      <small class="hint">Withdraw TAO from the contract (owner only). Leave amount empty to withdraw the full contract balance.</small>
       <label>Amount (TAO)</label>
-      <input id="wd-amount" type="number" step="any" placeholder="e.g. 0.1" />
+      <input id="wd-amount" type="number" step="any" placeholder="e.g. 0.1 — empty = withdraw all" />
       <button class="submit" onclick="postWithdraw()">Submit Withdraw</button>
       <div id="wd-result"></div>
     </section>
@@ -996,11 +996,29 @@
       }
     }
     function postTransferStake() {
+      const raw = document.getElementById('ts-amount').value.trim();
+      const hotkey = document.getElementById('ts-hotkey').value.trim();
+      const origin_netuid = parseInt(document.getElementById('ts-origin').value, 10);
+      const destination_netuid = parseInt(document.getElementById('ts-dest').value, 10);
+      if (raw === '') {
+        postJson('/api/transfer-stake', {
+          hotkey,
+          origin_netuid,
+          destination_netuid,
+          amount_tao: null,
+        }, 'ts-result');
+        return;
+      }
+      const amount_tao = parseFloat(raw);
+      if (!Number.isFinite(amount_tao)) {
+        showResult('ts-result', false, 'Invalid amount');
+        return;
+      }
       postJson('/api/transfer-stake', {
-        hotkey: document.getElementById('ts-hotkey').value.trim(),
-        origin_netuid: parseInt(document.getElementById('ts-origin').value, 10),
-        destination_netuid: parseInt(document.getElementById('ts-dest').value, 10),
-        amount_tao: parseFloat(document.getElementById('ts-amount').value),
+        hotkey,
+        origin_netuid,
+        destination_netuid,
+        amount_tao,
       }, 'ts-result');
     }
     function postMoveStake() {
@@ -1015,9 +1033,17 @@
       }, 'ms-result');
     }
     function postWithdraw() {
-      postJson('/api/withdraw', {
-        amount_tao: parseFloat(document.getElementById('wd-amount').value),
-      }, 'wd-result');
+      const raw = document.getElementById('wd-amount').value.trim();
+      if (raw === '') {
+        postJson('/api/withdraw', { amount_tao: null }, 'wd-result');
+        return;
+      }
+      const amount_tao = parseFloat(raw);
+      if (!Number.isFinite(amount_tao)) {
+        showResult('wd-result', false, 'Invalid amount');
+        return;
+      }
+      postJson('/api/withdraw', { amount_tao }, 'wd-result');
     }
 
     function setFastStakeAmount(amount) {

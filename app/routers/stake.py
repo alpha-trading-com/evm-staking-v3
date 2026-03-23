@@ -74,7 +74,13 @@ async def api_remove_stake_limit(body: RemoveStakeLimitBody, _: str = Depends(ge
 @router.post("/transfer-stake")
 async def api_transfer_stake(body: TransferStakeBody, _: str = Depends(get_current_username)):
     try:
-        amount_rao = int(body.amount_tao * 10**9)
+        amount_rao = resolve_move_stake_amount(
+            body.hotkey, body.origin_netuid, body.amount_tao
+        )
+        if amount_rao <= 0:
+            raise ValueError(
+                "No stake to transfer on the origin subnet for this hotkey (or invalid amount)."
+            )
         return do_transfer_stake(
             body.hotkey, body.origin_netuid, body.destination_netuid, amount_rao
         )
@@ -99,7 +105,6 @@ async def api_move_stake(body: MoveStakeBody, _: str = Depends(get_current_usern
 @router.post("/withdraw")
 async def api_withdraw(body: WithdrawBody, _: str = Depends(get_current_username)):
     try:
-        amount_wei = int(body.amount_tao * 10**18)
-        return do_withdraw(amount_wei)
+        return do_withdraw(body.amount_tao)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)

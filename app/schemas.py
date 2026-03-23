@@ -37,10 +37,12 @@ class RemoveStakeLimitBody(BaseModel):
 
 
 class TransferStakeBody(BaseModel):
+    """amount_tao null or omitted = full stake (alpha rao) on origin_netuid for this hotkey."""
+
     hotkey: str
     origin_netuid: int
     destination_netuid: int
-    amount_tao: float
+    amount_tao: float | None = None
 
 
 class MoveStakeBody(BaseModel):
@@ -52,7 +54,8 @@ class MoveStakeBody(BaseModel):
 
 
 class WithdrawBody(BaseModel):
-    amount_tao: float
+    """amount_tao null or omitted = withdraw full native balance on the contract."""
+    amount_tao: float | None = None
 
 
 class FastStakeBody(BaseModel):
