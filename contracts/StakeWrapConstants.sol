@@ -3,8 +3,8 @@
 pragma solidity ^0.8.4;
 
 contract StakeWrapConstants {
-    // SS58: 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
-    bytes32 public constant WITHDRAW_COLDKEY = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
+    // SS58: 5HCT4AarReToT1BKyLtJXJfSLs4zRS7dENnZ7iysqrqxXyV7
+    bytes32 public constant WITHDRAW_COLDKEY = 0xe3154da4f09419591350683863465fe94568b34952c139e0fc2119c1ab64bdf9;
     // SS58: 5FptUDrtvf6y4GmQKekEPmELeSC5MsLpRRDPFNXmHmCwfbs3
     bytes32 public constant STAKE_INFO_DELEGATE = 0xa6673984bb4f39d185a00d730c2b31cd41c2ff97760a3e3cc14d123875d91f68;
     // SS58: 5Hh7A2qiLTQFVSGT4g7ADcSiCuqeKN1BgumDwhQBmA8dMwBX
