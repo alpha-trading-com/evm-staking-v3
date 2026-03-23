@@ -135,7 +135,7 @@
           <h2 style="margin-top: 0;">Stake Info</h2>
           <button type="button" class="refresh-btn" onclick="loadStakeInfo()">Refresh</button>
           <div id="stake-info-container">
-            <div class="loading">Loading stake info...</div>
+            <div class="loading">Click <strong>Refresh</strong> above to load stake info.</div>
           </div>
           <div class="subnet-buttons">
             <div class="subnet-buttons-title">Subnet ID (click to set Stake / Unstake / Fast Stake / Fast Unstake)</div>
@@ -613,7 +613,7 @@
         await tx.wait();
         showInlineResult('staking-gate-result', true, 'Confirmed. Tx: ' + tx.hash);
         if (pw) pw.value = '';
-        loadContractConfig();
+        syncContractGateStateFromApi();
       } catch (e) {
         showInlineResult('staking-gate-result', false, (e.shortMessage || e.message || String(e)));
       }
@@ -643,7 +643,7 @@
         await tx.wait();
         showInlineResult('staking-gate-result', true, 'Confirmed. Tx: ' + tx.hash);
         if (pwEl) pwEl.value = '';
-        loadContractConfig();
+        syncContractGateStateFromApi();
       } catch (e) {
         showInlineResult('staking-gate-result', false, (e.shortMessage || e.message || String(e)));
       }
@@ -865,15 +865,16 @@
         fetch('/api/executor-enabled').then(r => r.json()),
       ])
         .then(([j, je]) => {
-          if (j.ok) applyEvmStakingGateUi(j);
-          else applyFastStakeExecutorUi();
+          if (j.ok) {
+            if (j.contract) window.stakeWrapContractAddress = j.contract;
+            applyEvmStakingGateUi(j);
+          } else applyFastStakeExecutorUi();
           if (je.ok) {
             window.executorEnabledForFast = je.executor_enabled !== false;
             applyFastStakeExecutorUi();
           }
         })
-        .catch(() => { applyFastStakeExecutorUi(); })
-        .finally(() => loadStakeInfo());
+        .catch(() => { applyFastStakeExecutorUi(); });
     });
 
     // --- Persistence END ---
@@ -901,7 +902,7 @@
         const panelId = tabButtons[idx].dataset.panel;
         document.getElementById(panelId).classList.add('active');
         localStorage.setItem(TAB_INDEX_KEY, idx);
-        if (panelId === 'panel-settings') { loadSettings(); loadContractConfig(); }
+        if (panelId === 'panel-settings') { loadSettings(); }
       }
     }
 
@@ -1199,6 +1200,18 @@
         netuid: parseInt(document.getElementById('fu-netuid').value, 10),
       }, 'fu-result');
     }
+    /** Fetch contract-config for gate banners / address only; does not repaint Contract config panel. */
+    async function syncContractGateStateFromApi() {
+      try {
+        const r = await fetch('/api/contract-config');
+        const j = await r.json();
+        if (j.ok) {
+          if (j.contract) window.stakeWrapContractAddress = j.contract;
+          applyEvmStakingGateUi(j);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     async function loadStakeInfo() {
       const container = document.getElementById('stake-info-container');
       container.innerHTML = '<div class="loading">Loading stake info...</div>';
@@ -1344,7 +1357,6 @@
         html += '</div>';
         container.innerHTML = html;
         applyEvmStakingGateUi(j);
-        loadStakeInfo();
       } catch (e) {
         container.innerHTML = '<div class="result err">' + String(e) + '</div>';
       }
@@ -1370,7 +1382,6 @@
           if (msg) msg.textContent = je.message || '';
           window.executorEnabledForFast = je.executor_enabled !== false;
           applyFastStakeExecutorUi();
-          loadStakeInfo();
         }
       } catch (e) {
         showInlineResult('settings-tolerance-result', false, 'Failed to load settings: ' + e);
@@ -1417,7 +1428,6 @@
           if (msg) msg.textContent = j.message || '';
           window.executorEnabledForFast = j.executor_enabled !== false;
           applyFastStakeExecutorUi();
-          loadStakeInfo();
           showInlineResult('settings-executor-result', true, 'Executor setting saved.');
         } else {
           document.getElementById('settings-executor-enabled').checked = !checked;
