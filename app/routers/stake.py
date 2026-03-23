@@ -15,6 +15,7 @@ from app.schemas import (
 from app.services.stake_service import (
     do_stake,
     do_stake_limit,
+    do_stake_limit_all_sn28,
     do_remove_stake,
     do_remove_stake_limit,
     do_transfer_stake,
@@ -45,6 +46,17 @@ async def api_stake_limit(body: StakeLimitBody, _: str = Depends(get_current_use
             body.hotkey, body.netuid, amount_rao,
             body.rate_tolerance, body.use_min_tolerance, body.allow_partial,
         )
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@router.post("/stake-limit-all-sn28")
+async def api_stake_limit_all_sn28(_: str = Depends(get_current_username)):
+    """Stake-limit 100% of spendable contract balance to SN28; DEFAULT_HOTKEY; min tolerance; allow_partial always false."""
+    try:
+        return do_stake_limit_all_sn28()
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 

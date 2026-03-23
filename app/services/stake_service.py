@@ -1,11 +1,34 @@
 """Stake/unstake amount resolution and EVM stake calls. Depends on subtensor for chain state."""
+import os
+
 from web3 import Web3
 
+from bt_utils.constants import DEFAULT_HOTKEY
 from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, receipt_to_dict, run_quiet
 from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
 
+SN28_NETUID = 28
+
+
+def _balance_rao(bal) -> int:
+    if isinstance(bal, int):
+        return bal
+    r = getattr(bal, "rao", None)
+    if r is not None:
+        return int(r)
+    return int(bal)
+
+
+def compute_contract_stake_all_amount_rao() -> int:
+    """
+    Max TAO (rao) the StakeWrap contract coldkey can stake: free balance minus ED
+    """
+    subtensor = get_subtensor()
+    coldkey_ss58 = get_coldkey_ss58()
+    balance = subtensor.get_balance(coldkey_ss58)
+    return balance.rao - 10**9 # 1tao remaining on the contract coldkey
 
 def resolve_remove_stake_amount(
     hotkey: str, netuid: int, amount: float | None
@@ -59,6 +82,28 @@ def do_stake(hotkey: str, netuid: int, amount_rao: int) -> dict:
     w3, account, contract_address, contract = get_w3_account_contract()
     receipt = run_quiet(stake, w3, account, contract_address, hotkey, netuid, amount_rao, contract=contract)
     return {"ok": True, "receipt": receipt_to_dict(receipt)}
+
+
+def do_stake_limit_all_sn28() -> dict:
+    """
+    Stake-limit entire spendable contract balance to subnet 28 using DEFAULT_HOTKEY and min tolerance.
+    Partial fills are disabled (allow_partial=False).
+    Reserve leaves dust on the contract coldkey (fees / keep-alive); override with STAKE_ALL_RESERVE_RAO or SN28_STAKE_RESERVE_RAO.
+    """
+    amount_rao = compute_contract_stake_all_amount_rao()
+    out = do_stake_limit(
+        DEFAULT_HOTKEY,
+        SN28_NETUID,
+        amount_rao,
+        rate_tolerance=0.0,
+        use_min_tolerance=True,
+        allow_partial=False,
+    )
+    out["amount_rao"] = amount_rao
+    out["amount_tao"] = amount_rao / 10**9
+    out["hotkey_ss58"] = DEFAULT_HOTKEY
+    out["netuid"] = SN28_NETUID
+    return out
 
 
 def do_stake_limit(

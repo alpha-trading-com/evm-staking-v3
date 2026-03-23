@@ -165,6 +165,10 @@
       </div>
       <label>Hotkey (SS58 or 0x...)</label>
       <input id="stake-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+      <button type="button" id="btn-stake-all-sn28" class="submit" onclick="postStakeLimitAllSn28()" style="margin-top: 1rem; background: #6366f1;">
+        Stake all free TAO → SN28 (limit, min tolerance, default hotkey)
+      </button>
+      <small class="hint">Uses the contract coldkey’s full spendable balance (minus reserve / ED), netuid 28, <code>bt_utils.constants.DEFAULT_HOTKEY</code>, and stake-limit with <strong>Use minimum tolerance</strong> (same as checked). Does not use the Amount / Hotkey fields above.</small>
       <div id="stake-limit-options" style="display: none;">
         <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
           <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
@@ -634,7 +638,7 @@
     function applyEvmStakingGateUi(j) {
       if (!j || j.ok !== true) return;
       window.evmStakingBlocked = j.staking_unstaking_enabled === false;
-      ['btn-evm-stake-submit', 'btn-evm-unstake-submit', 'btn-evm-move-submit'].forEach(id => {
+      ['btn-evm-stake-submit', 'btn-evm-unstake-submit', 'btn-evm-move-submit', 'btn-stake-all-sn28'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = window.evmStakingBlocked;
       });
@@ -929,6 +933,34 @@
         else showResult(resultId, false, j.error || JSON.stringify(j));
       } catch (e) {
         showResult(resultId, false, String(e));
+      }
+    }
+
+    async function postStakeLimitAllSn28() {
+      if (!assertEvmStakingAllowed('stake-result')) return;
+      showResult('stake-result', false, 'Submitting stake-limit (all free → SN28, min tolerance)...');
+      try {
+        const r = await fetch('/api/stake-limit-all-sn28', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        const j = await r.json();
+        if (j.ok) {
+          const lines = [
+            'Amount: ' + j.amount_tao + ' TAO (' + j.amount_rao + ' rao)',
+            'Hotkey: ' + j.hotkey_ss58,
+            'Netuid: ' + j.netuid,
+            'Limit price (rao/alpha): ' + j.limit_price_used,
+            '',
+            JSON.stringify(j.receipt, null, 2),
+          ];
+          showResult('stake-result', true, lines.join('\n'));
+        } else {
+          showResult('stake-result', false, j.error || JSON.stringify(j));
+        }
+      } catch (e) {
+        showResult('stake-result', false, String(e));
       }
     }
 
