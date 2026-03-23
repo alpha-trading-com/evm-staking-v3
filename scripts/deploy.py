@@ -84,13 +84,6 @@ def main():
     balance = w3.eth.get_balance(account.address)
     print(f"Account balance: {Web3.from_wei(balance, 'ether')} TAO")
     
-    # Allowed coldkey is hardcoded in the contract
-    # SS58: 5FsDUVe2zLxTJTR1HzYp35BcNpbeFMLC76uRhwSTGj5YF36C
-    # bytes32: 0xa82db0e41db30fc3d206773f461c87c484b3ac0c25bf703567b4f1aa1ed5b350
-    print("Allowed coldkey (hardcoded in contract):")
-    print("  SS58:   5FsDUVe2zLxTJTR1HzYp35BcNpbeFMLC76uRhwSTGj5YF36C")
-    print("  bytes32: 0xa82db0e41db30fc3d206773f461c87c484b3ac0c25bf703567b4f1aa1ed5b350")
-    
     # Load contract artifacts
     artifact_path = 'artifacts/contracts/StakeWrap.sol/StakeWrap.json'
     if not os.path.exists(artifact_path):
@@ -113,8 +106,6 @@ def main():
         'deployer': account.address,
         'chain_id': w3.eth.chain_id,
         'transaction_hash': tx_hash.hex(),
-        'allowed_coldkey_ss58': '5FsDUVe2zLxTJTR1HzYp35BcNpbeFMLC76uRhwSTGj5YF36C',
-        'allowed_coldkey_bytes32': '0xa82db0e41db30fc3d206773f461c87c484b3ac0c25bf703567b4f1aa1ed5b350',
         'abi': abi
     }
     
