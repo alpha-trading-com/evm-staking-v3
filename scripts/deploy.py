@@ -16,6 +16,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+STAKE_WRAP_ARTIFACT = os.path.join(
+    PROJECT_ROOT, "artifacts", "contracts", "StakeWrap.sol", "StakeWrap.json"
+)
+
 load_dotenv()
 
 
@@ -84,12 +88,14 @@ def main():
     balance = w3.eth.get_balance(account.address)
     print(f"Account balance: {Web3.from_wei(balance, 'ether')} TAO")
     
-    # Load contract artifacts
-    artifact_path = 'artifacts/contracts/StakeWrap.sol/StakeWrap.json'
+    # Load contract artifacts (from repo: compile on build server, or `npm run compile` locally)
+    artifact_path = STAKE_WRAP_ARTIFACT
     if not os.path.exists(artifact_path):
         raise FileNotFoundError(
             f"Contract artifact not found at {artifact_path}. "
-            "Please run 'npm run compile' first."
+            "On the compile machine: npm run compile, then git commit and push "
+            "artifacts/contracts/StakeWrap.sol/StakeWrap.json (and abi/StakeWrap.abi.json). "
+            "On this machine: git pull."
         )
     
     contract_abi = load_contract_abi(artifact_path)
