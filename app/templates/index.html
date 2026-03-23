@@ -136,6 +136,7 @@
       </div>
       <div class="main-right">
         <div id="evm-staking-gate-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
+        <div id="executor-fast-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
         <h1>🔐 StakeWrap Control</h1>
         <div class="tabs" id="tabs"></div>
 
@@ -261,7 +262,7 @@
 
     <section class="panel" id="panel-fast-stake">
       <h2>Fast Stake</h2>
-      <small class="hint">Stake via MevShield (Bittensor extrinsic). Uncheck "Not limited" for limit order.</small>
+      <small class="hint">Stake via MevShield (Bittensor extrinsic). Requires Executor ON (Settings). Uncheck "Not limited" for limit order.</small>
       <label style="margin-top: 0.5rem;">
         <input id="fs-not-limited" type="checkbox" checked /> Not limited (market order)
       </label>
@@ -297,7 +298,7 @@
 
     <section class="panel" id="panel-fast-unstake">
       <h2>Fast Unstake</h2>
-      <small class="hint">Unstake via MevShield (Bittensor extrinsic). Unstakes all for the given netuid.</small>
+      <small class="hint">Unstake via MevShield (Bittensor extrinsic). Requires Executor ON (Settings). Unstakes all for the given netuid.</small>
       <label>Netuid</label>
       <input id="fu-netuid" type="number" value="1" />
       <button id="btn-fast-unstake" class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
@@ -633,7 +634,7 @@
     function applyEvmStakingGateUi(j) {
       if (!j || j.ok !== true) return;
       window.evmStakingBlocked = j.staking_unstaking_enabled === false;
-      ['btn-evm-stake-submit', 'btn-evm-unstake-submit', 'btn-evm-move-submit', 'btn-fast-stake', 'btn-fast-unstake'].forEach(id => {
+      ['btn-evm-stake-submit', 'btn-evm-unstake-submit', 'btn-evm-move-submit'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = window.evmStakingBlocked;
       });
@@ -641,7 +642,7 @@
       if (ban) {
         if (j.staking_unstaking_enabled === false) {
           ban.style.display = 'block';
-          ban.textContent = 'Staking / unstaking / move stake / fast stake / fast unstake are disabled on the contract. You can still use Transfer Stake and Withdraw.';
+          ban.textContent = 'Staking / unstaking / move stake are disabled on the contract. You can still use Transfer Stake and Withdraw. Fast Stake / Fast Unstake also require Executor ON when the contract allows staking.';
         } else {
           ban.style.display = 'none';
           ban.textContent = '';
@@ -651,11 +652,52 @@
       if (chk && j.staking_unstaking_enabled !== null && j.staking_unstaking_enabled !== undefined) {
         chk.checked = !!j.staking_unstaking_enabled;
       }
+      applyFastStakeExecutorUi();
+    }
+
+    /** Default true (matches server when executor_enabled.json is missing). */
+    window.executorEnabledForFast = true;
+
+    /** Fast Stake / Fast Unstake: disabled when contract staking is off OR executor toggle is OFF. */
+    function applyFastStakeExecutorUi() {
+      const contractOff = window.evmStakingBlocked === true;
+      const executorOff = window.executorEnabledForFast === false;
+      const fastBlocked = contractOff || executorOff;
+      ['btn-fast-stake', 'btn-fast-unstake', 'fs-not-limited', 'fs-amount', 'fs-netuid', 'fsl-tolerance', 'fsl-use-min'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = fastBlocked;
+      });
+      document.querySelectorAll('#panel-fast-stake button.amount-preset-btn').forEach(b => { b.disabled = fastBlocked; });
+      const calcFastTol = document.querySelector('#fast-stake-limit-options button.refresh-btn');
+      if (calcFastTol) calcFastTol.disabled = fastBlocked;
+
+      const exBan = document.getElementById('executor-fast-banner');
+      if (exBan) {
+        if (executorOff && !contractOff) {
+          exBan.style.display = 'block';
+          exBan.textContent = 'Fast Stake and Fast Unstake are disabled because Executor is OFF. Turn Executor ON in Settings.';
+        } else {
+          exBan.style.display = 'none';
+          exBan.textContent = '';
+        }
+      }
     }
 
     function assertEvmStakingAllowed(resultId) {
       if (window.evmStakingBlocked) {
         showResult(resultId, false, 'Contract staking/unstaking is disabled — only Transfer Stake and Withdraw are allowed (re-enable in Settings with gate password).');
+        return false;
+      }
+      return true;
+    }
+
+    function assertFastStakeUnstakeAllowed(resultId) {
+      if (window.executorEnabledForFast === false) {
+        showResult(resultId, false, 'Executor is OFF. Turn Executor ON in Settings to use Fast Stake / Fast Unstake.');
+        return false;
+      }
+      if (window.evmStakingBlocked) {
+        showResult(resultId, false, 'Contract staking/unstaking is disabled — Fast Stake / Fast Unstake are not available.');
         return false;
       }
       return true;
@@ -800,10 +842,19 @@
       document.getElementById('fs-not-limited').addEventListener('change', toggleFastStakeLimitOptions);
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
-      fetch('/api/contract-config')
-        .then(r => r.json())
-        .then(j => { if (j.ok) applyEvmStakingGateUi(j); })
-        .catch(() => {})
+      Promise.all([
+        fetch('/api/contract-config').then(r => r.json()),
+        fetch('/api/executor-enabled').then(r => r.json()),
+      ])
+        .then(([j, je]) => {
+          if (j.ok) applyEvmStakingGateUi(j);
+          else applyFastStakeExecutorUi();
+          if (je.ok) {
+            window.executorEnabledForFast = je.executor_enabled !== false;
+            applyFastStakeExecutorUi();
+          }
+        })
+        .catch(() => { applyFastStakeExecutorUi(); })
         .finally(() => loadStakeInfo());
     });
 
@@ -1051,7 +1102,7 @@
       if (el) { el.value = String(amount); persistAllInputs(); }
     }
     function postFastStakeOrLimit() {
-      if (!assertEvmStakingAllowed('fs-result')) return;
+      if (!assertFastStakeUnstakeAllowed('fs-result')) return;
       const notLimited = document.getElementById('fs-not-limited').checked;
       const netuid = parseInt(document.getElementById('fs-netuid').value, 10);
       const amount_tao = parseFloat(document.getElementById('fs-amount').value);
@@ -1067,7 +1118,7 @@
       }
     }
     async function calcMinToleranceFastStake() {
-      if (!assertEvmStakingAllowed('fs-result')) return;
+      if (!assertFastStakeUnstakeAllowed('fs-result')) return;
       const amount_tao = parseFloat(document.getElementById('fs-amount').value);
       const netuid = parseInt(document.getElementById('fs-netuid').value, 10);
       if (!amount_tao || !netuid) {
@@ -1097,7 +1148,7 @@
       }
     }
     function postFastUnstake() {
-      if (!assertEvmStakingAllowed('fu-result')) return;
+      if (!assertFastStakeUnstakeAllowed('fu-result')) return;
       postJson('/api/fast-unstake', {
         netuid: parseInt(document.getElementById('fu-netuid').value, 10),
       }, 'fu-result');
@@ -1157,7 +1208,12 @@
             html += '<button class="unstake-btn" onclick="unstakeFromTable(' + stake.netuid + ', \'' + hotkeyEscaped + '\', ' + stake.stake_alpha_rao + ')">Unstake</button>';
             var defaultHotkeySS58 = '5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21';
             if (stake.hotkey_ss58 == defaultHotkeySS58) {
-              html += ' <button class="unstake-btn" onclick="fastUnstakeFromTable(' + stake.netuid + ')">Fast Unstake</button>';
+              var fastOk = window.executorEnabledForFast !== false;
+              if (fastOk) {
+                html += ' <button class="unstake-btn" onclick="fastUnstakeFromTable(' + stake.netuid + ')">Fast Unstake</button>';
+              } else {
+                html += ' <span class="hint" style="font-size:0.8rem;" title="Turn Executor ON in Settings">Fast off</span>';
+              }
             }
           }
           html += '</td>';
@@ -1198,6 +1254,7 @@
     }
 
     function fastUnstakeFromTable(netuid) {
+      // postFastUnstake() enforces executor + contract gate; table hides Fast Unstake when executor is OFF
       // Switch to Fast Unstake tab (index 3: Stake=0, Unstake=1, Fast Stake=2, Fast Unstake=3)
       activateTabByIndex(3);
       document.getElementById('fu-netuid').value = netuid;
@@ -1265,6 +1322,9 @@
           if (ex) ex.checked = je.executor_enabled !== false;
           if (lbl) lbl.textContent = je.executor_enabled ? 'Executor ON' : 'Executor OFF';
           if (msg) msg.textContent = je.message || '';
+          window.executorEnabledForFast = je.executor_enabled !== false;
+          applyFastStakeExecutorUi();
+          loadStakeInfo();
         }
       } catch (e) {
         showInlineResult('settings-tolerance-result', false, 'Failed to load settings: ' + e);
@@ -1309,6 +1369,9 @@
           const msg = document.getElementById('settings-executor-msg');
           if (lbl) lbl.textContent = j.executor_enabled ? 'Executor ON' : 'Executor OFF';
           if (msg) msg.textContent = j.message || '';
+          window.executorEnabledForFast = j.executor_enabled !== false;
+          applyFastStakeExecutorUi();
+          loadStakeInfo();
           showInlineResult('settings-executor-result', true, 'Executor setting saved.');
         } else {
           document.getElementById('settings-executor-enabled').checked = !checked;
