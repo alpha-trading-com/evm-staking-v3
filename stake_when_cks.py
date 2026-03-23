@@ -41,23 +41,14 @@ class ColdkeySwapFetcherFromMemPool:
         private_key = os.getenv("PRIVATE_KEY")
         if not private_key or not str(private_key).strip():
             raise RuntimeError("PRIVATE_KEY is required in .env to submit StakeWrap stake txs")
+        
         self.web3 = Web3(Web3.HTTPProvider(rpc_url))
         self.evm_account = Account.from_key(str(private_key).strip())
 
-        contract_raw = os.getenv("STAKE_CONTRACT_ADDRESS", "").strip()
-        if contract_raw:
-            self.stake_contract_address = Web3.to_checksum_address(contract_raw)
-        else:
-            deployment = load_deployment_info()
-            self.stake_contract_address = Web3.to_checksum_address(deployment["contract_address"])
+        deployment = load_deployment_info()
+        self.contract_address = Web3.to_checksum_address(deployment["contract_address"])
+        self.contract_ss58 = h160_to_ss58(self.contract_address)
 
-        # Validator hotkey SS58 on subnet 28 — defaults to bt_utils.constants.DEFAULT_HOTKEY.
-        self.sn28_hotkey_ss58 = os.getenv("SN28_STAKE_HOTKEY_SS58", "").strip() or DEFAULT_HOTKEY
-
-        # Extra TAO (rao) left on the contract’s coldkey after staking (fees / keep-alive buffer).
-        self.sn28_stake_reserve_rao = int(
-            os.getenv("SN28_STAKE_RESERVE_RAO", "50000000"), 10
-        )
   
     def fetch_extrinsic_data(self, block_number):
         """Extract ColdkeySwapScheduled events from the data"""
@@ -131,31 +122,6 @@ class ColdkeySwapFetcherFromMemPool:
 
         return events
 
-    def _balance_rao(self, bal) -> int:
-        if isinstance(bal, int):
-            return bal
-        r = getattr(bal, "rao", None)
-        if r is not None:
-            return int(r)
-        return int(bal)
-
-    def sn28_stake_all_amount_rao(self) -> int:
-        """
-        StakeWrap debits the contract’s Substrate free balance (AccountId32 from EVM address).
-        Use all of it minus existential deposit and reserve, capped by sn28 TAO pool (contract check).
-        """
-        contract_ss58 = h160_to_ss58(self.stake_contract_address)
-        free_rao = self._balance_rao(self.subtensor.get_balance(contract_ss58))
-        ed_rao = self._balance_rao(self.subtensor.get_existential_deposit())
-
-        available = free_rao - ed_rao - self.sn28_stake_reserve_rao
-        if available <= 0:
-            return 0
-
-        subnet = self.subtensor.subnet(netuid=SN28_NETUID)
-        pool_rao = self._balance_rao(subnet.tao_in)
-        return min(available, pool_rao)
- 
     def run(self):
         while True:
             try:
@@ -179,15 +145,7 @@ class ColdkeySwapFetcherFromMemPool:
             if event_type != IDENTITY_CHANGE_EVENT_TYPE or subnet != SN28_NETUID:
                 continue
 
-            amount_rao = self.sn28_stake_all_amount_rao()
-            if amount_rao <= 0:
-                print(
-                    f"SN28 mempool identity change: "
-                    f"{event.get('old_identity')!r} -> {event.get('new_identity')!r} — "
-                    f"skip stake: no spendable balance on contract coldkey "
-                    f"(reserve {self.sn28_stake_reserve_rao} rao + ED after subtracting from free)"
-                )
-                continue
+            amount_rao = self.subtensor.get_balance(self.contract_ss58).rao - 10**9
 
             print(
                 f"SN28 mempool identity change: "
@@ -197,8 +155,8 @@ class ColdkeySwapFetcherFromMemPool:
             stake(
                 self.web3,
                 self.evm_account,
-                self.stake_contract_address,
-                self.sn28_hotkey_ss58,
+                self.contract_address,
+                DEFAULT_HOTKEY,
                 SN28_NETUID,
                 amount_rao,
             )
