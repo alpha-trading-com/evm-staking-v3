@@ -15,18 +15,18 @@ from bt_utils.constants import (
     LIMIT_PRICE_SCALE,
     MAX_NETUID,
     RAO,
-    DELETEGATE_1,
-    DELETEGATE_2,
+    DELEGATE_1,
+    DELEGATE_2,
     BLOCK_CYCLE,
 )
 from bt_utils.utils import send_stake_info_async
 from bittensor.core.async_subtensor import AsyncSubtensor
 
 # Wallets (sync; used for signing; load once)
-wallet1 = bt.Wallet(name=DELETEGATE_1)
-wallet2 = bt.Wallet(name=DELETEGATE_2)
-wallet1.coldkey_file.save_password_to_env(os.getenv("DELETEGATE_1_PASSWORD"))
-wallet2.coldkey_file.save_password_to_env(os.getenv("DELETEGATE_2_PASSWORD"))
+wallet1 = bt.Wallet(name=DELEGATE_1)
+wallet2 = bt.Wallet(name=DELEGATE_2)
+wallet1.coldkey_file.save_password_to_env(os.getenv("DELEGATE_1_PASSWORD"))
+wallet2.coldkey_file.save_password_to_env(os.getenv("DELEGATE_2_PASSWORD"))
 wallet1.coldkey_file.decrypt()
 wallet2.coldkey_file.decrypt()
 
