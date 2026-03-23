@@ -30,7 +30,16 @@
     .main-split { display: flex; gap: 1.5rem; align-items: flex-start; }
     .main-left { flex: 1; min-width: 0; }
     .main-left h2 { font-size: 1.25rem; margin: 0 0 1rem 0; }
-    .stake-info-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+    .stake-info-panel,
+    .special-ops-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .special-ops-panel { margin-top: 1.25rem; }
+    .special-ops-panel h2 { margin-top: 0; }
+    .special-ops-panel .submit { margin-top: 0.75rem; }
     .main-right { flex: 1; min-width: 0; }
     .tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
     .tabs button {
@@ -133,6 +142,15 @@
             <div class="subnet-grid" id="subnet-grid"></div>
           </div>
         </div>
+        <div class="special-ops-panel">
+          <h2>Special operations</h2>
+          <small class="hint" style="margin-top: 0;">One-click actions that bypass the Stake tab fields. Same auth and contract rules as normal staking.</small>
+          <button type="button" id="btn-stake-all-sn28" class="submit" onclick="postStakeLimitAllSn28()" style="background: #6366f1;">
+            Stake all free TAO → SN28 (limit, min tolerance, default hotkey)
+          </button>
+          <small class="hint">Uses the contract coldkey’s spendable balance (minus reserve / ED), netuid 28, default hotkey, stake-limit with minimum tolerance, no partial fill.</small>
+          <div id="special-ops-result"></div>
+        </div>
       </div>
       <div class="main-right">
         <div id="evm-staking-gate-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
@@ -165,10 +183,6 @@
       </div>
       <label>Hotkey (SS58 or 0x...)</label>
       <input id="stake-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button type="button" id="btn-stake-all-sn28" class="submit" onclick="postStakeLimitAllSn28()" style="margin-top: 1rem; background: #6366f1;">
-        Stake all free TAO → SN28 (limit, min tolerance, default hotkey)
-      </button>
-      <small class="hint">Uses the contract coldkey’s full spendable balance (minus reserve / ED), netuid 28, <code>bt_utils.constants.DEFAULT_HOTKEY</code>, and stake-limit with <strong>Use minimum tolerance</strong> (same as checked). Does not use the Amount / Hotkey fields above.</small>
       <div id="stake-limit-options" style="display: none;">
         <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
           <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
@@ -937,8 +951,8 @@
     }
 
     async function postStakeLimitAllSn28() {
-      if (!assertEvmStakingAllowed('stake-result')) return;
-      showResult('stake-result', false, 'Submitting stake-limit (all free → SN28, min tolerance)...');
+      if (!assertEvmStakingAllowed('special-ops-result')) return;
+      showResult('special-ops-result', false, 'Submitting stake-limit (all free → SN28, min tolerance)...');
       try {
         const r = await fetch('/api/stake-limit-all-sn28', {
           method: 'POST',
@@ -955,12 +969,12 @@
             '',
             JSON.stringify(j.receipt, null, 2),
           ];
-          showResult('stake-result', true, lines.join('\n'));
+          showResult('special-ops-result', true, lines.join('\n'));
         } else {
-          showResult('stake-result', false, j.error || JSON.stringify(j));
+          showResult('special-ops-result', false, j.error || JSON.stringify(j));
         }
       } catch (e) {
-        showResult('stake-result', false, String(e));
+        showResult('special-ops-result', false, String(e));
       }
     }
 
