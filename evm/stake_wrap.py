@@ -38,6 +38,8 @@ CONTRACT_ABI: List[Dict[str, Any]] = [
     {"inputs": [], "name": "stakingGateConfigured", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"},
     {"inputs": [{"internalType": "bytes32", "name": "hash", "type": "bytes32"}], "name": "setStakingGatePasswordHash", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "bool", "name": "enabled", "type": "bool"}, {"internalType": "string", "name": "password", "type": "string"}], "name": "setStakingUnstakingEnabled", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [{"internalType": "uint256", "name": "stakeAmount", "type": "uint256"}, {"internalType": "uint64", "name": "taoInPool", "type": "uint64"}], "name": "StakeExceedsTaoInPool", "type": "error"},
+    {"inputs": [{"internalType": "uint256", "name": "simTao", "type": "uint256"}, {"internalType": "uint64", "name": "taoInPool", "type": "uint64"}], "name": "MoveStakeSimTaoExceedsPool", "type": "error"},
 ]
 
 

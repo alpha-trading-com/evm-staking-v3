@@ -8,6 +8,7 @@ import "./IStaking.sol";
 import "./ISubtensorBalanceTransfer.sol";
 import "./StakeWrapConstants.sol";
 import "./IProxy.sol";
+import "./IAlpah.sol";
 
 contract StakeWrap is StakeWrapConstants {
     error OnlyOwner();
@@ -32,6 +33,10 @@ contract StakeWrap is StakeWrapConstants {
     error WrongStakingGatePassword();
     error StakingGateAlreadyConfigured();
     error InvalidStakingGateHash();
+    /// @dev Stake `stakeAmount` (rao) exceeds subnet pool TAO from `IAlpha.getTaoInPool` (`taoInPool`, same units as returned by precompile).
+    error StakeExceedsTaoInPool(uint256 stakeAmount, uint64 taoInPool);
+    /// @dev `simTao` from `IAlpha.simSwapAlphaForTao(origin_netuid, alpha)` exceeds `getTaoInPool` for that subnet.
+    error MoveStakeSimTaoExceedsPool(uint256 simTao, uint64 taoInPool);
 
     address public owner;
     /// If set, this address may call execute() so owner can use the same chain for other txs without nonce conflict.
@@ -69,9 +74,9 @@ contract StakeWrap is StakeWrapConstants {
         stakingUnstakingEnabled = enabled;
     }
 
-    modifier whenStakingUnstakingEnabled() {
-        if (!stakingUnstakingEnabled) revert StakingUnstakingDisabled();
-        _;
+    /// @notice Owner sets the executor (e.g. a separate wallet for auto-execute). Pass address(0) to disable.
+    function setExecutor(address _executor) external onlyOwner {
+        executor = _executor;
     }
 
     /// Call once after deploy: set this contract's AccountId32 (from evm address). Saves calldata in execute().
@@ -101,10 +106,11 @@ contract StakeWrap is StakeWrapConstants {
         _;
     }
 
-    /// Owner sets the executor (e.g. a separate wallet for auto-execute). Pass address(0) to disable.
-    function setExecutor(address _executor) external onlyOwner {
-        executor = _executor;
+    modifier whenStakingUnstakingEnabled() {
+        if (!stakingUnstakingEnabled) revert StakingUnstakingDisabled();
+        _;
     }
+
 
     receive() external payable {}
 
@@ -224,7 +230,7 @@ contract StakeWrap is StakeWrapConstants {
      * @param delegateAddress 32-byte AccountId32 of the proxied account (source of TAO); must be STAKE_INFO_DELEGATE or LIMIT_PRICE_DELEGATE.
      * @param contractAddress 32-byte AccountId32 destination of the transfer (e.g. this contract's AccountId32 from Blake2b("evm:"||address), or any SS58 decoded to bytes32).
      */
-    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal onlyOwner {
+    function withdrawFromDelegate(bytes32 delegateAddress, bytes32 contractAddress) internal {
         if (delegateAddress != STAKE_INFO_DELEGATE && delegateAddress != LIMIT_PRICE_DELEGATE) revert InvalidDelegate();
         bytes memory payload = new bytes(36);
         payload[0] = bytes1(BALANCES_PALLET_INDEX);
@@ -260,6 +266,19 @@ contract StakeWrap is StakeWrapConstants {
         if (!success) revert WithdrawFromDelegateFailed();
     }
 
+    /// @notice Reverts if decoded stake amount exceeds TAO in the subnet pool (`IAlpha.getTaoInPool`).
+    function _revertIfStakeExceedsTaoInPool(uint256 netuid, uint256 amount) private view {
+        uint64 taoInPool = IAlpha(IALPHA_ADDRESS).getTaoInPool(uint16(netuid));
+        if (amount > uint256(taoInPool)) revert StakeExceedsTaoInPool(amount, taoInPool);
+    }
+
+    /// @notice Reverts if simulated TAO from swapping `alphaAmount` on `originNetuid` exceeds pool TAO there.
+    function _revertIfMoveStakeSimTaoExceedsPool(uint256 originNetuid, uint256 alphaAmount) private view {
+        uint16 nu = uint16(originNetuid);
+        uint256 simTao = IAlpha(IALPHA_ADDRESS).simSwapAlphaForTao(nu, uint64(alphaAmount));
+        uint64 taoInPool = IAlpha(IALPHA_ADDRESS).getTaoInPool(nu);
+        if (simTao > uint256(taoInPool)) revert MoveStakeSimTaoExceedsPool(simTao, taoInPool);
+    }
 
     /**
      * @notice Stake TAO to a hotkey (creates alpha tokens)
@@ -271,11 +290,12 @@ contract StakeWrap is StakeWrapConstants {
         bytes32 hotkey,
         uint256 netuid,
         uint256 amount
-    ) public onlyOwner whenStakingUnstakingEnabled {
+    ) public onlyOwnerOrExecutor whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
-        
+        _revertIfStakeExceedsTaoInPool(netuid, amount);
+
         bytes memory data = abi.encodeWithSelector(
             IStaking.addStake.selector,
             hotkey,
@@ -308,12 +328,13 @@ contract StakeWrap is StakeWrapConstants {
         uint256 limitPrice,
         uint256 amount,
         bool allowPartial
-    ) public onlyOwner whenStakingUnstakingEnabled {
+    ) public onlyOwnerOrExecutor whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
-        
+        _revertIfStakeExceedsTaoInPool(netuid, amount);
+
         bytes memory data = abi.encodeWithSelector(
             IStaking.addStakeLimit.selector,
             hotkey,
@@ -342,7 +363,7 @@ contract StakeWrap is StakeWrapConstants {
         uint256 limitPrice,
         uint256 amount,
         bool allowPartial
-    ) public onlyOwner whenStakingUnstakingEnabled {
+    ) public onlyOwnerOrExecutor whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         limitPrice = limitPrice ^ XOR_KEY;
@@ -376,7 +397,7 @@ contract StakeWrap is StakeWrapConstants {
         bytes32 hotkey,
         uint256 netuid,
         uint256 amount
-    ) public onlyOwner whenStakingUnstakingEnabled {
+    ) public onlyOwnerOrExecutor whenStakingUnstakingEnabled {
         // Decode XOR obfuscated parameters
         netuid = netuid ^ XOR_KEY;
         amount = amount ^ XOR_KEY;
@@ -396,6 +417,40 @@ contract StakeWrap is StakeWrapConstants {
         (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
         if (success) return;
     }
+    
+    /**
+     * @notice Move stake from one hotkey to another
+     * @param origin_hotkey The origin hotkey (32 bytes)
+     * @param destination_hotkey The destination hotkey (32 bytes)
+     * @param origin_netuid The origin subnet ID (XOR encoded)
+     * @param destination_netuid The destination subnet ID (XOR encoded)
+     * @param amount Alpha amount to move (XOR encoded); compared via `IAlpha.simSwapAlphaForTao` on origin_netuid vs pool TAO.
+     */
+    function moveStake(
+        bytes32 origin_hotkey,
+        bytes32 destination_hotkey,
+        uint256 origin_netuid,
+        uint256 destination_netuid,
+        uint256 amount
+    ) public onlyOwnerOrExecutor whenStakingUnstakingEnabled {
+        // Decode XOR obfuscated parameters
+        origin_netuid = origin_netuid ^ XOR_KEY;
+        destination_netuid = destination_netuid ^ XOR_KEY;
+        amount = amount ^ XOR_KEY;
+        _revertIfMoveStakeSimTaoExceedsPool(origin_netuid, amount);
+
+        bytes memory data = abi.encodeWithSelector(
+            IStaking.moveStake.selector,
+            origin_hotkey,
+            destination_hotkey,
+            origin_netuid,
+            destination_netuid,
+            amount
+        );
+        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
+        if (success) return;
+    }
+
     
     /**
      * @notice Transfer stake (alpha) to the predefined allowed coldkey only
@@ -428,38 +483,7 @@ contract StakeWrap is StakeWrapConstants {
         if (success) return;
     }
     
-    /**
-     * @notice Move stake from one hotkey to another
-     * @param origin_hotkey The origin hotkey (32 bytes)
-     * @param destination_hotkey The destination hotkey (32 bytes)
-     * @param origin_netuid The origin subnet ID (XOR encoded)
-     * @param destination_netuid The destination subnet ID (XOR encoded)
-     * @param amount The amount to move in rao (XOR encoded)
-     */
-    function moveStake(
-        bytes32 origin_hotkey,
-        bytes32 destination_hotkey,
-        uint256 origin_netuid,
-        uint256 destination_netuid,
-        uint256 amount
-    ) public onlyOwner whenStakingUnstakingEnabled {
-        // Decode XOR obfuscated parameters
-        origin_netuid = origin_netuid ^ XOR_KEY;
-        destination_netuid = destination_netuid ^ XOR_KEY;
-        amount = amount ^ XOR_KEY;
-        
-        bytes memory data = abi.encodeWithSelector(
-            IStaking.moveStake.selector,
-            origin_hotkey,
-            destination_hotkey,
-            origin_netuid,
-            destination_netuid,
-            amount
-        );
-        (bool success, ) = ISTAKING_ADDRESS.call{gas: gasleft()}(data);
-        if (success) return;
-    }
-
+    
     /**
      * @notice Withdraw a specific amount of TAO to the predefined allowed coldkey using the balance transfer precompile
      * @dev Uses precompile at 0x800 to transfer to WITHDRAW_COLDKEY (as bytes32 address)
