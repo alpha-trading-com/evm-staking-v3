@@ -67,7 +67,7 @@ def set_executor_enabled(enabled: bool) -> None:
 
 
 class Settings(BaseModel):
-    VERSION: str = "0.1.0"
+    VERSION: str = "1.1.0"
     NETWORK: str = "wss://entrypoint-finney.opentensor.ai:443"
     #NETWORK: str = "ws://161.97.128.68:9944"
 
