@@ -24,6 +24,7 @@ import json
 import os
 import subprocess
 import sys
+import bittensor as bt
 
 # Project root (parent of scripts/)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -123,8 +124,6 @@ def step_add_proxy(contract_address: str) -> None:
     print(f"      Contract EVM:  {contract_address}")
     print(f"      Contract SS58: {contract_ss58}")
 
-    import bittensor as bt
-    from bittensor.core.chain_data.proxy import ProxyType
     for wallet_name in [DELETEGATE_1, DELETEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
         wallet.coldkey_file.save_password_to_env(os.getenv(f"{wallet_name}_PASSWORD"))
@@ -148,7 +147,7 @@ def step_add_proxy(contract_address: str) -> None:
             subtensor,
             wallet,
             contract_ss58,
-            proxy_type=ProxyType.Any,
+            proxy_type="Any",
             delay=0,
         )
         if not receipt.is_success:

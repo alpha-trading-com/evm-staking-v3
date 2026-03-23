@@ -40,6 +40,7 @@ from eth_account import Account
 from evm import h160_to_ss58
 from utils.proxy_extrinsic import add_proxy_extrinsic
 from bt_utils.constants import DELETEGATE_1, DELETEGATE_2
+import bittensor as bt
 
 # Minimal ABI for setExecutor(address)
 SET_EXECUTOR_ABI = [
@@ -174,8 +175,6 @@ def step_add_proxy(contract_ss58: str) -> None:
     print("[5/6] Adding contract as proxy (Any) for delegate wallets...")
     print(f"      Contract SS58: {contract_ss58}")
 
-    import bittensor as bt
-    from bittensor.core.chain_data.proxy import ProxyType
     for wallet_name in [DELETEGATE_1, DELETEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
         wallet.unlock_coldkey()
@@ -197,7 +196,7 @@ def step_add_proxy(contract_ss58: str) -> None:
             subtensor,
             wallet,
             contract_ss58,
-            proxy_type=ProxyType.Any,
+            proxy_type="Any",
             delay=0,
         )
         if not receipt.is_success:
