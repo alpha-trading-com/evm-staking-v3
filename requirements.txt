@@ -5,7 +5,7 @@ base58==2.1.1
 fastapi==0.110.3
 uvicorn[standard]==0.41.0
 jinja2==3.1.6
-bittensor==10.0.1
+bittensor==9.12.2
 bittensor-cli==9.16.0
 bittensor-wallet==4.0.1
 substrate-interface==1.8.1
