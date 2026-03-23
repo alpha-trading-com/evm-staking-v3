@@ -43,8 +43,8 @@ from eth_account import Account
 from evm import h160_to_ss58
 from utils.proxy_extrinsic import add_proxy_extrinsic
 from bt_utils.constants import (
-    DELETEGATE_1,
-    DELETEGATE_2,
+    DELEGATE_1,
+    DELEGATE_2,
 )
 
 SET_EXECUTOR_ABI = [
@@ -124,7 +124,7 @@ def step_add_proxy(contract_address: str) -> None:
     print(f"      Contract EVM:  {contract_address}")
     print(f"      Contract SS58: {contract_ss58}")
 
-    for wallet_name in [DELETEGATE_1, DELETEGATE_2]:
+    for wallet_name in [DELEGATE_1, DELEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
         wallet.coldkey_file.save_password_to_env(os.getenv(f"{wallet_name}_PASSWORD"))
         wallet.coldkey_file.decrypt()

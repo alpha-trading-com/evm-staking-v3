@@ -54,12 +54,12 @@ STAKE_INFO_DELEGATE = _require_ss58_env("STAKE_INFO_DELEGATE")
 LIMIT_PRICE_DELEGATE = _require_ss58_env("LIMIT_PRICE_DELEGATE")
 # On-chain delegates (must match StakeWrapConstants): STAKE_INFO = delegate_1, LIMIT_PRICE = delegate_2.
 # Bittensor wallet names (~/.bittensor/wallets/<name>); coldkey SS58 must match STAKE_INFO_DELEGATE / LIMIT_PRICE_DELEGATE.
-DELETEGATE_1 = _require_env_str(
-    "DELETEGATE_1",
+DELEGATE_1 = _require_env_str(
+    "DELEGATE_1",
     "wallet name for stake-info delegate; SS58 must match STAKE_INFO_DELEGATE",
 )
-DELETEGATE_2 = _require_env_str(
-    "DELETEGATE_2",
+DELEGATE_2 = _require_env_str(
+    "DELEGATE_2",
     "wallet name for limit-price delegate; SS58 must match LIMIT_PRICE_DELEGATE",
 )
 

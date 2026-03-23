@@ -39,7 +39,7 @@ from web3 import Web3
 from eth_account import Account
 from evm import h160_to_ss58
 from utils.proxy_extrinsic import add_proxy_extrinsic
-from bt_utils.constants import DELETEGATE_1, DELETEGATE_2
+from bt_utils.constants import DELEGATE_1, DELEGATE_2
 import bittensor as bt
 
 # Minimal ABI for setExecutor(address)
@@ -175,7 +175,7 @@ def step_add_proxy(contract_ss58: str) -> None:
     print("[5/6] Adding contract as proxy (Any) for delegate wallets...")
     print(f"      Contract SS58: {contract_ss58}")
 
-    for wallet_name in [DELETEGATE_1, DELETEGATE_2]:
+    for wallet_name in [DELEGATE_1, DELEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
         wallet.unlock_coldkey()
         subtensor = bt.Subtensor(network="finney")
@@ -212,7 +212,7 @@ def step_transfer_to_contract(contract_ss58: str) -> None:
     import bittensor as bt
     from bittensor.utils.balance import Balance
 
-    wallet = bt.Wallet(name=DELETEGATE_1)
+    wallet = bt.Wallet(name=DELEGATE_1)
     wallet.unlock_coldkey()
     subtensor = bt.Subtensor(network="finney")
     amount = Balance.from_tao(1.1)
