@@ -38,6 +38,7 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 from web3 import Web3
 from eth_account import Account
 from evm import h160_to_ss58
+from utils.proxy_extrinsic import add_proxy_extrinsic
 from bt_utils.constants import DELETEGATE_1, DELETEGATE_2
 
 # Minimal ABI for setExecutor(address)
@@ -192,14 +193,15 @@ def step_add_proxy(contract_ss58: str) -> None:
         else:
             print("      No existing proxies.")
 
-        response = subtensor.add_proxy(
-            wallet=wallet,
-            delegate_ss58=contract_ss58,
+        receipt = add_proxy_extrinsic(
+            subtensor,
+            wallet,
+            contract_ss58,
             proxy_type=ProxyType.Any,
             delay=0,
         )
-        if not getattr(response, "success", True):
-            msg = getattr(response, "message", str(response))
+        if not receipt.is_success:
+            msg = receipt.error_message or "unknown"
             print(f"      ERROR: add_proxy failed: {msg}", file=sys.stderr)
             sys.exit(1)
         print("      Proxy added (Any). Done.\n")
