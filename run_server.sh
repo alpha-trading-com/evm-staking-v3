@@ -18,7 +18,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$PWD"
-PORT="${PORT:-19000}"
+PORT="${PORT:-10291}"
 HOST="${HOST:-0.0.0.0}"
 SSL_DIR="$ROOT/ssl"
 CERT="$SSL_DIR/cert.pem"
