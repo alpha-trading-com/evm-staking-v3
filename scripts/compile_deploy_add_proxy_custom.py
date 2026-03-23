@@ -6,12 +6,13 @@ Steps:
   1. Withdraw full contract balance to WITHDRAW_COLDKEY (if deployment.json exists and contract has balance)
   2. Compile smart contract (npm run compile)
   3. Deploy smart contract (python scripts/deploy.py; includes setContractAccountId32 and setBaseFeesRao)
-  4. Set executor on contract (setExecutor; executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override)
+  4. Set executor on contract (setExecutor): address from EXECUTOR_PRIVATE_KEY if set, else owner (PRIVATE_KEY)
   5. Remove all existing proxies for delegate wallets, then add contract's SS58 as proxy (Any)
   6. Transfer 1.1 TAO from delegate_1 to contract SS58 (chain transfer)
 
 Requires:
   - PRIVATE_KEY in .env (for deploy and withdraw)
+  - Optional: EXECUTOR_PRIVATE_KEY — executor EOA derived from this key; if unset, executor is set to the owner address
   - DELETEGATE_1_PASSWORD, DELETEGATE_2_PASSWORD in .env (for proxy and transfer)
 
 Usage:
@@ -132,7 +133,7 @@ def step_deploy() -> str:
 
 
 def step_set_executor(contract_address: str) -> None:
-    """Call setExecutor on the contract. Executor defaults to deployer; set EXECUTOR_ADDRESS in .env to override."""
+    """Call setExecutor: executor address from EXECUTOR_PRIVATE_KEY if set, else owner address (PRIVATE_KEY)."""
     print("[4/6] Setting executor on contract...")
     private_key = os.getenv("PRIVATE_KEY")
     if not private_key:
@@ -144,8 +145,13 @@ def step_set_executor(contract_address: str) -> None:
         print("      RPC not connected; skipping setExecutor.\n")
         return
     account = Account.from_key(private_key)
-    executor_address = os.getenv("EXECUTOR_ADDRESS", account.address)
-    executor_address = Web3.to_checksum_address(executor_address)
+    executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
+    if executor_key:
+        executor_address = Web3.to_checksum_address(Account.from_key(executor_key).address)
+        print(f"      Executor address from EXECUTOR_PRIVATE_KEY: {executor_address}")
+    else:
+        executor_address = Web3.to_checksum_address(account.address)
+        print(f"      Executor address = owner (EXECUTOR_PRIVATE_KEY unset): {executor_address}")
     contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=SET_EXECUTOR_ABI)
     tx = contract.functions.setExecutor(executor_address).build_transaction({
         "from": account.address,

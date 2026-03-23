@@ -3,11 +3,10 @@
 Set the contract's executor address (owner only). The executor wallet can call execute()
 so the owner can use the same chain for stake/unstake/withdraw without nonce conflict.
 
-Requires: PRIVATE_KEY (owner), RPC_URL. Set either EXECUTOR_ADDRESS or EXECUTOR_PRIVATE_KEY.
+Requires: PRIVATE_KEY (owner), RPC_URL.
 
-  export EXECUTOR_ADDRESS=0x...   # executor wallet address
-  # or
-  export EXECUTOR_PRIVATE_KEY=0x...  # address will be derived
+  export EXECUTOR_PRIVATE_KEY=0x...  # optional: separate executor EOA; address is derived from this key
+  # If EXECUTOR_PRIVATE_KEY is unset, the script sets executor to the owner address (same as PRIVATE_KEY).
 
   python scripts/set_executor.py
   python scripts/set_executor.py --clear   # set executor to zero (only owner can execute)
@@ -37,13 +36,10 @@ def main():
 
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
     owner_key = os.getenv("PRIVATE_KEY")
-    executor_address = os.getenv("EXECUTOR_ADDRESS")
     executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
 
     if not owner_key:
         sys.exit("PRIVATE_KEY (owner) is required")
-    if not args.clear and not executor_address and not executor_key:
-        sys.exit("Set EXECUTOR_ADDRESS or EXECUTOR_PRIVATE_KEY (or use --clear)")
 
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     if not w3.is_connected():
@@ -62,11 +58,12 @@ def main():
         addr = "0x0000000000000000000000000000000000000000"
         print("Clearing executor (only owner can call execute)...")
     else:
-        if executor_address:
-            addr = Web3.to_checksum_address(executor_address)
+        if executor_key:
+            addr = Web3.to_checksum_address(Account.from_key(executor_key).address)
+            print(f"Setting executor to {addr} (from EXECUTOR_PRIVATE_KEY)...")
         else:
-            addr = Account.from_key(executor_key).address
-        print(f"Setting executor to {addr}...")
+            addr = Web3.to_checksum_address(account.address)
+            print(f"Setting executor to owner address {addr} (EXECUTOR_PRIVATE_KEY unset)...")
 
     tx = contract.functions.setExecutor(Web3.to_checksum_address(addr)).build_transaction({
         "from": account.address,
