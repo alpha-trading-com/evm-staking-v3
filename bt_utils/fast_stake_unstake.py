@@ -39,7 +39,6 @@ async def get_async_substrate() -> AsyncSubstrateInterface:
         url=settings.NETWORK,
         ss58_format=42,
         type_registry_preset='substrate-node-template',
-        auto_reconnect=True,
     )
     return _async_substrate
 
