@@ -23,7 +23,6 @@ from bt_utils.constants import (
     BLOCK_CYCLE,
 )
 from bt_utils.utils import send_stake_info_async
-from bittensor.core.async_subtensor import AsyncSubtensor
 
 
 # Wallets (sync; used for signing; load once)
@@ -93,7 +92,7 @@ async def fast_unstake_async(
     async_substrate = await get_async_substrate()
     stake_info = netuid * BLOCK_CYCLE + 1
     return await send_stake_info_async(
-        async_substrate, wallet1, wallet2, stake_info, None
+        async_subtensor, wallet1, wallet2, stake_info, None
     )
 
 if __name__ == "__main__":

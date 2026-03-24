@@ -5,6 +5,7 @@ import bittensor as bt
 from typing import Optional, Tuple
 
 from scalecodec import GenericExtrinsic
+from async_substrate_interface import AsyncSubstrateInterface
 
 DEFAULT_PUBLIC_KEY = b'\x01\x02\x03\x04'
 
