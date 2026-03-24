@@ -67,7 +67,7 @@ def set_executor_enabled(enabled: bool) -> None:
 
 
 class Settings(BaseModel):
-    VERSION: str = "1.1.0"
+    VERSION: str = "1.1.1"
     NETWORK: str = os.getenv("NETWORK", "ws://127.0.0.1:9944")
     #NETWORK: str = "ws://161.97.128.68:9944"
 
