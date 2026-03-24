@@ -143,241 +143,241 @@
         <h1>🔐 StakeWrap Control</h1>
         <div class="tabs" id="tabs"></div>
 
-    <section class="panel active" id="panel-stake">
-      <h2>Stake</h2>
-      <small class="hint">Add stake (market) or stake limit order. Uncheck "Not limited" for limit order.</small>
-      <label style="margin-top: 0.5rem;">
-        <input id="stake-not-limited" type="checkbox" checked /> Not limited (market order)
-      </label>
-      <label>Amount (TAO)</label>
-      <div class="amount-input-row">
-        <input id="stake-amount" type="number" step="any" placeholder="e.g. 0.1" />
-        <div class="amount-presets-row">
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(300)">300</button>
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(250)">250</button>
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(200)">200</button>
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(150)">150</button>
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(100)">100</button>
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(50)">50</button>
-          <button type="button" class="amount-preset-btn" onclick="setTaoAmount(30)">30</button>
+      <section class="panel active" id="panel-stake">
+        <h2>Stake</h2>
+        <small class="hint">Add stake (market) or stake limit order. Uncheck "Not limited" for limit order.</small>
+        <label style="margin-top: 0.5rem;">
+          <input id="stake-not-limited" type="checkbox" checked /> Not limited (market order)
+        </label>
+        <label>Amount (TAO)</label>
+        <div class="amount-input-row">
+          <input id="stake-amount" type="number" step="any" placeholder="e.g. 0.1" />
+          <div class="amount-presets-row">
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(300)">300</button>
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(250)">250</button>
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(200)">200</button>
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(150)">150</button>
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(100)">100</button>
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(50)">50</button>
+            <button type="button" class="amount-preset-btn" onclick="setTaoAmount(30)">30</button>
+          </div>
         </div>
-      </div>
-      <small class="hint">Amount will be converted to rao (1 TAO = 10^9 rao)</small>
-      <label>Netuid</label>
-      <div class="amount-input-row">
-        <input id="stake-netuid" type="number" value="1" style="max-width: 8rem;" />
-        <button type="button" id="btn-evm-stake-submit" class="submit" onclick="postStakeOrLimit()" style="margin-top: 0;">Submit Stake</button>
-      </div>
-      <label>Hotkey (SS58 or 0x...)</label>
-      <input id="stake-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <div id="stake-limit-options" style="display: none;">
-        <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
-            <span>Rate Tolerance</span>
-            <input id="sl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 8rem; margin: 0;" />
-          </label>
-          <label style="margin: 0;">
-            <input id="sl-use-min" type="checkbox" /> Use Minimum Tolerance
-          </label>
-          <label style="margin: 0;">
-            <input id="sl-partial" type="checkbox" /> Allow Partial Staking
-          </label>
-          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
-          <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceStake()">Calculate Min Tolerance</button>
+        <small class="hint">Amount will be converted to rao (1 TAO = 10^9 rao)</small>
+        <label>Netuid</label>
+        <div class="amount-input-row">
+          <input id="stake-netuid" type="number" value="1" style="max-width: 8rem;" />
+          <button type="button" id="btn-evm-stake-submit" class="submit" onclick="postStakeOrLimit()" style="margin-top: 0;">Submit Stake</button>
         </div>
-      </div>
-      <div id="stake-result"></div>
-    </section>
-
-    <section class="panel" id="panel-remove">
-      <h2>Unstake</h2>
-      <small class="hint">Remove stake (market) or unstake limit order. Amount in raw alpha units (integer). Leave amount empty to unstake all.</small>
-      <label style="margin-top: 0.5rem;">
-        <input id="rs-not-limited" type="checkbox" checked /> Not limited (market order)
-      </label>
-      <label>Amount (integer, alpha raw units)</label>
-      <input id="rs-amount" type="number" placeholder="e.g. 100000000 (empty = all)" />
-      <label>Netuid</label>
-      <div class="amount-input-row">
-        <input id="rs-netuid" type="number" value="1" style="max-width: 8rem;" />
-        <button type="button" id="btn-evm-unstake-submit" class="submit" onclick="postRemoveStakeOrLimit()" style="margin-top: 0;">Submit Unstake</button>
-      </div>
-      <label>Hotkey</label>
-      <input id="rs-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <div id="remove-limit-options" style="display: none;">
-        <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
-            <span>Rate Tolerance</span>
-            <input id="rsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
-          </label>
-          
-          <label style="margin: 0;">
-            <input id="rsl-use-min" type="checkbox" /> Use Minimum Tolerance
-          </label>
-          <label style="margin: 0;">
-            <input id="rsl-partial" type="checkbox" /> Allow partial fill
-          </label>
-          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
-          <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceUnstake()">Calculate Min Tolerance</button>
+        <label>Hotkey (SS58 or 0x...)</label>
+        <input id="stake-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <div id="stake-limit-options" style="display: none;">
+          <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+            <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+              <span>Rate Tolerance</span>
+              <input id="sl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 8rem; margin: 0;" />
+            </label>
+            <label style="margin: 0;">
+              <input id="sl-use-min" type="checkbox" /> Use Minimum Tolerance
+            </label>
+            <label style="margin: 0;">
+              <input id="sl-partial" type="checkbox" /> Allow Partial Staking
+            </label>
+            <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
+            <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceStake()">Calculate Min Tolerance</button>
+          </div>
         </div>
-      </div>
-      <div id="rs-result"></div>
-    </section>
+        <div id="stake-result"></div>
+      </section>
 
-    <section class="panel" id="panel-transfer">
-      <h2>Transfer Stake</h2>
-      <small class="hint">Transfer stake to the predefined allowed coldkey only. Leave amount empty to transfer the full stake on the origin netuid.</small>
-      <label>Amount (TAO)</label>
-      <input id="ts-amount" type="number" step="any" placeholder="e.g. 0.1 — empty = transfer all" />
-      <label>Origin Netuid</label>
-      <input id="ts-origin" type="number" value="1" />
-      <label>Destination Netuid</label>
-      <input id="ts-dest" type="number" value="1" />
-      <label>Hotkey</label>
-      <input id="ts-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button type="button" id="btn-evm-transfer-submit" class="submit" onclick="postTransferStake()">Submit Transfer Stake</button>
-      <div id="ts-result"></div>
-    </section>
-
-    <section class="panel" id="panel-move">
-      <h2>Move Stake</h2>
-      <small class="hint">Move stake between different hotkeys. Leave amount empty to move all (alpha).</small>
-      <label>Amount (TAO)</label>
-      <input id="ms-amount" type="number" step="any" placeholder="e.g. 0.1 (empty = all)" />
-      <label>Origin Netuid</label>
-      <input id="ms-origin" type="number" value="1" />
-      <label>Destination Netuid</label>
-      <input id="ms-dest" type="number" value="1" />
-      <label>Origin Hotkey</label>
-      <input id="ms-origin-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <label>Destination Hotkey</label>
-      <input id="ms-dest-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-      <button type="button" id="btn-evm-move-submit" class="submit" onclick="postMoveStake()">Submit Move Stake</button>
-      <div id="ms-result"></div>
-    </section>
-
-    <section class="panel" id="panel-withdraw">
-      <h2>Withdraw TAO</h2>
-      <small class="hint">Withdraw TAO from the contract (owner only). Leave amount empty to withdraw the full contract balance.</small>
-      <label>Amount (TAO)</label>
-      <input id="wd-amount" type="number" step="any" placeholder="e.g. 0.1 — empty = withdraw all" />
-      <button class="submit" onclick="postWithdraw()">Submit Withdraw</button>
-      <div id="wd-result"></div>
-    </section>
-
-    <section class="panel" id="panel-fast-stake">
-      <h2>Fast Stake</h2>
-      <small class="hint">Stake via MevShield (Bittensor extrinsic). Requires Executor ON (Settings). Uncheck "Not limited" for limit order.</small>
-      <label style="margin-top: 0.5rem;">
-        <input id="fs-not-limited" type="checkbox" checked /> Not limited (market order)
-      </label>
-      <label>Amount (TAO)</label>
-      <div class="amount-input-row">
-        <input id="fs-amount" type="number" step="any" placeholder="e.g. 0.1" />
-        <div class="amount-presets-row">
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(300)">300</button>
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(250)">250</button>
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(200)">200</button>
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(150)">150</button>
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(100)">100</button>
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(50)">50</button>
-          <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(30)">30</button>
+      <section class="panel" id="panel-remove">
+        <h2>Unstake</h2>
+        <small class="hint">Remove stake (market) or unstake limit order. Amount in raw alpha units (integer). Leave amount empty to unstake all.</small>
+        <label style="margin-top: 0.5rem;">
+          <input id="rs-not-limited" type="checkbox" checked /> Not limited (market order)
+        </label>
+        <label>Amount (integer, alpha raw units)</label>
+        <input id="rs-amount" type="number" placeholder="e.g. 100000000 (empty = all)" />
+        <label>Netuid</label>
+        <div class="amount-input-row">
+          <input id="rs-netuid" type="number" value="1" style="max-width: 8rem;" />
+          <button type="button" id="btn-evm-unstake-submit" class="submit" onclick="postRemoveStakeOrLimit()" style="margin-top: 0;">Submit Unstake</button>
         </div>
-      </div>
-      <label>Netuid</label>
-      <div class="amount-input-row">
-        <input id="fs-netuid" type="number" value="1" style="max-width: 8rem;" />
-        <button id="btn-fast-stake" class="submit" onclick="postFastStakeOrLimit()" style="margin-top: 0;">Submit Fast Stake</button>
-      </div>
-      <div id="fast-stake-limit-options" style="display: none;">
-        <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-          <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
-            <span>Rate Tolerance</span>
-            <input id="fsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
-          </label>
-          <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
-          <label style="margin: 0;">
-            <input id="fsl-use-min" type="checkbox" /> Use Minimum Tolerance
-          </label>
-          <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceFastStake()">Calculate Min Tolerance</button>
+        <label>Hotkey</label>
+        <input id="rs-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <div id="remove-limit-options" style="display: none;">
+          <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+            <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+              <span>Rate Tolerance</span>
+              <input id="rsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
+            </label>
+            
+            <label style="margin: 0;">
+              <input id="rsl-use-min" type="checkbox" /> Use Minimum Tolerance
+            </label>
+            <label style="margin: 0;">
+              <input id="rsl-partial" type="checkbox" /> Allow partial fill
+            </label>
+            <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
+            <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceUnstake()">Calculate Min Tolerance</button>
+          </div>
         </div>
-      </div>
-      <div id="fs-result"></div>
-    </section>
+        <div id="rs-result"></div>
+      </section>
 
-    <section class="panel" id="panel-fast-unstake">
-      <h2>Fast Unstake</h2>
-      <small class="hint">Unstake via MevShield (Bittensor extrinsic). Requires Executor ON (Settings). Unstakes all for the given netuid.</small>
-      <label>Netuid</label>
-      <input id="fu-netuid" type="number" value="1" />
-      <button id="btn-fast-unstake" class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
-      <div id="fu-result"></div>
-    </section>
+      <section class="panel" id="panel-transfer">
+        <h2>Transfer Stake</h2>
+        <small class="hint">Transfer stake to the predefined allowed coldkey only. Leave amount empty to transfer the full stake on the origin netuid.</small>
+        <label>Amount (TAO)</label>
+        <input id="ts-amount" type="number" step="any" placeholder="e.g. 0.1 — empty = transfer all" />
+        <label>Origin Netuid</label>
+        <input id="ts-origin" type="number" value="1" />
+        <label>Destination Netuid</label>
+        <input id="ts-dest" type="number" value="1" />
+        <label>Hotkey</label>
+        <input id="ts-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <button type="button" id="btn-evm-transfer-submit" class="submit" onclick="postTransferStake()">Submit Transfer Stake</button>
+        <div id="ts-result"></div>
+      </section>
 
-    <section class="panel" id="panel-settings">
-      <h2>Settings</h2>
+      <section class="panel" id="panel-move">
+        <h2>Move Stake</h2>
+        <small class="hint">Move stake between different hotkeys. Leave amount empty to move all (alpha).</small>
+        <label>Amount (TAO)</label>
+        <input id="ms-amount" type="number" step="any" placeholder="e.g. 0.1 (empty = all)" />
+        <label>Origin Netuid</label>
+        <input id="ms-origin" type="number" value="1" />
+        <label>Destination Netuid</label>
+        <input id="ms-dest" type="number" value="1" />
+        <label>Origin Hotkey</label>
+        <input id="ms-origin-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <label>Destination Hotkey</label>
+        <input id="ms-dest-hotkey" placeholder="5... or 0x..." value="5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <button type="button" id="btn-evm-move-submit" class="submit" onclick="postMoveStake()">Submit Move Stake</button>
+        <div id="ms-result"></div>
+      </section>
 
-      <h3 style="margin: 0 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Executor / heartbeat</h3>
-      <small class="hint">Single switch in executor_enabled.json. When OFF, auto-execute scripts skip submissions.</small>
-      <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-        <input id="settings-executor-enabled" type="checkbox" onchange="saveExecutorEnabled(this.checked)" />
-        <span id="settings-executor-label">Executor ON</span>
-      </label>
-      <div id="settings-executor-msg" class="hint" style="margin-top: 0.35rem;"></div>
-      <div id="settings-executor-result" class="result" style="display: none;"></div>
+      <section class="panel" id="panel-withdraw">
+        <h2>Withdraw TAO</h2>
+        <small class="hint">Withdraw TAO from the contract (owner only). Leave amount empty to withdraw the full contract balance.</small>
+        <label>Amount (TAO)</label>
+        <input id="wd-amount" type="number" step="any" placeholder="e.g. 0.1 — empty = withdraw all" />
+        <button class="submit" onclick="postWithdraw()">Submit Withdraw</button>
+        <div id="wd-result"></div>
+      </section>
 
-      <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Contract config</h3>
-      <small class="hint">Read-only values from the deployed StakeWrap contract.</small>
-      <button type="button" class="refresh-btn" onclick="loadContractConfig()" style="margin-top: 0.5rem;">Refresh</button>
-      <div id="contract-config-container" class="wallet-footer" style="margin-top: 0.75rem;">
-        <div class="loading">Load Settings to see contract config.</div>
-      </div>
+      <section class="panel" id="panel-fast-stake">
+        <h2>Fast Stake</h2>
+        <small class="hint">Stake via MevShield (Bittensor extrinsic). Requires Executor ON (Settings). Uncheck "Not limited" for limit order.</small>
+        <label style="margin-top: 0.5rem;">
+          <input id="fs-not-limited" type="checkbox" checked /> Not limited (market order)
+        </label>
+        <label>Amount (TAO)</label>
+        <div class="amount-input-row">
+          <input id="fs-amount" type="number" step="any" placeholder="e.g. 0.1" />
+          <div class="amount-presets-row">
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(300)">300</button>
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(250)">250</button>
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(200)">200</button>
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(150)">150</button>
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(100)">100</button>
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(50)">50</button>
+            <button type="button" class="amount-preset-btn" onclick="setFastStakeAmount(30)">30</button>
+          </div>
+        </div>
+        <label>Netuid</label>
+        <div class="amount-input-row">
+          <input id="fs-netuid" type="number" value="1" style="max-width: 8rem;" />
+          <button id="btn-fast-stake" class="submit" onclick="postFastStakeOrLimit()" style="margin-top: 0;">Submit Fast Stake</button>
+        </div>
+        <div id="fast-stake-limit-options" style="display: none;">
+          <div class="stake-limit-row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+            <label style="margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+              <span>Rate Tolerance</span>
+              <input id="fsl-tolerance" type="number" step="any" value="0.5" placeholder="e.g. 0.5" style="width: 5rem; margin: 0;" />
+            </label>
+            <small class="hint" style="margin: 0;">Ignored when "Use Minimum Tolerance" is checked</small>
+            <label style="margin: 0;">
+              <input id="fsl-use-min" type="checkbox" /> Use Minimum Tolerance
+            </label>
+            <button type="button" class="refresh-btn" style="margin: 0;" onclick="calcMinToleranceFastStake()">Calculate Min Tolerance</button>
+          </div>
+        </div>
+        <div id="fs-result"></div>
+      </section>
 
-      <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Staking / unstaking gate (contract)</h3>
-      <div id="staking-gate-secure-context-warning" class="result err" style="display: none; margin-top: 0.5rem; font-size: 0.9rem;">
-        <strong>Not a secure context</strong> — you are on plain <code>http://</code> to a <strong>non-localhost</strong> host. Browsers set <code>isSecureContext === false</code>, and wallet extensions (Talisman, MetaMask, …) usually <strong>do not inject</strong> an EVM provider on this origin. That is why Wallet debug shows no <code>talismanEth</code> / <code>ethereum</code> / EIP-6963.
-        <div style="margin-top: 0.75rem;"><strong>Fix (pick one):</strong></div>
-        <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
-          <li><strong>HTTPS</strong> — Put the UI behind TLS (e.g. nginx/Caddy + Let’s Encrypt, or a cert you trust).</li>
-          <li><strong>SSH tunnel → localhost</strong> — From your PC: <code style="word-break: break-all;">ssh -L 19000:127.0.0.1:19000 user@212.56.40.85</code> then open <code>http://127.0.0.1:19000/ui</code> (loopback counts as a secure context for wallets).</li>
-          <li><strong>CLI</strong> — Use <code>cast send</code> / Foundry or Python with your owner key to call <code>setStakingGatePasswordHash</code> / <code>setStakingUnstakingEnabled</code> (no browser wallet).</li>
-        </ul>
-        <div style="margin-top: 0.85rem;"><strong>On your phone</strong> — Mobile Safari/Chrome use the same rule: <code>http://&lt;server-ip&gt;:port</code> is <strong>not</strong> a secure context, so in-page wallets usually will not work.</div>
-        <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
-          <li><strong>Best:</strong> Put the UI on <strong><code>https://</code> with a domain</strong> (Let’s Encrypt). Open that URL on the phone — same as desktop.</li>
-          <li><strong>Wallet in-app browser:</strong> In MetaMask Mobile (or another EVM wallet app), open the <strong>Browser</strong> tab and go to your <strong>HTTPS</strong> UI URL; the app injects the provider there. Plain HTTP to an IP in the wallet browser still fails the same way.</li>
-          <li><strong>Talisman on phone:</strong> If you only have Talisman as a browser extension (desktop), use a mobile EVM wallet’s in-app browser for gate txs, or run gate setup once from a PC with tunnel/HTTPS.</li>
-          <li><strong>Advanced:</strong> Android <strong>Termux</strong> can run <code>ssh -L 19000:127.0.0.1:19000 user@server</code> then open <code>http://127.0.0.1:19000/ui</code> on the phone — loopback is a secure context.</li>
-        </ul>
-      </div>
-      <small class="hint">Gate password is never sent to this app’s server. Use an <strong>Ethereum (ETH) account in Talisman</strong> (Add account → Ethereum); Substrate-only accounts will not expose an EVM provider. We detect <code>window.talismanEth</code>, <code>window.ethereum</code>, multi-wallet <code>ethereum.providers</code>, and EIP-6963. Match the chain to this deployment, then sign in the extension.</small>
-      <small class="hint" style="margin-top: 0.35rem;">Blocks EVM stake, unstake, transfer/move stake, and <code>execute()</code> staking. Withdraw and Fast Stake/Unstake are not blocked by this flag.</small>
-      <div style="margin-top: 0.75rem;">
-        <button type="button" class="submit" onclick="stakingGateConnectWallet()">Connect owner wallet</button>
-        <button type="button" class="refresh-btn" onclick="stakingGateShowDebug()" style="margin-left: 0.5rem;">Wallet debug</button>
-        <span id="staking-gate-wallet-status" class="hint" style="margin-left: 0.75rem; font-family: monospace;"></span>
-      </div>
-      <pre id="staking-gate-debug" class="hint" style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; max-height: 14rem; overflow: auto;"></pre>
-      <label style="margin-top: 0.75rem;">One-time: gate password → <code>keccak256(utf8)</code> hash on-chain</label>
-      <input type="password" id="staking-gate-init-password" autocomplete="new-password" style="max-width: 24rem;" />
-      <button type="button" class="submit" onclick="clientInitGateHash()" style="margin-top: 0.5rem;">Initialize gate hash (wallet tx)</button>
-      <label style="margin-top: 1rem;">Allow EVM staking / unstaking (after gate is set)</label>
-      <label style="margin-top: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
-        <input id="staking-gate-enabled-apply" type="checkbox" checked />
-        <span>Enabled (unchecked = disabled on chain)</span>
-      </label>
-      <label>Password for toggle</label>
-      <input type="password" id="staking-gate-toggle-password" autocomplete="current-password" style="max-width: 24rem;" />
-      <button type="button" class="submit" onclick="clientApplyGateToggle()" style="margin-top: 0.5rem;">Apply toggle (wallet tx)</button>
-      <div id="staking-gate-result" class="result" style="display: none; margin-top: 0.75rem;"></div>
+      <section class="panel" id="panel-fast-unstake">
+        <h2>Fast Unstake</h2>
+        <small class="hint">Unstake via MevShield (Bittensor extrinsic). Requires Executor ON (Settings). Unstakes all for the given netuid.</small>
+        <label>Netuid</label>
+        <input id="fu-netuid" type="number" value="1" />
+        <button id="btn-fast-unstake" class="submit" onclick="postFastUnstake()">Submit Fast Unstake</button>
+        <div id="fu-result"></div>
+      </section>
 
-      <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Tolerance offset</h3>
-      <small class="hint">Used when "Use Minimum Tolerance" is checked (stake/unstake limit). Number (e.g. 0.001) or multiplier *1.2.</small>
-      <label>Tolerance offset</label>
-      <input id="settings-tolerance-offset" type="text" placeholder="e.g. 0.001 or *1.2" style="max-width: 12rem;" />
-      <button class="submit" onclick="saveToleranceOffset()" style="margin-top: 0.75rem;">Save tolerance offset</button>
-      <div id="settings-tolerance-result" class="result" style="display: none;"></div>
-    </section>
+      <section class="panel" id="panel-settings">
+        <h2>Settings</h2>
+
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Executor / heartbeat</h3>
+        <small class="hint">Single switch in executor_enabled.json. When OFF, auto-execute scripts skip submissions.</small>
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+          <input id="settings-executor-enabled" type="checkbox" onchange="saveExecutorEnabled(this.checked)" />
+          <span id="settings-executor-label">Executor ON</span>
+        </label>
+        <div id="settings-executor-msg" class="hint" style="margin-top: 0.35rem;"></div>
+        <div id="settings-executor-result" class="result" style="display: none;"></div>
+
+        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Contract config</h3>
+        <small class="hint">Read-only values from the deployed StakeWrap contract.</small>
+        <button type="button" class="refresh-btn" onclick="loadContractConfig()" style="margin-top: 0.5rem;">Refresh</button>
+        <div id="contract-config-container" class="wallet-footer" style="margin-top: 0.75rem;">
+          <div class="loading">Load Settings to see contract config.</div>
+        </div>
+
+        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Staking / unstaking gate (contract)</h3>
+        <div id="staking-gate-secure-context-warning" class="result err" style="display: none; margin-top: 0.5rem; font-size: 0.9rem;">
+          <strong>Not a secure context</strong> — you are on plain <code>http://</code> to a <strong>non-localhost</strong> host. Browsers set <code>isSecureContext === false</code>, and wallet extensions (Talisman, MetaMask, …) usually <strong>do not inject</strong> an EVM provider on this origin. That is why Wallet debug shows no <code>talismanEth</code> / <code>ethereum</code> / EIP-6963.
+          <div style="margin-top: 0.75rem;"><strong>Fix (pick one):</strong></div>
+          <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
+            <li><strong>HTTPS</strong> — Put the UI behind TLS (e.g. nginx/Caddy + Let’s Encrypt, or a cert you trust).</li>
+            <li><strong>SSH tunnel → localhost</strong> — From your PC: <code style="word-break: break-all;">ssh -L 19000:127.0.0.1:19000 user@212.56.40.85</code> then open <code>http://127.0.0.1:19000/ui</code> (loopback counts as a secure context for wallets).</li>
+            <li><strong>CLI</strong> — Use <code>cast send</code> / Foundry or Python with your owner key to call <code>setStakingGatePasswordHash</code> / <code>setStakingUnstakingEnabled</code> (no browser wallet).</li>
+          </ul>
+          <div style="margin-top: 0.85rem;"><strong>On your phone</strong> — Mobile Safari/Chrome use the same rule: <code>http://&lt;server-ip&gt;:port</code> is <strong>not</strong> a secure context, so in-page wallets usually will not work.</div>
+          <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
+            <li><strong>Best:</strong> Put the UI on <strong><code>https://</code> with a domain</strong> (Let’s Encrypt). Open that URL on the phone — same as desktop.</li>
+            <li><strong>Wallet in-app browser:</strong> In MetaMask Mobile (or another EVM wallet app), open the <strong>Browser</strong> tab and go to your <strong>HTTPS</strong> UI URL; the app injects the provider there. Plain HTTP to an IP in the wallet browser still fails the same way.</li>
+            <li><strong>Talisman on phone:</strong> If you only have Talisman as a browser extension (desktop), use a mobile EVM wallet’s in-app browser for gate txs, or run gate setup once from a PC with tunnel/HTTPS.</li>
+            <li><strong>Advanced:</strong> Android <strong>Termux</strong> can run <code>ssh -L 19000:127.0.0.1:19000 user@server</code> then open <code>http://127.0.0.1:19000/ui</code> on the phone — loopback is a secure context.</li>
+          </ul>
+        </div>
+        <small class="hint">Gate password is never sent to this app’s server. Use an <strong>Ethereum (ETH) account in Talisman</strong> (Add account → Ethereum); Substrate-only accounts will not expose an EVM provider. We detect <code>window.talismanEth</code>, <code>window.ethereum</code>, multi-wallet <code>ethereum.providers</code>, and EIP-6963. Match the chain to this deployment, then sign in the extension.</small>
+        <small class="hint" style="margin-top: 0.35rem;">Blocks EVM stake, unstake, transfer/move stake, and <code>execute()</code> staking. Withdraw and Fast Stake/Unstake are not blocked by this flag.</small>
+        <div style="margin-top: 0.75rem;">
+          <button type="button" class="submit" onclick="stakingGateConnectWallet()">Connect owner wallet</button>
+          <button type="button" class="refresh-btn" onclick="stakingGateShowDebug()" style="margin-left: 0.5rem;">Wallet debug</button>
+          <span id="staking-gate-wallet-status" class="hint" style="margin-left: 0.75rem; font-family: monospace;"></span>
+        </div>
+        <pre id="staking-gate-debug" class="hint" style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; max-height: 14rem; overflow: auto;"></pre>
+        <label style="margin-top: 0.75rem;">One-time: gate password → <code>keccak256(utf8)</code> hash on-chain</label>
+        <input type="password" id="staking-gate-init-password" autocomplete="new-password" style="max-width: 24rem;" />
+        <button type="button" class="submit" onclick="clientInitGateHash()" style="margin-top: 0.5rem;">Initialize gate hash (wallet tx)</button>
+        <label style="margin-top: 1rem;">Allow EVM staking / unstaking (after gate is set)</label>
+        <label style="margin-top: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+          <input id="staking-gate-enabled-apply" type="checkbox" checked />
+          <span>Enabled (unchecked = disabled on chain)</span>
+        </label>
+        <label>Password for toggle</label>
+        <input type="password" id="staking-gate-toggle-password" autocomplete="current-password" style="max-width: 24rem;" />
+        <button type="button" class="submit" onclick="clientApplyGateToggle()" style="margin-top: 0.5rem;">Apply toggle (wallet tx)</button>
+        <div id="staking-gate-result" class="result" style="display: none; margin-top: 0.75rem;"></div>
+
+        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Tolerance offset</h3>
+        <small class="hint">Used when "Use Minimum Tolerance" is checked (stake/unstake limit). Number (e.g. 0.001) or multiplier *1.2.</small>
+        <label>Tolerance offset</label>
+        <input id="settings-tolerance-offset" type="text" placeholder="e.g. 0.001 or *1.2" style="max-width: 12rem;" />
+        <button class="submit" onclick="saveToleranceOffset()" style="margin-top: 0.75rem;">Save tolerance offset</button>
+        <div id="settings-tolerance-result" class="result" style="display: none;"></div>
+      </section>
       </div>
       <div class="main-right">
         <div class="stake-info-panel">
