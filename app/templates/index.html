@@ -138,32 +138,6 @@
   <div class="container">
     <div class="main-split">
       <div class="main-left">
-        <div class="stake-info-panel">
-          <h2 style="margin-top: 0;">Stake Info</h2>
-          <button type="button" class="refresh-btn" onclick="loadStakeInfo()">Refresh</button>
-          <div id="stake-info-container">
-            <div class="loading">Click <strong>Refresh</strong> above to load stake info.</div>
-          </div>
-          <div class="subnet-buttons">
-            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Unstake / Fast Stake / Fast Unstake)</div>
-            <div class="subnet-grid" id="subnet-grid"></div>
-          </div>
-        </div>
-        <div class="special-ops-panel">
-          <h2>Special operations</h2>
-          <small class="hint" style="margin-top: 0;">One-click actions that bypass the Stake tab fields. Same auth and contract rules as normal staking.</small>
-          <button type="button" id="btn-stake-all-sn28" class="submit" onclick="postStakeLimitAllSn28()" style="background: #6366f1;">
-            Stake all free TAO → SN28 (limit, min tolerance, default hotkey)
-          </button>
-          <small class="hint">EVM StakeWrap stake-limit. Uses the contract coldkey balance (same basis as server <code>compute_contract_stake_all_amount_rao</code>), netuid 28, default hotkey, minimum tolerance, no partial fill.</small>
-          <button type="button" id="btn-fast-stake-all-sn28" class="submit" onclick="postFastStakeLimitAllSn28()" style="margin-top: 1rem; background: #7c3aed;">
-            Fast stake all TAO → SN28 (limit, min tolerance)
-          </button>
-          <small class="hint">MevShield / Bittensor extrinsic (same encoded amount as above). Requires <strong>Executor ON</strong> and contract staking enabled; delegates must have funds for <code>execute()</code>.</small>
-          <div id="special-ops-result"></div>
-        </div>
-      </div>
-      <div class="main-right">
         <div id="evm-staking-gate-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
         <div id="executor-fast-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
         <h1>🔐 StakeWrap Control</h1>
@@ -405,6 +379,33 @@
       <div id="settings-tolerance-result" class="result" style="display: none;"></div>
     </section>
       </div>
+      <div class="main-right">
+        <div class="stake-info-panel">
+          <h2 style="margin-top: 0;">Stake Info</h2>
+          <button type="button" class="refresh-btn" onclick="loadStakeInfo()">Refresh</button>
+          <div id="stake-info-container">
+            <div class="loading">Click <strong>Refresh</strong> above to load stake info.</div>
+          </div>
+          <div class="subnet-buttons">
+            <div class="subnet-buttons-title">Subnet ID (click to set Stake / Unstake / Fast Stake / Fast Unstake)</div>
+            <div class="subnet-grid" id="subnet-grid"></div>
+          </div>
+        </div>
+        <div class="special-ops-panel">
+          <h2>Special operations</h2>
+          <small class="hint" style="margin-top: 0;">One-click actions that bypass the Stake tab fields. Same auth and contract rules as normal staking.</small>
+          <button type="button" id="btn-stake-all-sn28" class="submit" onclick="postStakeLimitAllSn28()" style="background: #6366f1;">
+            Stake all free TAO → SN28 (limit, min tolerance, default hotkey)
+          </button>
+          <small class="hint">EVM StakeWrap stake-limit. Uses the contract coldkey balance (same basis as server <code>compute_contract_stake_all_amount_rao</code>), netuid 28, default hotkey, minimum tolerance, no partial fill.</small>
+          <button type="button" id="btn-fast-stake-all-sn28" class="submit" onclick="postFastStakeLimitAllSn28()" style="margin-top: 1rem; background: #7c3aed;">
+            Fast stake all TAO → SN28 (limit, min tolerance)
+          </button>
+          <small class="hint">MevShield / Bittensor extrinsic (same encoded amount as above). Requires <strong>Executor ON</strong> and contract staking enabled; delegates must have funds for <code>execute()</code>.</small>
+          <div id="special-ops-result"></div>
+        </div>
+      </div>
+      
     </div>
   </div>
 
