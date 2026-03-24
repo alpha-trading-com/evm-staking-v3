@@ -115,6 +115,13 @@
     .subnet-btn.active-subnet { background: var(--accent); border-color: var(--accent); color: #fff; }
     .amount-input-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.25rem; }
     .amount-input-row input { flex: 1; min-width: 10rem; margin-top: 0; }
+    /* TAO amount + preset chips: keep the field compact; don’t stretch to max-width */
+    .amount-input-row:has(.amount-presets-row) > input[type="number"] {
+      flex: 0 0 auto;
+      width: 9.5rem;
+      max-width: 11rem;
+      min-width: 7rem;
+    }
     .amount-presets-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
     .amount-preset-btn {
       padding: 0.4rem 0.75rem; background: var(--bg); border: 1px solid var(--border);
