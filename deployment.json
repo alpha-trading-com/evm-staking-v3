@@ -1,0 +1,581 @@
+{
+  "contract_address": "0xB5764Af7ffd5805F98264c6913E2Ca4BC220D344",
+  "deployer": "0x03E60e331D331e687C8Fa055c40B85D8cBCC4f72",
+  "chain_id": 964,
+  "transaction_hash": "c98a51684985d25982ed8344175d3a9f81294c34071e14de6d229de604bccf78",
+  "allowed_coldkey_ss58": "5FsDUVe2zLxTJTR1HzYp35BcNpbeFMLC76uRhwSTGj5YF36C",
+  "allowed_coldkey_bytes32": "0xa82db0e41db30fc3d206773f461c87c484b3ac0c25bf703567b4f1aa1ed5b350",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AmountZero",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BaseFeesNotSet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ContractAccountId32AlreadySet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ContractAccountId32NotSet",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "Expired",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "Exploited",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "fee",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeeFormatError",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InsufficientBalance",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidDelegate",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidStakingGateHash",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "simTao",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint64",
+          "name": "taoInPool",
+          "type": "uint64"
+        }
+      ],
+      "name": "MoveStakeSimTaoExceedsPool",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoOperation",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyOwnerOrExecutor",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "PrecompileTransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ProxyInsufficientGas",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "stakeAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint64",
+          "name": "taoInPool",
+          "type": "uint64"
+        }
+      ],
+      "name": "StakeExceedsTaoInPool",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StakingCallFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StakingGateAlreadyConfigured",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StakingGateNotConfigured",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "StakingUnstakingDisabled",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UnexpectedFee",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WithdrawFromDelegateFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WrongStakingGatePassword",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "DEFAULT_HOTKEY",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "LIMIT_PRICE_DELEGATE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "STAKE_INFO_DELEGATE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "WITHDRAW_COLDKEY",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "contractAccountId32",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "execBlock",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "packedBalances",
+          "type": "uint256"
+        }
+      ],
+      "name": "execute",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "executor",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getBaseFeesRao",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "stakeInfoBaseFeeRao",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limitPriceBaseFeeRao",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "origin_hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "destination_hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "origin_netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "destination_netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "moveStake",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeStake",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limitPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowPartial",
+          "type": "bool"
+        }
+      ],
+      "name": "removeStakeLimit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "stakeInfoBaseFeeRao",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limitPriceBaseFeeRao",
+          "type": "uint256"
+        }
+      ],
+      "name": "setBaseFeesRao",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "setContractAccountId32",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_executor",
+          "type": "address"
+        }
+      ],
+      "name": "setExecutor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "setStakingGatePasswordHash",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "enabled",
+          "type": "bool"
+        },
+        {
+          "internalType": "string",
+          "name": "password",
+          "type": "string"
+        }
+      ],
+      "name": "setStakingUnstakingEnabled",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "stake",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limitPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowPartial",
+          "type": "bool"
+        }
+      ],
+      "name": "stakeLimit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "stakingGateConfigured",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "stakingUnstakingEnabled",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "hotkey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "origin_netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "destination_netuid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "transferStake",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ]
+}
