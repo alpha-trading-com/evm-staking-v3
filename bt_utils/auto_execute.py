@@ -43,6 +43,7 @@ from bt_utils.constants import (
     EXECUTOR_ENABLED_FILENAME,
 )
 
+DEFAULT_BITTENSOR_WS_URL = "wss://entrypoint-finney.opentensor.ai:443"
 
 load_dotenv(os.path.join(ROOT_DIR, ".env"), override=False)
 BLOCK_DATA_FETCH_PAYLOAD = json.dumps({
@@ -100,6 +101,7 @@ def _executor_api_ssl_verify() -> bool:
     v = os.getenv("EXECUTOR_API_SSL_VERIFY", "1").strip().lower()
     return v not in ("0", "false", "no", "off")
 
+
 def is_executor_enabled() -> bool:
     """
     When EXECUTOR_API_BASE_URL is set, fetch from the uvicorn app:
@@ -123,7 +125,7 @@ def is_executor_enabled() -> bool:
         except (Exception) as e:
             print(f"Error fetching executor-enabled from {url}: {e}")
             pass
-    raise SystemExit(f"Failed to fetch executor-enabled from {url}: {e}")
+    raise SystemExit(f"Failed to fetch executor-enabled from {url}")
 
 
 def main():
@@ -131,9 +133,7 @@ def main():
     load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    ws_url = os.getenv("BITTENSOR_WS_URL", None)
-    if ws_url is None:
-        raise SystemExit("BITTENSOR_WS_URL is not set. Add it to .env")
+    ws_url = os.getenv("BITTENSOR_WS_URL", DEFAULT_BITTENSOR_WS_URL)
     executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
     owner_key = os.getenv("PRIVATE_KEY")
 
@@ -191,8 +191,6 @@ def main():
     nonce = w3.eth.get_transaction_count(account.address)
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
-    print(f"is_executor_enabled_flag: {is_executor_enabled_flag}")
-    return
     while True:
         try:
             current = get_current_block(substrate)
