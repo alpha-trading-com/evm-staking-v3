@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 
 from scalecodec import GenericExtrinsic
 from async_substrate_interface import AsyncSubstrateInterface
+from app.core.config import settings
 
 DEFAULT_PUBLIC_KEY = b'\x01\x02\x03\x04'
 
@@ -29,12 +30,19 @@ async def get_mevshield_fee_for_tip_async(
         call_function="set_heap_pages",
         call_params={"pages": 0},
     )
-    payment = await async_substrate.get_payment_info(
-        call=call,
-        keypair=wallet.coldkey,
-        tip=tip_rao,
-        era = {"period": 1},
-    )
+    if settings.USE_ERA:
+        payment = await async_substrate.get_payment_info(
+            call=call,
+            keypair=wallet.coldkey,
+            tip=tip_rao,
+            era = {"period": 1},
+        )
+    else:
+        payment = await async_substrate.get_payment_info(
+            call=call,
+            keypair=wallet.coldkey,
+            tip=tip_rao,
+        )
     # Chain may return partialFee (camelCase) or partial_fee (snake_case)
     inclusion_rao = int(
         payment.get("partial_fee") or payment.get("partialFee") or 0

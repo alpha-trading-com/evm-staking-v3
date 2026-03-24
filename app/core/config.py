@@ -77,7 +77,7 @@ class Settings(BaseModel):
     DEFAULT_MIN_TOLERANCE: bool = False
     DEFAULT_RETRIES: int = 1
     DEFAULT_DEST_HOTKEY: str = ROUND_TABLE_HOTKEY
-    USE_ERA: bool = os.getenv("USE_ERA", "true").lower() == "true"
+    USE_ERA: bool = os.getenv("USE_ERA", "false").lower() == "true"
     
     # WALLET_NAMES: List[str] = os.getenv("WALLET_NAMES", "").split(",")
     # DELEGATORS: List[str] = os.getenv("DELEGATORS", "").split(",")
