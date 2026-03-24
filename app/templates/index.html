@@ -686,18 +686,16 @@
     /** Default true (matches server when executor_enabled.json is missing). */
     window.executorEnabledForFast = true;
 
-    /** Fast Stake / Fast Unstake: disabled when contract staking is off OR executor toggle is OFF. */
+    /** Fast Stake / Fast Unstake: only submit actions disabled when contract staking is off OR executor is OFF.
+     * Amount presets, inputs, and limit options stay enabled so you can fill the form; Submit still enforces the gate. */
     function applyFastStakeExecutorUi() {
       const contractOff = window.evmStakingBlocked === true;
       const executorOff = window.executorEnabledForFast === false;
       const fastBlocked = contractOff || executorOff;
-      ['btn-fast-stake', 'btn-fast-unstake', 'btn-fast-stake-all-sn28', 'fs-not-limited', 'fs-amount', 'fs-netuid', 'fsl-tolerance', 'fsl-use-min'].forEach(id => {
+      ['btn-fast-stake', 'btn-fast-unstake', 'btn-fast-stake-all-sn28'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = fastBlocked;
       });
-      document.querySelectorAll('#panel-fast-stake button.amount-preset-btn').forEach(b => { b.disabled = fastBlocked; });
-      const calcFastTol = document.querySelector('#fast-stake-limit-options button.refresh-btn');
-      if (calcFastTol) calcFastTol.disabled = fastBlocked;
 
       const exBan = document.getElementById('executor-fast-banner');
       if (exBan) {
