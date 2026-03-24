@@ -3,6 +3,8 @@ import os
 import sys
 from dotenv import load_dotenv
 from typing import Tuple
+from async_substrate_interface import AsyncSubstrateInterface
+from app.core.config import settings
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
@@ -11,6 +13,7 @@ if _REPO_ROOT not in sys.path:
 load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
 import bittensor as bt
+
 from bt_utils.constants import (
     LIMIT_PRICE_SCALE,
     MAX_NETUID,
@@ -22,6 +25,7 @@ from bt_utils.constants import (
 from bt_utils.utils import send_stake_info_async
 from bittensor.core.async_subtensor import AsyncSubtensor
 
+
 # Wallets (sync; used for signing; load once)
 wallet1 = bt.Wallet(name=DELEGATE_1)
 wallet2 = bt.Wallet(name=DELEGATE_2)
@@ -30,19 +34,15 @@ wallet2.coldkey_file.save_password_to_env(os.getenv("DELEGATE_2_PASSWORD"))
 wallet1.coldkey_file.decrypt()
 wallet2.coldkey_file.decrypt()
 
-NETWORK = "finney"
 
-# Global AsyncSubtensor (lazy-initialized, reused across calls; uses NETWORK)
-_async_subtensor = None
-
-
-async def get_async_subtensor() -> "bt.AsyncSubtensor":
-    """Return the global AsyncSubtensor, initializing on first use."""
-    global _async_subtensor
-    if _async_subtensor is None:
-        _async_subtensor = AsyncSubtensor(network=NETWORK)
-        await _async_subtensor.initialize()
-    return _async_subtensor
+async def get_async_substrate() -> AsyncSubstrateInterface:
+    _async_substrate = AsyncSubstrateInterface(
+        url=settings.NETWORK,
+        ss58_format=42,
+        type_registry_preset='substrate-node-template',
+        auto_reconnect=True,
+    )
+    return _async_substrate
 
 """
 MAX_STAKING_INFO = 4 * (128 * (amount_tao * 2)) + 1, 1_024_001
@@ -65,7 +65,7 @@ async def fast_stake_async(
     if amount_rao == 0:
         return True, "Amount is 0"
 
-    async_subtensor = await get_async_subtensor()
+    async_substrate = await get_async_substrate()
     amount_tao = amount_rao / RAO
 
     if limit_price is None:
@@ -78,7 +78,7 @@ async def fast_stake_async(
 
     stake_info_encoded = stake_info * BLOCK_CYCLE + 1
     return await send_stake_info_async(
-        async_subtensor,
+        async_substrate,
         wallet1,
         wallet2,
         stake_info_encoded,
@@ -90,10 +90,10 @@ async def fast_unstake_async(
     netuid: int,
 ) -> Tuple[bool, str]:
     """Submit fast unstake (MevShield). Returns (success, message). Async."""
-    async_subtensor = await get_async_subtensor()
+    async_substrate = await get_async_substrate()
     stake_info = netuid * BLOCK_CYCLE + 1
     return await send_stake_info_async(
-        async_subtensor, wallet1, wallet2, stake_info, None
+        async_substrate, wallet1, wallet2, stake_info, None
     )
 
 if __name__ == "__main__":
