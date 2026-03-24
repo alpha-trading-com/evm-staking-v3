@@ -12,7 +12,7 @@ from bt_utils.constants import (
     DELEGATE_2,
 )
 
-from app.core.config import Settings
+from app.core.config import settings
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     from evm import h160_to_ss58
     from utils.proxy_extrinsic import add_proxy_extrinsic
 
-    subtensor = bt.Subtensor(Settings.NETWORK)
+    subtensor = bt.Subtensor(settings.NETWORK)
     for delegate_name in [DELEGATE_1, DELEGATE_2]:
         real_account = bt.Wallet(name=delegate_name)
         real_account.unlock_coldkey()

@@ -6,7 +6,7 @@ from rich.table import Table
 from io import StringIO
 
 from utils.sim_swap import sim_swap, TAO_TO_RAO
-from app.core.config import Settings
+from app.core.config import settings
 
 
 def get_amount_with_sim_swap(subtensor, alpha_stake_amount, netuid):
@@ -99,7 +99,7 @@ def get_stake_list_v2(subtensor, wallet_ss58):
     
 
 if __name__ == "__main__":
-    subtensor = bt.Subtensor(Settings.NETWORK)
+    subtensor = bt.Subtensor(settings.NETWORK)  
     wallet_ss58 = "5F5WLLEzDBXQDdTzDYgbQ3d3JKbM15HhPdFuLMmuzcUW5xG2"
     stake_list = get_stake_list_v2(subtensor, wallet_ss58)    
     print(stake_list)

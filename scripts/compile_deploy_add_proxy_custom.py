@@ -24,7 +24,7 @@ import os
 import subprocess
 import sys
 
-from app.core.config import Settings
+from app.core.config import settings
 
 # Project root (parent of scripts/)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -180,7 +180,7 @@ def step_add_proxy(contract_ss58: str) -> None:
     for wallet_name in [DELEGATE_1, DELEGATE_2]:
         wallet = bt.Wallet(name=wallet_name)
         wallet.unlock_coldkey()
-        subtensor = bt.Subtensor(Settings.NETWORK)
+        subtensor = bt.Subtensor(settings.NETWORK)
         real_ss58 = wallet.coldkey.ss58_address
         proxies_list, _ = subtensor.get_proxies_for_real_account(real_ss58)
         if proxies_list:
@@ -216,7 +216,7 @@ def step_transfer_to_contract(contract_ss58: str) -> None:
 
     wallet = bt.Wallet(name=DELEGATE_1)
     wallet.unlock_coldkey()
-    subtensor = bt.Subtensor(Settings.NETWORK)
+    subtensor = bt.Subtensor(settings.NETWORK)
     amount = Balance.from_tao(1.1)
     response = subtensor.transfer(
         wallet=wallet,

@@ -1,6 +1,6 @@
 import bittensor as bt
 
-from app.core.config import Settings
+from app.core.config import settings
 
 TAO_TO_RAO = 1_000_000_000
 
@@ -33,7 +33,7 @@ def sim_swap(
         raise ValueError("Invalid netuid")
 
 if __name__ == "__main__":
-    subtensor = bt.Subtensor(Settings.NETWORK)  
+    subtensor = bt.Subtensor(settings.NETWORK)  
     print(sim_swap(subtensor, 0, 30, 10))
     print(sim_swap(subtensor, 30, 0, 1000000))
 

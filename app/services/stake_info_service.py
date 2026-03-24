@@ -1,4 +1,5 @@
 """Stake info for coldkey (stakes list, balances)."""
+import sys
 from bittensor import Balance
 
 from app.globals import get_coldkey_ss58, get_subtensor
@@ -9,6 +10,8 @@ def get_stake_info_response() -> dict:
     """Build /api/stake-info response with stakes, coldkey, balances."""
     coldkey_ss58 = get_coldkey_ss58()
     subtensor = get_subtensor()
+    print(f"Subtensor: {subtensor}", file=sys.stdout)
+    print(f"Coldkey SS58: {coldkey_ss58}", file=sys.stdout)
     stake_infos = subtensor.get_stake_info_for_coldkey(coldkey_ss58=coldkey_ss58)
     subnet_infos = subtensor.all_subnets()
     balance = subtensor.get_balance(coldkey_ss58)

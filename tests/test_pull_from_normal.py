@@ -1,11 +1,11 @@
 import bittensor as bt
 from bittensor.core.chain_data.proxy import ProxyType
 
-from app.core.config import Settings
+from app.core.config import settings
 
 
 def main():
-    subtensor = bt.Subtensor(Settings.NETWORK)
+    subtensor = bt.Subtensor(settings.NETWORK)
     wallet = bt.Wallet(name="test_proxy")
     
     call = subtensor.substrate.compose_call(

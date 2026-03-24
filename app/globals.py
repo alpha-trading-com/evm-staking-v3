@@ -1,5 +1,6 @@
 """Cached global state: subtensor, coldkey_ss58, w3 cache, etc. Use getters to access."""
 import os
+import sys
 import threading
 from typing import Any
 
@@ -7,7 +8,7 @@ import bittensor as bt
 from eth_account import Account
 from web3 import Web3
 
-from app.core.config import Settings
+from app.core.config import settings
 
 from evm import (
     get_contract as evm_get_contract,
@@ -29,7 +30,7 @@ def get_subtensor() -> bt.Subtensor:
     """Lazy-initialized shared Subtensor (finney). Cached per process."""
     global _subtensor_instance
     if _subtensor_instance is None:
-        _subtensor_instance = bt.Subtensor(Settings.NETWORK)
+        _subtensor_instance = bt.Subtensor(settings.NETWORK)
     return _subtensor_instance
 
 
