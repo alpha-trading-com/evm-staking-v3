@@ -33,6 +33,7 @@ async def get_mevshield_fee_for_tip_async(
         call=call,
         keypair=wallet.coldkey,
         tip=tip_rao,
+        era = {"period": 1},
     )
     # Chain may return partialFee (camelCase) or partial_fee (snake_case)
     inclusion_rao = int(
@@ -58,11 +59,19 @@ async def get_info_extrinsic_async(
             'pages': 0
         }
     )
-    extrinsic = await async_substrate.create_signed_extrinsic(
-        call=call,
-        keypair=wallet.coldkey,
-        tip=info,
-    )
+    if settings.USE_ERA:
+        extrinsic = await async_substrate.create_signed_extrinsic(
+            call=call,
+            keypair=wallet.coldkey,
+            tip=info,
+            era = {"period": 1},
+        )
+    else:
+        extrinsic = await async_substrate.create_signed_extrinsic(
+            call=call,
+            keypair=wallet.coldkey,
+            tip=info,
+        )
     return extrinsic
 
 
