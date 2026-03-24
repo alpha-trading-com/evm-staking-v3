@@ -1,4 +1,5 @@
 """Fast stake/unstake via MevShield (Bittensor extrinsics) and combined fast-stake-then-unstake."""
+import sys
 from typing import Tuple
 
 from bt_utils.fast_stake_unstake import fast_stake_async, fast_unstake_async
@@ -43,12 +44,16 @@ async def do_fast_stake_limit_all_sn28() -> Tuple[bool, str, int | None, int, fl
     Fast stake-limit on subnet 28 for the same spendable amount as EVM “stake all”
     (compute_contract_stake_all_amount_rao). Min tolerance; MevShield delegates must be funded.
     """
-    amount_rao = int(compute_contract_stake_all_amount_rao())
+    amount_rao = int(compute_contract_stake_all_amount_rao()) 
+    amount_rao = (int(amount_rao / 10**9)) * 10**9
+    print(f"[fast_stake_service] amount_rao = {amount_rao}", file=sys.stdout)  # Log to stdout
     if amount_rao <= 0:
         raise ValueError("Spendable amount is zero or negative; nothing to fast-stake.")
+    
     success, message, limit_price = await do_fast_stake_limit(
         SN28_NETUID, amount_rao, 0.0, True,
     )
+
     return success, message, limit_price, amount_rao, amount_rao / 10**9
 
 
