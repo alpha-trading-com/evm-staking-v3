@@ -31,6 +31,7 @@ def get_subtensor() -> bt.Subtensor:
     global _subtensor_instance
     if _subtensor_instance is None:
         _subtensor_instance = bt.Subtensor(settings.NETWORK)
+    print("Using cached subtensor instance!", file=sys.stdout)
     return _subtensor_instance
 
 
