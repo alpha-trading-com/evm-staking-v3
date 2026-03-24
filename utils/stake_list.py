@@ -5,6 +5,8 @@ from rich.console import Console
 from rich.table import Table
 from io import StringIO
 
+from app.core.config import Settings
+
 
 def get_amount(tao_in, alpha_in, alpha_unstake_amount, netuid):
     if netuid == 0:
@@ -72,7 +74,7 @@ def get_stake_list(subtensor, wallet_ss58):
     
 
 if __name__ == "__main__":
-    subtensor = bt.Subtensor("finney")
+    subtensor = bt.Subtensor(Settings.NETWORK)
     wallet_ss58 = "5F5WLLEzDBXQDdTzDYgbQ3d3JKbM15HhPdFuLMmuzcUW5xG2"
     stake_list = get_stake_list(subtensor, wallet_ss58)    
     print(stake_list)

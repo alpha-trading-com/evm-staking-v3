@@ -7,6 +7,8 @@ import bittensor as bt
 from eth_account import Account
 from web3 import Web3
 
+from app.core.config import Settings
+
 from evm import (
     get_contract as evm_get_contract,
     get_stake_wrap_abi,
@@ -27,7 +29,7 @@ def get_subtensor() -> bt.Subtensor:
     """Lazy-initialized shared Subtensor (finney). Cached per process."""
     global _subtensor_instance
     if _subtensor_instance is None:
-        _subtensor_instance = bt.Subtensor(network="finney")
+        _subtensor_instance = bt.Subtensor(Settings.NETWORK)
     return _subtensor_instance
 
 

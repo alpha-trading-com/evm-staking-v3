@@ -46,6 +46,7 @@ from bt_utils.constants import (
     DELEGATE_1,
     DELEGATE_2,
 )
+from app.core.config import Settings
 
 SET_EXECUTOR_ABI = [
     {"inputs": [{"internalType": "address", "name": "_executor", "type": "address"}], "name": "setExecutor", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
@@ -128,7 +129,7 @@ def step_add_proxy(contract_address: str) -> None:
         wallet = bt.Wallet(name=wallet_name)
         wallet.coldkey_file.save_password_to_env(os.getenv(f"{wallet_name}_PASSWORD"))
         wallet.coldkey_file.decrypt()
-        subtensor = bt.Subtensor(network="finney")
+        subtensor = bt.Subtensor(Settings.NETWORK)
         real_ss58 = wallet.coldkey.ss58_address
         # Remove all existing proxies first (may prompt for password)
         proxies_list, _ = subtensor.get_proxies_for_real_account(real_ss58)

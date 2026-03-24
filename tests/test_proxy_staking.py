@@ -1,6 +1,7 @@
 import bittensor as bt
 from bittensor.utils.balance import Balance
-from bittensor.core.chain_data.proxy import ProxyType
+
+from app.core.config import Settings
 
 
 def main():
@@ -13,7 +14,7 @@ def main():
     amount_tao = 4.42
     # -----------------------------------------------------
 
-    subtensor = bt.Subtensor(network=network)
+    subtensor = bt.Subtensor(Settings.NETWORK)
     wallet = bt.Wallet(name=proxy_wallet_name)
     wallet.unlock_coldkey()
 
