@@ -9,6 +9,7 @@ If using EXECUTOR_PRIVATE_KEY, the contract must have executor set (owner calls 
 Optional: BITTENSOR_WS_URL (default wss://entrypoint-finney.opentensor.ai:443).
 Optional: EXECUTOR_API_BASE_URL (e.g. http://127.0.0.1:8000) — reads executor on/off from
 GET /api/executor-enabled (no auth). If unset or request fails, falls back to executor_enabled.json.
+Optional: EXECUTOR_API_SSL_VERIFY=0 — for HTTPS with self-signed certs only (insecure; default verify on).
 
 Run from project root: python bt_utils/auto_execute.py  or  python -m bt_utils.auto_execute
 
@@ -18,6 +19,7 @@ Ensure setExecutor(executorAddress) was called and EXECUTOR_PRIVATE_KEY matches 
 
 import json
 import os
+import ssl
 import sys
 import time
 import urllib.error
@@ -41,8 +43,8 @@ from bt_utils.constants import (
     EXECUTOR_ENABLED_FILENAME,
 )
 
-DEFAULT_BITTENSOR_WS_URL = "wss://entrypoint-finney.opentensor.ai:443"
 
+load_dotenv(os.path.join(ROOT_DIR, ".env"), override=False)
 BLOCK_DATA_FETCH_PAYLOAD = json.dumps({
     "jsonrpc": "2.0",
     "method": "chain_getHeader",
@@ -93,17 +95,10 @@ def get_delegate_balances_from_chain(substrate) -> tuple[int, int]:
     return (b1, b2)
 
 
-def _is_executor_enabled_from_file() -> bool:
-    """True if executor_enabled.json has "enabled": true. Default True if file missing."""
-    path = os.path.join(ROOT_DIR, EXECUTOR_ENABLED_FILENAME)
-    if not os.path.isfile(path):
-        return True
-    try:
-        with open(path) as f:
-            return json.load(f).get("enabled", True)
-    except Exception:
-        return True
-
+def _executor_api_ssl_verify() -> bool:
+    """Default True. Set EXECUTOR_API_SSL_VERIFY=0/false/no for self-signed HTTPS (dev only)."""
+    v = os.getenv("EXECUTOR_API_SSL_VERIFY", "1").strip().lower()
+    return v not in ("0", "false", "no", "off")
 
 def is_executor_enabled() -> bool:
     """
@@ -118,13 +113,17 @@ def is_executor_enabled() -> bool:
         try:
             req = urllib.request.Request(url, method="GET")
             timeout = float(os.getenv("EXECUTOR_API_TIMEOUT", "5"))
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            ctx = None
+            if url.lower().startswith("https:") and not _executor_api_ssl_verify():
+                ctx = ssl._create_unverified_context()
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             if data.get("ok") is True and "executor_enabled" in data:
                 return bool(data["executor_enabled"])
-        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, ValueError, TypeError):
+        except (Exception) as e:
+            print(f"Error fetching executor-enabled from {url}: {e}")
             pass
-    return _is_executor_enabled_from_file()
+    raise SystemExit(f"Failed to fetch executor-enabled from {url}: {e}")
 
 
 def main():
@@ -132,7 +131,9 @@ def main():
     load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
     rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    ws_url = os.getenv("BITTENSOR_WS_URL", DEFAULT_BITTENSOR_WS_URL)
+    ws_url = os.getenv("BITTENSOR_WS_URL", None)
+    if ws_url is None:
+        raise SystemExit("BITTENSOR_WS_URL is not set. Add it to .env")
     executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
     owner_key = os.getenv("PRIVATE_KEY")
 
@@ -190,6 +191,8 @@ def main():
     nonce = w3.eth.get_transaction_count(account.address)
     signed = None
     is_executor_enabled_flag = is_executor_enabled()
+    print(f"is_executor_enabled_flag: {is_executor_enabled_flag}")
+    return
     while True:
         try:
             current = get_current_block(substrate)
