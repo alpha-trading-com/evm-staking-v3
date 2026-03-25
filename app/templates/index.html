@@ -960,6 +960,44 @@
       tabButtons.push(b);
     });
 
+    /** Stake / Unstake / Fast Stake / Fast Unstake: Enter in a field acts like the main Submit button. */
+    var PANEL_ENTER_SUBMIT_BTN = {
+      'panel-stake': 'btn-evm-stake-submit',
+      'panel-remove': 'btn-evm-unstake-submit',
+      'panel-fast-stake': 'btn-fast-stake',
+      'panel-fast-unstake': 'btn-fast-unstake',
+    };
+
+    function enterKeyShouldDelegateToPanelSubmit(target) {
+      if (!target || !target.tagName) return false;
+      var tag = target.tagName.toLowerCase();
+      if (tag === 'textarea') return false;
+      if (tag === 'button') return false;
+      if (tag === 'a') return false;
+      if (target.isContentEditable) return false;
+      if (tag === 'input') {
+        var typ = (target.type || '').toLowerCase();
+        if (typ === 'checkbox' || typ === 'radio' || typ === 'button' || typ === 'submit' || typ === 'reset' || typ === 'file' || typ === 'hidden') return false;
+        return true;
+      }
+      if (tag === 'select') return true;
+      return false;
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var panel = document.querySelector('section.panel.active');
+      if (!panel) return;
+      var btnId = PANEL_ENTER_SUBMIT_BTN[panel.id];
+      if (!btnId) return;
+      if (!panel.contains(e.target)) return;
+      if (!enterKeyShouldDelegateToPanelSubmit(e.target)) return;
+      var btn = document.getElementById(btnId);
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      btn.click();
+    });
+
     // After all buttons are created, restore the tab if present in localStorage
     // (Otherwise, default is first tab, just as before)
     // (Moved the restoreActiveTab call above to after DOMContentLoaded!)
