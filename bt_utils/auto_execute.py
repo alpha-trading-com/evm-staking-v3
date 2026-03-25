@@ -198,35 +198,15 @@ def main():
             print(f"get_current_block failed: {e}")
             time.sleep(2)
             continue
-        if current > last_block:
-            try:
-                if signed is None:
-                    chain_balances = get_delegate_balances_from_chain(substrate)
-                    stake_info_balance = chain_balances[0]
-                    limit_price_balance = chain_balances[1]
-                    exec_block = current + 1
-                    print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
-                    packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
-                    tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
-                        "from": account.address,
-                        "nonce": nonce,
-                        "gas": gas_limit,
-                        "gasPrice": w3.eth.gas_price,
-                    })
-                    signed = account.sign_transaction(tx)
-                if is_executor_enabled_flag:
-                    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-                    print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
-                    nonce += 1
-                else:
-                    print("Executor is disabled. Skipping execute.")
-
-                is_executor_enabled_flag = is_executor_enabled()
-
+        if current <= last_block:
+            continue
+        try:
+            if signed is None:
                 chain_balances = get_delegate_balances_from_chain(substrate)
                 stake_info_balance = chain_balances[0]
                 limit_price_balance = chain_balances[1]
-                exec_block = current + 2
+                exec_block = current + 1
+                print(f"Balances from chain (rao): stake_info={stake_info_balance}, limit_price={limit_price_balance}")
                 packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
                 tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                     "from": account.address,
@@ -235,16 +215,35 @@ def main():
                     "gasPrice": w3.eth.gas_price,
                 })
                 signed = account.sign_transaction(tx)
-            except Exception as e:
-                err_msg = str(e).strip()
-                if "Failed 0x" in err_msg or (hasattr(e, "args") and e.args and "0x" in str(e.args)):
-                    print(f"Block {current} execute reverted: {type(e).__name__}: {err_msg}")
-                    print("  -> Check: contract executor is set (owner called setExecutor) and EXECUTOR_PRIVATE_KEY matches that address.")
-                else:
-                    print(f"Block {current} execute failed: {type(e).__name__}: {err_msg}")
-            last_block = current
+            if is_executor_enabled_flag:
+                tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+                print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
+                nonce += 1
+            else:
+                print("Executor is disabled. Skipping execute.")
 
-        time.sleep(2)
+            is_executor_enabled_flag = is_executor_enabled()
+
+            chain_balances = get_delegate_balances_from_chain(substrate)
+            stake_info_balance = chain_balances[0]
+            limit_price_balance = chain_balances[1]
+            exec_block = current + 2
+            packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
+            tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
+                "from": account.address,
+                "nonce": nonce,
+                "gas": gas_limit,
+                "gasPrice": w3.eth.gas_price,
+            })
+            signed = account.sign_transaction(tx)
+        except Exception as e:
+            err_msg = str(e).strip()
+            if "Failed 0x" in err_msg or (hasattr(e, "args") and e.args and "0x" in str(e.args)):
+                print(f"Block {current} execute reverted: {type(e).__name__}: {err_msg}")
+                print("  -> Check: contract executor is set (owner called setExecutor) and EXECUTOR_PRIVATE_KEY matches that address.")
+            else:
+                print(f"Block {current} execute failed: {type(e).__name__}: {err_msg}")
+        last_block = current
 
 
 if __name__ == "__main__":
