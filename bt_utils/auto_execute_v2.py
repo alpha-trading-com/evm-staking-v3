@@ -196,8 +196,8 @@ def main():
     
     while True:
         try:
-            current = get_current_block(substrate)
             if signed is None:
+                current = get_current_block(substrate)
                 chain_balances = get_delegate_balances_from_chain(substrate)
                 stake_info_balance = chain_balances[0]
                 limit_price_balance = chain_balances[1]
@@ -220,10 +220,10 @@ def main():
                 print("Executor is disabled. Skipping execute.")
 
             is_executor_enabled_flag = is_executor_enabled()
-
             chain_balances = get_delegate_balances_from_chain(substrate)
             stake_info_balance = chain_balances[0]
             limit_price_balance = chain_balances[1]
+            current = get_current_block(substrate)
             exec_block = current + 2
             packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
             tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
