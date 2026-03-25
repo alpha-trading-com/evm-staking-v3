@@ -78,12 +78,6 @@ class Settings(BaseModel):
     DEFAULT_RETRIES: int = 1
     DEFAULT_DEST_HOTKEY: str = ROUND_TABLE_HOTKEY
     USE_ERA: bool = os.getenv("USE_ERA", "false").lower() == "true"
-    # Fast MevShield stake/unstake: true = AsyncSubstrateInterface; false = sync SubstrateInterface (blocks async loop).
-    FAST_STAKE_USE_ASYNC: bool = os.getenv("FAST_STAKE_USE_ASYNC", "true").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
     
     # WALLET_NAMES: List[str] = os.getenv("WALLET_NAMES", "").split(",")
     # DELEGATORS: List[str] = os.getenv("DELEGATORS", "").split(",")
