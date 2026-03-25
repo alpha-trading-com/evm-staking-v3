@@ -30,6 +30,24 @@ from bt_utils.constants import (
 )
 
 
+_wallet1: bt.Wallet | None = None
+_wallet2: bt.Wallet | None = None
+
+
+def _delegate_wallets() -> tuple[bt.Wallet, bt.Wallet]:
+    """Load and decrypt DELEGATE_1 / DELEGATE_2 coldkeys once."""
+    global _wallet1, _wallet2
+    if _wallet1 is None:
+        _wallet1 = bt.Wallet(name=DELEGATE_1)
+        _wallet2 = bt.Wallet(name=DELEGATE_2)
+        _wallet1.coldkey_file.save_password_to_env(os.getenv("DELEGATE_1_PASSWORD"))
+        _wallet2.coldkey_file.save_password_to_env(os.getenv("DELEGATE_2_PASSWORD"))
+        _wallet1.coldkey_file.decrypt()
+        _wallet2.coldkey_file.decrypt()
+    return _wallet1, _wallet2
+
+_delegate_wallets()
+
 def get_extrinsic_fee_for_tip(
     substrate: SubstrateInterface,
     wallet: bt.Wallet,
@@ -140,28 +158,12 @@ def send_stake_info(
     return success, message
 
 
-_wallet1: bt.Wallet | None = None
-_wallet2: bt.Wallet | None = None
-
-
-def _delegate_wallets() -> tuple[bt.Wallet, bt.Wallet]:
-    """Load and decrypt DELEGATE_1 / DELEGATE_2 coldkeys once."""
-    global _wallet1, _wallet2
-    if _wallet1 is None:
-        _wallet1 = bt.Wallet(name=DELEGATE_1)
-        _wallet2 = bt.Wallet(name=DELEGATE_2)
-        _wallet1.coldkey_file.save_password_to_env(os.getenv("DELEGATE_1_PASSWORD"))
-        _wallet2.coldkey_file.save_password_to_env(os.getenv("DELEGATE_2_PASSWORD"))
-        _wallet1.coldkey_file.decrypt()
-        _wallet2.coldkey_file.decrypt()
-    return _wallet1, _wallet2
-
 
 def _sync_substrate() -> SubstrateInterface:
     return SubstrateInterface(
         url=settings.NETWORK,
         ss58_format=42,
-        type_registry_preset="substrate-node-template",
+        type_registry_preset="substrate-node-template"
     )
 
 

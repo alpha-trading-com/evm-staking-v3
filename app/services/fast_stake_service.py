@@ -1,8 +1,15 @@
-"""Fast stake/unstake via MevShield (Bittensor extrinsics) and combined fast-stake-then-unstake."""
+"""Fast stake/unstake via MevShield (Bittensor extrinsics) and combined fast-stake-then-unstake.
+
+Switch implementation with env FAST_STAKE_USE_ASYNC (default true):
+  true  — bt_utils.fast_stake_unstake_async (AsyncSubstrateInterface)
+  false — bt_utils.fast_stake_unstake (sync SubstrateInterface); blocks the event loop while running
+"""
 import sys
 from typing import Tuple
 
-from bt_utils.fast_stake_unstake import fast_stake_async, fast_unstake_async
+import bt_utils.fast_stake_unstake as _fast_stake_sync
+import bt_utils.fast_stake_unstake_async as _fast_stake_async
+from app.core.config import settings
 from bt_utils.constants import DEFAULT_HOTKEY
 from app.services.stake_service import SN28_NETUID, compute_contract_stake_all_amount_rao
 from utils.tolerance import (
@@ -16,9 +23,25 @@ from app.services.evm_service import get_w3_account_contract, run_quiet, receipt
 from evm import remove_stake
 
 
+async def _run_fast_stake(
+    netuid: int,
+    amount_rao: int,
+    limit_price: int | None = None,
+) -> Tuple[bool, str]:
+    if settings.FAST_STAKE_USE_ASYNC:
+        return await _fast_stake_async.fast_stake_async(netuid, amount_rao, limit_price)
+    return _fast_stake_sync.fast_stake(netuid, amount_rao, limit_price)
+
+
+async def _run_fast_unstake(netuid: int) -> Tuple[bool, str]:
+    if settings.FAST_STAKE_USE_ASYNC:
+        return await _fast_stake_async.fast_unstake_async(netuid)
+    return _fast_stake_sync.fast_unstake(netuid)
+
+
 async def do_fast_stake(netuid: int, amount_rao: int) -> Tuple[bool, str]:
     """Fast stake via MevShield. Returns (success, message)."""
-    return await fast_stake_async(netuid, amount_rao)
+    return await _run_fast_stake(netuid, amount_rao, None)
 
 
 async def do_fast_stake_limit(
@@ -35,7 +58,7 @@ async def do_fast_stake_limit(
         default_rate_tolerance=rate_tolerance,
         subtensor=get_subtensor(),
     ))
-    success, message = await fast_stake_async(netuid, amount_rao, limit_price)
+    success, message = await _run_fast_stake(netuid, amount_rao, limit_price)
     return success, message, limit_price if success else None
 
 
@@ -59,14 +82,14 @@ async def do_fast_stake_limit_all_sn28() -> Tuple[bool, str, int | None, int, fl
 
 async def do_fast_unstake(netuid: int) -> Tuple[bool, str]:
     """Fast unstake via MevShield. Returns (success, message)."""
-    return await fast_unstake_async(netuid)
+    return await _run_fast_unstake(netuid)
 
 
 async def do_fast_stake_and_unstake(
     netuid: int, amount_rao: int, limit_price: int | None
 ) -> Tuple[bool, str]:
     """Fast stake via MevShield, then normal unstake via EVM. Returns (success, message)."""
-    success, message = await fast_stake_async(netuid, amount_rao, limit_price)
+    success, message = await _run_fast_stake(netuid, amount_rao, limit_price)
     if not success:
         return False, message
     w3, account, contract_address, contract = get_w3_account_contract()

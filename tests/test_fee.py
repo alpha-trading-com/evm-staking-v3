@@ -7,7 +7,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 import bittensor as bt
-from bt_utils.fast_stake_unstake import get_extrinsic_fee_for_tip_async
+from bt_utils.fast_stake_unstake_async import get_extrinsic_fee_for_tip_async
 from async_substrate_interface import AsyncSubstrateInterface
 from app.core.config import settings
 

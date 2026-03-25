@@ -1,3 +1,4 @@
+"""Async fast stake / unstake (MevShield). Sync API: bt_utils.fast_stake_unstake."""
 import asyncio
 import os
 import sys
