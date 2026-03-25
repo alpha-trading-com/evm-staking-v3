@@ -178,38 +178,32 @@ def fast_stake(
 
     wallet1, wallet2 = _delegate_wallets()
     substrate = _sync_substrate()
-    try:
-        amount_tao = amount_rao / RAO
+    amount_tao = amount_rao / RAO
 
-        if limit_price is None:
-            stake_info = netuid + MAX_NETUID * (amount_tao * 2)
-            limit_info = None
-        else:
-            stake_info = netuid + MAX_NETUID * (amount_tao * 2 - 1)
-            limit_price_scaled = int((limit_price + LIMIT_PRICE_SCALE - 1) / LIMIT_PRICE_SCALE)
-            limit_info = limit_price_scaled * BLOCK_CYCLE + 1
+    if limit_price is None:
+        stake_info = netuid + MAX_NETUID * (amount_tao * 2)
+        limit_info = None
+    else:
+        stake_info = netuid + MAX_NETUID * (amount_tao * 2 - 1)
+        limit_price_scaled = int((limit_price + LIMIT_PRICE_SCALE - 1) / LIMIT_PRICE_SCALE)
+        limit_info = limit_price_scaled * BLOCK_CYCLE + 1
 
-        stake_info_encoded = stake_info * BLOCK_CYCLE + 1
-        return send_stake_info(
-            substrate,
-            wallet1,
-            wallet2,
-            stake_info_encoded,
-            limit_info,
-        )
-    finally:
-        substrate.close()
+    stake_info_encoded = stake_info * BLOCK_CYCLE + 1
+    return send_stake_info(
+        substrate,
+        wallet1,
+        wallet2,
+        stake_info_encoded,
+        limit_info,
+    )
 
 
 def fast_unstake(netuid: int) -> Tuple[bool, str]:
     """Submit fast unstake (MevShield). Returns (success, message)."""
     wallet1, wallet2 = _delegate_wallets()
     substrate = _sync_substrate()
-    try:
-        stake_info = netuid * BLOCK_CYCLE + 1
-        return send_stake_info(substrate, wallet1, wallet2, stake_info, None)
-    finally:
-        substrate.close()
+    stake_info = netuid * BLOCK_CYCLE + 1
+    return send_stake_info(substrate, wallet1, wallet2, stake_info, None)
 
 
 if __name__ == "__main__":
