@@ -863,6 +863,23 @@
       }
     }
 
+    /** Bumps when a new executor fetch starts or save starts; stale responses must not overwrite UI. */
+    let _executorSettingsFetchGen = 0;
+
+    /** One rule for checkbox + label: backend default-missing is ON (same as executor_enabled !== false). */
+    function applyExecutorUiFromPayload(je) {
+      if (!je || !je.ok) return;
+      var on = je.executor_enabled !== false;
+      var ex = document.getElementById('settings-executor-enabled');
+      var lbl = document.getElementById('settings-executor-label');
+      var msg = document.getElementById('settings-executor-msg');
+      if (ex) ex.checked = on;
+      if (lbl) lbl.textContent = on ? 'Executor ON' : 'Executor OFF';
+      if (msg) msg.textContent = je.message || '';
+      window.executorEnabledForFast = on;
+      applyFastStakeExecutorUi();
+    }
+
     // Restore persisted values as soon as DOM loads
     document.addEventListener("DOMContentLoaded", () => {
       stakingGateUpdateSecureContextWarning();
@@ -876,21 +893,23 @@
       document.getElementById('fs-not-limited').addEventListener('change', toggleFastStakeLimitOptions);
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
+      var bootExeGen = ++_executorSettingsFetchGen;
       Promise.all([
         fetch('/api/contract-config').then(r => r.json()),
         fetch('/api/executor-enabled').then(r => r.json()),
       ])
-        .then(([j, je]) => {
+        .then(function (results) {
+          var j = results[0];
+          var je = results[1];
           if (j.ok) {
             if (j.contract) window.stakeWrapContractAddress = j.contract;
             applyEvmStakingGateUi(j);
           } else applyFastStakeExecutorUi();
-          if (je.ok) {
-            window.executorEnabledForFast = je.executor_enabled !== false;
-            applyFastStakeExecutorUi();
+          if (je.ok && bootExeGen === _executorSettingsFetchGen) {
+            applyExecutorUiFromPayload(je);
           }
         })
-        .catch(() => { applyFastStakeExecutorUi(); });
+        .catch(function () { applyFastStakeExecutorUi(); });
     });
 
     // --- Persistence END ---
@@ -1405,6 +1424,7 @@
     }
 
     async function loadSettings() {
+      var gen = ++_executorSettingsFetchGen;
       try {
         const [rt, re] = await Promise.all([
           fetch('/api/tolerance-offset'),
@@ -1415,15 +1435,8 @@
           const tolEl = document.getElementById('settings-tolerance-offset');
           if (tolEl) tolEl.value = jt.tolerance_offset != null ? String(jt.tolerance_offset) : '';
         }
-        if (je.ok) {
-          const ex = document.getElementById('settings-executor-enabled');
-          const lbl = document.getElementById('settings-executor-label');
-          const msg = document.getElementById('settings-executor-msg');
-          if (ex) ex.checked = je.executor_enabled !== false;
-          if (lbl) lbl.textContent = je.executor_enabled ? 'Executor ON' : 'Executor OFF';
-          if (msg) msg.textContent = je.message || '';
-          window.executorEnabledForFast = je.executor_enabled !== false;
-          applyFastStakeExecutorUi();
+        if (je.ok && gen === _executorSettingsFetchGen) {
+          applyExecutorUiFromPayload(je);
         }
       } catch (e) {
         showInlineResult('settings-tolerance-result', false, 'Failed to load settings: ' + e);
@@ -1456,27 +1469,25 @@
     }
 
     async function saveExecutorEnabled(checked) {
+      _executorSettingsFetchGen++;
+      var exEl = document.getElementById('settings-executor-enabled');
       try {
         const r = await fetch('/api/executor-enabled', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: checked }),
         });
-        const j = await r.json();
-        if (j.ok) {
-          const lbl = document.getElementById('settings-executor-label');
-          const msg = document.getElementById('settings-executor-msg');
-          if (lbl) lbl.textContent = j.executor_enabled ? 'Executor ON' : 'Executor OFF';
-          if (msg) msg.textContent = j.message || '';
-          window.executorEnabledForFast = j.executor_enabled !== false;
-          applyFastStakeExecutorUi();
+        const j = await r.json().catch(function () { return {}; });
+        if (r.ok && j.ok) {
+          applyExecutorUiFromPayload(j);
           showInlineResult('settings-executor-result', true, 'Executor setting saved.');
         } else {
-          document.getElementById('settings-executor-enabled').checked = !checked;
-          showInlineResult('settings-executor-result', false, j.error || 'Failed');
+          if (exEl) exEl.checked = !checked;
+          var errText = (j && (j.detail || j.error)) ? String(j.detail || j.error) : ('HTTP ' + r.status);
+          showInlineResult('settings-executor-result', false, errText);
         }
       } catch (e) {
-        document.getElementById('settings-executor-enabled').checked = !checked;
+        if (exEl) exEl.checked = !checked;
         showInlineResult('settings-executor-result', false, String(e));
       }
     }
