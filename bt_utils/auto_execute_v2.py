@@ -127,7 +127,7 @@ def is_executor_enabled() -> bool:
         except (Exception) as e:
             print(f"Error fetching executor-enabled from {url}: {e}")
             pass
-    raise SystemExit(f"Failed to fetch executor-enabled from {url}")
+    raise Exception(f"Failed to fetch executor-enabled from {url}")
 
 
 def main():
@@ -247,4 +247,4 @@ if __name__ == "__main__":
             break
         except Exception as e:
             print(f"Error in main: {e}")
-            time.sleep(2)
+            time.sleep(10)
