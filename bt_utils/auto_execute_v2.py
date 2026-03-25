@@ -190,7 +190,6 @@ def main():
     gas_limit = int(os.getenv("EXECUTOR_GAS_LIMIT", "600000"))
     print("Polling for new blocks (Bittensor chain)...")
 
-    nonce = w3.eth.get_transaction_count(account.address)
     is_executor_enabled_flag = is_executor_enabled()
     signed = None
     
@@ -206,7 +205,7 @@ def main():
                 packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
                 tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                     "from": account.address,
-                    "nonce": nonce,
+                    "nonce":  w3.eth.get_transaction_count(account.address),
                     "gas": gas_limit,
                     "gasPrice": w3.eth.gas_price,
                 })
@@ -215,7 +214,6 @@ def main():
             if is_executor_enabled_flag:
                 tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
                 print(f"Block {current} execute(execBlock={exec_block}) tx {tx_hash.hex()}")
-                nonce += 1
             else:
                 print("Executor is disabled. Skipping execute.")
 
@@ -228,7 +226,7 @@ def main():
             packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
             tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                 "from": account.address,
-                "nonce": nonce,
+                "nonce": w3.eth.get_transaction_count(account.address),
                 "gas": gas_limit,
                 "gasPrice": w3.eth.gas_price,
             })
