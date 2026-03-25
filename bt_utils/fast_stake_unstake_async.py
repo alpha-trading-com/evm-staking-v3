@@ -44,6 +44,7 @@ def _delegate_wallets() -> tuple[bt.Wallet, bt.Wallet]:
 
 _delegate_wallets()
 
+
 async def get_extrinsic_fee_for_tip_async(
     async_substrate: AsyncSubstrateInterface,
     wallet: bt.Wallet,
