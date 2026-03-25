@@ -123,7 +123,7 @@ async def send_stake_info_async(
     extrinsic2 = await get_info_extrinsic_async(async_substrate, wallet2, limit_price)
     (ok1, msg1), (ok2, msg2) = await asyncio.gather(
         submit_extrinsic_async(async_substrate, extrinsic1, wait_for_inclusion=True),
-        submit_extrinsic_async(async_substrate, extrinsic2, wait_for_inclusion=True),
+        submit_extrinsic_async(async_substrate, extrinsic2, wait_for_inclusion=False),
     )
     success = ok1 and ok2
     message = "ok" if success else f"stake_info={msg1}; limit_price={msg2}"
