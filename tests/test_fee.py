@@ -7,7 +7,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 import bittensor as bt
-from bt_utils.fast_stake_unstake import get_mevshield_fee_for_tip_async
+from bt_utils.fast_stake_unstake import get_extrinsic_fee_for_tip_async
 from async_substrate_interface import AsyncSubstrateInterface
 from app.core.config import settings
 
@@ -18,7 +18,7 @@ async def get_diff(
     tip_rao: int,
 ) -> int:   
     """Inclusion fee (total_fee - tip) for the given tip_rao."""
-    fee = await get_mevshield_fee_for_tip_async(
+    fee = await get_extrinsic_fee_for_tip_async(
         async_substrate, wallet,
         tip_rao=tip_rao,
     )
@@ -85,13 +85,13 @@ async def main():
         print("Done.")
 
         for tip_rao, diff in changes:
-            fee = await get_mevshield_fee_for_tip_async(
+            fee = await get_extrinsic_fee_for_tip_async(
                 async_substrate, wallet,
                 tip_rao= max(0, tip_rao - 1),
             )
             print(tip_rao - 1,  fee)
 
-            fee = await get_mevshield_fee_for_tip_async(
+            fee = await get_extrinsic_fee_for_tip_async(
                 async_substrate, wallet,
                 tip_rao=tip_rao + 1,
             )

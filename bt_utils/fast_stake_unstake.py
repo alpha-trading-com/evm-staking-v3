@@ -26,7 +26,7 @@ from bt_utils.constants import (
 )
 
 
-async def get_mevshield_fee_for_tip_async(
+async def get_extrinsic_fee_for_tip_async(
     async_substrate: AsyncSubstrateInterface,
     wallet: bt.Wallet,
     tip_rao: int,
