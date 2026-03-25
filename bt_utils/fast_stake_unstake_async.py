@@ -25,6 +25,23 @@ from bt_utils.constants import (
     BLOCK_CYCLE,
 )
 
+_wallet1: bt.Wallet | None = None
+_wallet2: bt.Wallet | None = None
+
+
+def _delegate_wallets() -> tuple[bt.Wallet, bt.Wallet]:
+    """Load and decrypt DELEGATE_1 / DELEGATE_2 coldkeys once (fast stake/unstake only)."""
+    global _wallet1, _wallet2
+    if _wallet1 is None:
+        _wallet1 = bt.Wallet(name=DELEGATE_1)
+        _wallet2 = bt.Wallet(name=DELEGATE_2)
+        _wallet1.coldkey_file.save_password_to_env(os.getenv("DELEGATE_1_PASSWORD"))
+        _wallet2.coldkey_file.save_password_to_env(os.getenv("DELEGATE_2_PASSWORD"))
+        _wallet1.coldkey_file.decrypt()
+        _wallet2.coldkey_file.decrypt()
+    return _wallet1, _wallet2
+
+_delegate_wallets()
 
 async def get_extrinsic_fee_for_tip_async(
     async_substrate: AsyncSubstrateInterface,
@@ -139,23 +156,6 @@ async def send_stake_info_async(
     success = ok1 and ok2
     message = "ok" if success else f"stake_info={msg1}; limit_price={msg2}"
     return success, message
-
-
-_wallet1: bt.Wallet | None = None
-_wallet2: bt.Wallet | None = None
-
-
-def _delegate_wallets() -> tuple[bt.Wallet, bt.Wallet]:
-    """Load and decrypt DELEGATE_1 / DELEGATE_2 coldkeys once (fast stake/unstake only)."""
-    global _wallet1, _wallet2
-    if _wallet1 is None:
-        _wallet1 = bt.Wallet(name=DELEGATE_1)
-        _wallet2 = bt.Wallet(name=DELEGATE_2)
-        _wallet1.coldkey_file.save_password_to_env(os.getenv("DELEGATE_1_PASSWORD"))
-        _wallet2.coldkey_file.save_password_to_env(os.getenv("DELEGATE_2_PASSWORD"))
-        _wallet1.coldkey_file.decrypt()
-        _wallet2.coldkey_file.decrypt()
-    return _wallet1, _wallet2
 
 
 async def get_async_substrate() -> AsyncSubstrateInterface:
