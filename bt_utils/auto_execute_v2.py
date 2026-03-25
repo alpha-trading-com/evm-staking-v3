@@ -190,9 +190,13 @@ def main():
     gas_limit = int(os.getenv("EXECUTOR_GAS_LIMIT", "600000"))
     print("Polling for new blocks (Bittensor chain)...")
 
+    def next_nonce() -> int:
+        # "pending" counts txs already in the mempool; default "latest" does not → duplicate nonce / "already known".
+        return w3.eth.get_transaction_count(account.address, block_identifier="pending")
+
     is_executor_enabled_flag = is_executor_enabled()
     signed = None
-    
+
     while True:
         try:
             if signed is None:
@@ -205,7 +209,7 @@ def main():
                 packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
                 tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                     "from": account.address,
-                    "nonce":  w3.eth.get_transaction_count(account.address),
+                    "nonce": next_nonce(),
                     "gas": gas_limit,
                     "gasPrice": w3.eth.gas_price,
                 })
@@ -226,7 +230,7 @@ def main():
             packed_balances = pack_execute_params(stake_info_balance, limit_price_balance)
             tx = contract.functions.execute(exec_block, packed_balances).build_transaction({
                 "from": account.address,
-                "nonce": w3.eth.get_transaction_count(account.address),
+                "nonce": next_nonce(),
                 "gas": gas_limit,
                 "gasPrice": w3.eth.gas_price,
             })
