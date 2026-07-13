@@ -12,7 +12,6 @@ Usage:
 """
 
 import argparse
-import json
 import os
 import sys
 
@@ -27,15 +26,7 @@ try:
 except ImportError:
     pass
 
-from web3 import Web3
-from eth_account import Account
-
-
-# Minimal ABI for owner() and withdraw(uint256)
-ABI = [
-    {"inputs": [], "name": "owner", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-]
+from evm import connect_w3, load_account, resolve_contract_address, get_contract, is_owner, withdraw
 
 
 def main():
@@ -43,33 +34,18 @@ def main():
     parser.add_argument("--contract", type=str, help="Contract address (default: from deployment.json)")
     args = parser.parse_args()
 
-    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    private_key = os.getenv("PRIVATE_KEY")
-    if not private_key:
-        print("ERROR: Set PRIVATE_KEY in .env", file=sys.stderr)
+    try:
+        w3 = connect_w3()
+        account = load_account()
+    except (RuntimeError, ValueError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    contract_address = args.contract or os.getenv("CONTRACT_ADDRESS")
-    if not contract_address:
-        path = os.path.join(PROJECT_ROOT, "deployment.json")
-        if not os.path.isfile(path):
-            print("ERROR: deployment.json not found and CONTRACT_ADDRESS not set", file=sys.stderr)
-            sys.exit(1)
-        with open(path) as f:
-            deployment = json.load(f)
-        contract_address = deployment["contract_address"]
+    contract_address = resolve_contract_address(args.contract)
+    contract = get_contract(w3, contract_address)
 
-    contract_address = Web3.to_checksum_address(contract_address)
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
-        print(f"ERROR: Cannot connect to {rpc_url}", file=sys.stderr)
-        sys.exit(1)
-
-    account = Account.from_key(private_key)
-    contract = w3.eth.contract(address=contract_address, abi=ABI)
-
-    owner = contract.functions.owner().call()
-    if owner.lower() != account.address.lower():
+    if not is_owner(contract, account):
+        owner = contract.functions.owner().call()
         print(f"ERROR: You are not the contract owner. Owner: {owner}", file=sys.stderr)
         sys.exit(1)
 
@@ -78,24 +54,9 @@ def main():
         print("Contract balance is 0. Nothing to withdraw.")
         return 0
 
-    balance_tao = float(Web3.from_wei(balance_wei, "ether"))
-    print(f"Contract balance: {balance_tao} TAO ({balance_wei} wei)")
-    print("Withdrawing full amount to WITHDRAW_COLDKEY...")
-
-    tx = contract.functions.withdraw(balance_wei).build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "gas": 150000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    print(f"Transaction hash: {tx_hash.hex()}")
-
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    print(f"Block: {receipt.blockNumber}")
-
-    if receipt.status != 1:
+    print("Withdrawing full contract balance to WITHDRAW_COLDKEY...")
+    receipt = withdraw(w3, account, contract_address, balance_wei, contract=contract)
+    if receipt is None or receipt["status"] != 1:
         print("ERROR: Transaction failed.", file=sys.stderr)
         sys.exit(1)
 

@@ -39,21 +39,19 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 from web3 import Web3
 from eth_account import Account
-from evm import h160_to_ss58
+from evm import (
+    h160_to_ss58,
+    connect_w3,
+    load_account,
+    resolve_contract_address,
+    get_contract,
+    is_owner,
+    set_executor,
+    withdraw,
+)
 from utils.proxy_extrinsic import add_proxy_extrinsic
 from bt_utils.constants import DELEGATE_1, DELEGATE_2
 import bittensor as bt
-
-# Minimal ABI for setExecutor(address)
-SET_EXECUTOR_ABI = [
-    {"inputs": [{"internalType": "address", "name": "_executor", "type": "address"}], "name": "setExecutor", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-]
-
-# Minimal ABI for owner(), balance, and withdraw(uint256)
-WITHDRAW_ABI = [
-    {"inputs": [], "name": "owner", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-]
 
 
 def step_withdraw_all() -> None:
@@ -63,25 +61,19 @@ def step_withdraw_all() -> None:
     if not os.path.isfile(path):
         print("      No deployment.json; skipping withdraw.\n")
         return
-    with open(path) as f:
-        deployment = json.load(f)
-    contract_address = Web3.to_checksum_address(deployment["contract_address"])
-
-    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    private_key = os.getenv("PRIVATE_KEY")
-    if not private_key:
+    if not os.getenv("PRIVATE_KEY"):
         print("      PRIVATE_KEY not set; skipping withdraw.\n")
         return
-
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
+    try:
+        w3 = connect_w3()
+    except (RuntimeError, ValueError):
         print("      RPC not connected; skipping withdraw.\n")
         return
 
-    account = Account.from_key(private_key)
-    contract = w3.eth.contract(address=contract_address, abi=WITHDRAW_ABI)
-    owner = contract.functions.owner().call()
-    if owner.lower() != account.address.lower():
+    account = load_account()
+    contract_address = resolve_contract_address()
+    contract = get_contract(w3, contract_address)
+    if not is_owner(contract, account):
         print("      You are not the contract owner; skipping withdraw.\n")
         return
 
@@ -90,18 +82,9 @@ def step_withdraw_all() -> None:
         print("      Contract balance is 0; nothing to withdraw.\n")
         return
 
-    balance_tao = float(Web3.from_wei(balance_wei, "ether"))
-    print(f"      Contract balance: {balance_tao} TAO. Withdrawing to WITHDRAW_COLDKEY...")
-    tx = contract.functions.withdraw(balance_wei).build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "gas": 150000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    if receipt.status != 1:
+    print("      Withdrawing full contract balance to WITHDRAW_COLDKEY...")
+    receipt = withdraw(w3, account, contract_address, balance_wei, contract=contract)
+    if receipt is None or receipt["status"] != 1:
         print("      ERROR: Withdraw transaction failed.", file=sys.stderr)
         sys.exit(1)
     print("      Withdraw succeeded.\n")
@@ -139,36 +122,26 @@ def step_deploy() -> str:
 def step_set_executor(contract_address: str) -> None:
     """Call setExecutor: executor address from EXECUTOR_PRIVATE_KEY if set, else owner address (PRIVATE_KEY)."""
     print("[4/6] Setting executor on contract...")
-    private_key = os.getenv("PRIVATE_KEY")
-    if not private_key:
+    if not os.getenv("PRIVATE_KEY"):
         print("      PRIVATE_KEY not set; skipping setExecutor.\n")
         return
-    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
+    try:
+        w3 = connect_w3()
+    except (RuntimeError, ValueError):
         print("      RPC not connected; skipping setExecutor.\n")
         return
-    account = Account.from_key(private_key)
+    account = load_account()  # PRIVATE_KEY (owner)
     executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
     if executor_key:
-        executor_address = Web3.to_checksum_address(Account.from_key(executor_key).address)
+        executor_address = Account.from_key(executor_key).address
         print(f"      Executor address from EXECUTOR_PRIVATE_KEY: {executor_address}")
     else:
-        executor_address = Web3.to_checksum_address(account.address)
+        executor_address = account.address
         print(f"      Executor address = owner (EXECUTOR_PRIVATE_KEY unset): {executor_address}")
-    contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=SET_EXECUTOR_ABI)
-    tx = contract.functions.setExecutor(executor_address).build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "gas": 100000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    print(f"      setExecutor({executor_address}) tx {tx_hash.hex()}")
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    if receipt["status"] != 1:
-        print("      ERROR: setExecutor failed.", file=sys.stderr)
+    try:
+        set_executor(w3, account, contract_address, executor_address)
+    except (PermissionError, RuntimeError) as e:
+        print(f"      ERROR: setExecutor failed: {e}", file=sys.stderr)
         sys.exit(1)
     print("      Executor set.\n")
 

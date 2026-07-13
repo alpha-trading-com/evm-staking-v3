@@ -16,6 +16,9 @@ from evm import (
     load_deployment_info,
     h160_to_ss58,
     CONTRACT_ABI,
+    connect_w3,
+    load_account,
+    resolve_contract_address,
 )
 
 
@@ -52,22 +55,12 @@ def clear_w3_cache() -> None:
         _w3_cache = None
 
 
-def _make_w3_connection(rpc_url: str) -> Web3:
-    """Create Web3 for HTTP or WebSocket RPC."""
-    if rpc_url.startswith(("ws://", "wss://")):
-        provider = Web3.LegacyWebSocketProvider(rpc_url)
-    elif rpc_url.startswith(("http://", "https://")):
-        provider = Web3.HTTPProvider(rpc_url)
-    else:
-        raise ValueError(f"Unsupported RPC URL scheme: {rpc_url}")
-    w3 = Web3(provider)
-    if not w3.is_connected():
-        raise RuntimeError(f"Failed to connect to {rpc_url}")
-    return w3
-
-
 def get_w3_account_contract() -> tuple[Web3, Account, str, Any]:
-    """Return (w3, account, contract_address, contract), reusing cached connection and contract when still connected."""
+    """Return (w3, account, contract_address, contract), reusing cached connection and contract when still connected.
+
+    Connection/signer/address bootstrap is the shared evm.connection logic; this wrapper only adds the
+    per-process caching the request path needs.
+    """
     global _w3_cache
     with _w3_cache_lock:
         if _w3_cache is not None:
@@ -79,14 +72,9 @@ def get_w3_account_contract() -> tuple[Web3, Account, str, Any]:
                 pass
             _w3_cache = None
 
-        rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-        private_key = os.getenv("PRIVATE_KEY")
-        if not private_key:
-            raise RuntimeError("PRIVATE_KEY is required")
-        w3 = _make_w3_connection(rpc_url)
-        account = Account.from_key(private_key)
-        info = load_deployment_info()
-        contract_address = Web3.to_checksum_address(info["contract_address"])
+        w3 = connect_w3()
+        account = load_account()
+        contract_address = resolve_contract_address()
         abi = get_stake_wrap_abi() or CONTRACT_ABI
         contract = evm_get_contract(w3, contract_address, abi=abi)
         _w3_cache = (w3, account, contract_address, contract)

@@ -33,6 +33,9 @@ CONTRACT_ABI: List[Dict[str, Any]] = [
     {"inputs": [{"internalType": "uint64", "name": "execBlock", "type": "uint64"}, {"internalType": "uint256", "name": "packedBalances", "type": "uint256"}], "name": "execute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "bytes32", "name": "_id", "type": "bytes32"}], "name": "setContractAccountId32", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "uint256", "name": "stakeInfoBaseFeeRao", "type": "uint256"}, {"internalType": "uint256", "name": "limitPriceBaseFeeRao", "type": "uint256"}], "name": "setBaseFeesRao", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [], "name": "getBaseFeesRao", "outputs": [{"internalType": "uint256", "name": "stakeInfoBaseFeeRao", "type": "uint256"}, {"internalType": "uint256", "name": "limitPriceBaseFeeRao", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [{"internalType": "address", "name": "_executor", "type": "address"}], "name": "setExecutor", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [], "name": "executor", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "contractAccountId32", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
     {"inputs": [{"internalType": "uint256", "name": "stakeAmount", "type": "uint256"}, {"internalType": "uint64", "name": "taoInPool", "type": "uint64"}], "name": "StakeExceedsTaoInPool", "type": "error"},
     {"inputs": [{"internalType": "uint256", "name": "simTao", "type": "uint256"}, {"internalType": "uint64", "name": "taoInPool", "type": "uint64"}], "name": "MoveStakeSimTaoExceedsPool", "type": "error"},
@@ -54,6 +57,22 @@ def get_contract(w3, contract_address: str, abi: Optional[List] = None):
     if abi is None:
         abi = get_stake_wrap_abi() or CONTRACT_ABI
     return _evm_get_contract(w3, contract_address, abi=abi)
+
+
+def is_owner(contract, account: Account) -> bool:
+    """True if `account` is the contract owner (best-effort; False if the call fails)."""
+    try:
+        return contract.functions.owner().call().lower() == account.address.lower()
+    except Exception as e:
+        print(f"⚠️  Warning: Could not verify ownership: {e}")
+        return False
+
+
+def assert_owner(contract, account: Account) -> None:
+    """Raise PermissionError unless `account` is the contract owner."""
+    owner = contract.functions.owner().call()
+    if owner.lower() != account.address.lower():
+        raise PermissionError(f"Signer {account.address} is not the contract owner (owner={owner}).")
 
 
 def stake(w3, account: Account, contract_address: str, hotkey, netuid: int, amount: int, contract=None):
@@ -327,3 +346,54 @@ def withdraw(w3, account: Account, contract_address: str, amount: int, contract=
     final_balance_tao = Web3.from_wei(final_balance_wei, "ether")
     print(f"Contract balance after withdrawal: {final_balance_tao} TAO ({final_balance_wei} wei)")
     return receipt
+
+
+def _send_owner_tx(w3, account: Account, contract, fn_call, label: str, gas: int):
+    """Verify owner, build/sign/send `fn_call`, wait for receipt, raise on revert. Returns receipt."""
+    assert_owner(contract, account)
+    tx = fn_call.build_transaction({
+        "from": account.address, "nonce": w3.eth.get_transaction_count(account.address),
+        "gas": gas, "gasPrice": w3.eth.gas_price,
+    })
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    print(f"{label} tx: {tx_hash.hex()}")
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Transaction confirmed in block: {receipt.blockNumber}")
+    if receipt["status"] != 1:
+        raise RuntimeError(f"{label} reverted (tx {tx_hash.hex()}).")
+    return receipt
+
+
+def set_executor(w3, account: Account, contract_address: str, executor_address: str, contract=None):
+    """Owner-only: set the contract executor (pass the zero address to clear). Returns receipt."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
+    executor_address = Web3.to_checksum_address(executor_address)
+    print(f"Setting executor to {executor_address}")
+    return _send_owner_tx(w3, account, contract, contract.functions.setExecutor(executor_address), "setExecutor", 100_000)
+
+
+def set_base_fees_rao(w3, account: Account, contract_address: str,
+                      stake_info_base_fee_rao: int, limit_price_base_fee_rao: int, contract=None):
+    """Owner-only: set the base fees (rao) used by execute() for the two delegates. Returns receipt."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
+    print(f"Setting base fees: stakeInfo={stake_info_base_fee_rao} rao, limitPrice={limit_price_base_fee_rao} rao")
+    return _send_owner_tx(
+        w3, account, contract,
+        contract.functions.setBaseFeesRao(stake_info_base_fee_rao, limit_price_base_fee_rao),
+        "setBaseFeesRao", 100_000,
+    )
+
+
+def set_contract_account_id32(w3, account: Account, contract_address: str, account_id32: bytes, contract=None):
+    """Owner-only: set the contract's AccountId32 (once, after deploy) for smaller execute() calldata. Returns receipt."""
+    if contract is None:
+        contract = get_contract(w3, contract_address)
+    print(f"Setting contractAccountId32 to 0x{account_id32.hex()}")
+    return _send_owner_tx(
+        w3, account, contract,
+        contract.functions.setContractAccountId32(account_id32),
+        "setContractAccountId32", 100_000,
+    )

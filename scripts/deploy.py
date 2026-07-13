@@ -122,37 +122,13 @@ def main():
     print(f"Contract Address: {contract_address}")
 
     # Set contract's AccountId32 and base fees (required for execute(); set once after deploy)
-    from evm import contract_address_bytes32
+    from evm import contract_address_bytes32, set_contract_account_id32, set_base_fees_rao
     from bt_utils.constants import STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO
-    contract_account_id32 = contract_address_bytes32(contract_address)
     deployed = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
-    nonce = w3.eth.get_transaction_count(account.address)
-    set_tx = deployed.functions.setContractAccountId32(contract_account_id32).build_transaction({
-        "from": account.address,
-        "nonce": nonce,
-        "gas": 100000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed_set = account.sign_transaction(set_tx)
-    set_hash = w3.eth.send_raw_transaction(signed_set.raw_transaction)
-    print(f"Setting contractAccountId32... tx {set_hash.hex()}")
-    set_receipt = w3.eth.wait_for_transaction_receipt(set_hash)
-    if set_receipt["status"] != 1:
-        raise RuntimeError("setContractAccountId32 failed")
+    contract_account_id32 = contract_address_bytes32(contract_address)
+    set_contract_account_id32(w3, account, contract_address, contract_account_id32, contract=deployed)
     print("contractAccountId32 set.")
-    nonce += 1
-    base_fees_tx = deployed.functions.setBaseFeesRao(STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO).build_transaction({
-        "from": account.address,
-        "nonce": nonce,
-        "gas": 100000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed_bf = account.sign_transaction(base_fees_tx)
-    bf_hash = w3.eth.send_raw_transaction(signed_bf.raw_transaction)
-    print(f"Setting base fees (stakeInfo={STAKE_INFO_BASE_FEE_RAO}, limitPrice={LIMIT_PRICE_BASE_FEE_RAO} rao)... tx {bf_hash.hex()}")
-    bf_receipt = w3.eth.wait_for_transaction_receipt(bf_hash)
-    if bf_receipt["status"] != 1:
-        raise RuntimeError("setBaseFeesRao failed")
+    set_base_fees_rao(w3, account, contract_address, STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO, contract=deployed)
     print("setBaseFeesRao done.")
 
 

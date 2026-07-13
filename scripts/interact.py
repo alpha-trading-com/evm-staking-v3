@@ -16,7 +16,9 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 from evm import (
-    load_deployment_info,
+    connect_w3,
+    load_account,
+    resolve_contract_address,
     get_contract,
     h160_to_ss58,
     stake,
@@ -74,28 +76,11 @@ def main():
 
     args = parser.parse_args()
     
-    # Load environment variables
-    rpc_url = os.getenv('RPC_URL', 'https://test.finney.opentensor.ai/')
-    private_key = os.getenv('PRIVATE_KEY')
-    
-    if not private_key:
-        raise ValueError("PRIVATE_KEY environment variable is required")
-    
-    # Connect to blockchain
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
-        raise ConnectionError(f"Failed to connect to {rpc_url}")
-    
-    # Load account
-    account = Account.from_key(private_key)
-    
-    # Get contract address
-    if args.contract:
-        contract_address = Web3.to_checksum_address(args.contract)
-    else:
-        deployment_info = load_deployment_info()
-        contract_address = Web3.to_checksum_address(deployment_info['contract_address'])
-    
+    # Shared bootstrap: connect, load signer (PRIVATE_KEY), resolve contract address
+    w3 = connect_w3()
+    account = load_account()
+    contract_address = resolve_contract_address(args.contract)
+
     print(f"Contract address: {contract_address}")
     print(f"Account: {account.address}")
     

@@ -14,19 +14,16 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from web3 import Web3
-
-from evm import get_contract, load_deployment
+from evm import connect_w3, resolve_contract_address, get_contract
 
 
 def main():
-    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
-        sys.exit(f"Failed to connect to RPC: {rpc_url}")
+    try:
+        w3 = connect_w3()
+    except (RuntimeError, ValueError) as e:
+        sys.exit(str(e))
 
-    deployment = load_deployment()
-    contract_address = Web3.to_checksum_address(deployment["contract_address"])
+    contract_address = resolve_contract_address()
     contract = get_contract(w3, contract_address)
 
     contract_account_id32 = contract.functions.contractAccountId32().call()

@@ -40,17 +40,13 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 from web3 import Web3
 from eth_account import Account
-from evm import h160_to_ss58
+from evm import h160_to_ss58, connect_w3, load_account, set_executor
 from utils.proxy_extrinsic import add_proxy_extrinsic
 from bt_utils.constants import (
     DELEGATE_1,
     DELEGATE_2,
 )
 from app.core.config import settings
-
-SET_EXECUTOR_ABI = [
-    {"inputs": [{"internalType": "address", "name": "_executor", "type": "address"}], "name": "setExecutor", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
-]
 
 
 def step_compile() -> None:
@@ -85,36 +81,26 @@ def step_deploy() -> str:
 def step_set_executor(contract_address: str) -> None:
     """Call setExecutor: executor address from EXECUTOR_PRIVATE_KEY if set, else owner address (PRIVATE_KEY)."""
     print("[3/4] Setting executor on contract...")
-    private_key = os.getenv("PRIVATE_KEY")
-    if not private_key:
+    if not os.getenv("PRIVATE_KEY"):
         print("      PRIVATE_KEY not set; skipping setExecutor.\n")
         return
-    rpc_url = os.getenv("RPC_URL", "https://test.finney.opentensor.ai/")
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
+    try:
+        w3 = connect_w3()
+    except (RuntimeError, ValueError):
         print("      RPC not connected; skipping setExecutor.\n")
         return
-    account = Account.from_key(private_key)
+    account = load_account()  # PRIVATE_KEY (owner)
     executor_key = os.getenv("EXECUTOR_PRIVATE_KEY")
     if executor_key:
-        executor_address = Web3.to_checksum_address(Account.from_key(executor_key).address)
+        executor_address = Account.from_key(executor_key).address
         print(f"      Executor address from EXECUTOR_PRIVATE_KEY: {executor_address}")
     else:
-        executor_address = Web3.to_checksum_address(account.address)
+        executor_address = account.address
         print(f"      Executor address = owner (EXECUTOR_PRIVATE_KEY unset): {executor_address}")
-    contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=SET_EXECUTOR_ABI)
-    tx = contract.functions.setExecutor(executor_address).build_transaction({
-        "from": account.address,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "gas": 100000,
-        "gasPrice": w3.eth.gas_price,
-    })
-    signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    print(f"      setExecutor({executor_address}) tx {tx_hash.hex()}")
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    if receipt["status"] != 1:
-        print("      ERROR: setExecutor failed.", file=sys.stderr)
+    try:
+        set_executor(w3, account, contract_address, executor_address)
+    except (PermissionError, RuntimeError) as e:
+        print(f"      ERROR: setExecutor failed: {e}", file=sys.stderr)
         sys.exit(1)
     print("      Executor set.\n")
 
