@@ -43,7 +43,7 @@ Optional: install only production deps if you never compile here; `deploy.py` on
 ## After deploy
 
 - `deployment.json` is **gitignored** (local address + ABI copy). Back it up or store in your secrets store.
-- Run proxy / `setExecutor` / staking gate steps as in your usual ops docs.
+- Run proxy / `setExecutor` steps as in your usual ops docs.
 
 ## Version skew warning
 

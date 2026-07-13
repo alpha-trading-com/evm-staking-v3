@@ -56,11 +56,6 @@
     "type": "error"
   },
   {
-    "inputs": [],
-    "name": "InvalidStakingGateHash",
-    "type": "error"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -124,32 +119,12 @@
   },
   {
     "inputs": [],
-    "name": "StakingGateAlreadyConfigured",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "StakingGateNotConfigured",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "StakingUnstakingDisabled",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "UnexpectedFee",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "WithdrawFromDelegateFailed",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "WrongStakingGatePassword",
     "type": "error"
   },
   {
@@ -416,37 +391,6 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "hash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setStakingGatePasswordHash",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bool",
-        "name": "enabled",
-        "type": "bool"
-      },
-      {
-        "internalType": "string",
-        "name": "password",
-        "type": "string"
-      }
-    ],
-    "name": "setStakingUnstakingEnabled",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
         "name": "hotkey",
         "type": "bytes32"
       },
@@ -497,32 +441,6 @@
     "name": "stakeLimit",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "stakingGateConfigured",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "stakingUnstakingEnabled",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

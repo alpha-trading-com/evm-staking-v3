@@ -132,13 +132,11 @@
       .main-split { flex-direction: column; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
   <div class="container">
     <div class="main-split">
       <div class="main-left">
-        <div id="evm-staking-gate-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
         <div id="executor-fast-banner" class="result err" style="display: none; margin-bottom: 1rem;"></div>
         <h1>🔐 StakeWrap Control</h1>
         <div class="tabs" id="tabs"></div>
@@ -333,44 +331,6 @@
           <div class="loading">Load Settings to see contract config.</div>
         </div>
 
-        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Staking / unstaking gate (contract)</h3>
-        <div id="staking-gate-secure-context-warning" class="result err" style="display: none; margin-top: 0.5rem; font-size: 0.9rem;">
-          <strong>Not a secure context</strong> — you are on plain <code>http://</code> to a <strong>non-localhost</strong> host. Browsers set <code>isSecureContext === false</code>, and wallet extensions (Talisman, MetaMask, …) usually <strong>do not inject</strong> an EVM provider on this origin. That is why Wallet debug shows no <code>talismanEth</code> / <code>ethereum</code> / EIP-6963.
-          <div style="margin-top: 0.75rem;"><strong>Fix (pick one):</strong></div>
-          <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
-            <li><strong>HTTPS</strong> — Put the UI behind TLS (e.g. nginx/Caddy + Let’s Encrypt, or a cert you trust).</li>
-            <li><strong>SSH tunnel → localhost</strong> — From your PC: <code style="word-break: break-all;">ssh -L 19000:127.0.0.1:19000 user@212.56.40.85</code> then open <code>http://127.0.0.1:19000/ui</code> (loopback counts as a secure context for wallets).</li>
-            <li><strong>CLI</strong> — Use <code>cast send</code> / Foundry or Python with your owner key to call <code>setStakingGatePasswordHash</code> / <code>setStakingUnstakingEnabled</code> (no browser wallet).</li>
-          </ul>
-          <div style="margin-top: 0.85rem;"><strong>On your phone</strong> — Mobile Safari/Chrome use the same rule: <code>http://&lt;server-ip&gt;:port</code> is <strong>not</strong> a secure context, so in-page wallets usually will not work.</div>
-          <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
-            <li><strong>Best:</strong> Put the UI on <strong><code>https://</code> with a domain</strong> (Let’s Encrypt). Open that URL on the phone — same as desktop.</li>
-            <li><strong>Wallet in-app browser:</strong> In MetaMask Mobile (or another EVM wallet app), open the <strong>Browser</strong> tab and go to your <strong>HTTPS</strong> UI URL; the app injects the provider there. Plain HTTP to an IP in the wallet browser still fails the same way.</li>
-            <li><strong>Talisman on phone:</strong> If you only have Talisman as a browser extension (desktop), use a mobile EVM wallet’s in-app browser for gate txs, or run gate setup once from a PC with tunnel/HTTPS.</li>
-            <li><strong>Advanced:</strong> Android <strong>Termux</strong> can run <code>ssh -L 19000:127.0.0.1:19000 user@server</code> then open <code>http://127.0.0.1:19000/ui</code> on the phone — loopback is a secure context.</li>
-          </ul>
-        </div>
-        <small class="hint">Gate password is never sent to this app’s server. Use an <strong>Ethereum (ETH) account in Talisman</strong> (Add account → Ethereum); Substrate-only accounts will not expose an EVM provider. We detect <code>window.talismanEth</code>, <code>window.ethereum</code>, multi-wallet <code>ethereum.providers</code>, and EIP-6963. Match the chain to this deployment, then sign in the extension.</small>
-        <small class="hint" style="margin-top: 0.35rem;">Blocks EVM stake, unstake, transfer/move stake, and <code>execute()</code> staking. Withdraw and Fast Stake/Unstake are not blocked by this flag.</small>
-        <div style="margin-top: 0.75rem;">
-          <button type="button" class="submit" onclick="stakingGateConnectWallet()">Connect owner wallet</button>
-          <button type="button" class="refresh-btn" onclick="stakingGateShowDebug()" style="margin-left: 0.5rem;">Wallet debug</button>
-          <span id="staking-gate-wallet-status" class="hint" style="margin-left: 0.75rem; font-family: monospace;"></span>
-        </div>
-        <pre id="staking-gate-debug" class="hint" style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; max-height: 14rem; overflow: auto;"></pre>
-        <label style="margin-top: 0.75rem;">One-time: gate password → <code>keccak256(utf8)</code> hash on-chain</label>
-        <input type="password" id="staking-gate-init-password" autocomplete="new-password" style="max-width: 24rem;" />
-        <button type="button" class="submit" onclick="clientInitGateHash()" style="margin-top: 0.5rem;">Initialize gate hash (wallet tx)</button>
-        <label style="margin-top: 1rem;">Allow EVM staking / unstaking (after gate is set)</label>
-        <label style="margin-top: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
-          <input id="staking-gate-enabled-apply" type="checkbox" checked />
-          <span>Enabled (unchecked = disabled on chain)</span>
-        </label>
-        <label>Password for toggle</label>
-        <input type="password" id="staking-gate-toggle-password" autocomplete="current-password" style="max-width: 24rem;" />
-        <button type="button" class="submit" onclick="clientApplyGateToggle()" style="margin-top: 0.5rem;">Apply toggle (wallet tx)</button>
-        <div id="staking-gate-result" class="result" style="display: none; margin-top: 0.75rem;"></div>
-
         <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Tolerance offset</h3>
         <small class="hint">Used when "Use Minimum Tolerance" is checked (stake/unstake limit). Number (e.g. 0.001) or multiplier *1.2.</small>
         <label>Tolerance offset</label>
@@ -410,304 +370,22 @@
   </div>
 
   <script>
-    window.evmStakingBlocked = false;
-    window.stakeWrapContractAddress = null;
-    let stakingGateSigner = null;
-    /** EIP-1193 provider used for chain switch + BrowserProvider (set on connect). */
-    let stakingGateRawProvider = null;
-
-    const STAKE_WRAP_GATE_ABI = [
-      'function owner() view returns (address)',
-      'function stakingGateConfigured() view returns (bool)',
-      'function stakingUnstakingEnabled() view returns (bool)',
-      'function setStakingGatePasswordHash(bytes32 hash)',
-      'function setStakingUnstakingEnabled(bool enabled, string password)',
-    ];
-
-    function getInjectedEvmProviderSync() {
-      try {
-        var te = window.talismanEth;
-        if (te && typeof te.request === 'function') return te;
-        var subw = window.subwallet?.ethereum;
-        if (subw && typeof subw.request === 'function') return subw;
-        var eth = window.ethereum;
-        if (!eth) return null;
-        if (eth.providers && Array.isArray(eth.providers)) {
-          var k;
-          for (k = 0; k < eth.providers.length; k++) {
-            var pr = eth.providers[k];
-            if (pr && pr.isTalisman === true && typeof pr.request === 'function') return pr;
-          }
-          for (k = 0; k < eth.providers.length; k++) {
-            pr = eth.providers[k];
-            if (pr && (pr.isSubWallet === true || pr.isBraveWallet === true) && typeof pr.request === 'function') return pr;
-          }
-          for (k = 0; k < eth.providers.length; k++) {
-            if (eth.providers[k] && typeof eth.providers[k].request === 'function') return eth.providers[k];
-          }
-        }
-        if (typeof eth.request === 'function') return eth;
-      } catch (e) { /* ignore */ }
-      return null;
-    }
-
-    function discoverEip6963Providers(preferTalisman) {
-      return new Promise(function (resolve) {
-        var details = [];
-        function onAnn(ev) {
-          try {
-            if (ev && ev.detail && ev.detail.provider && ev.detail.info) details.push(ev.detail);
-          } catch (e2) { /* ignore */ }
-        }
-        window.addEventListener('eip6963:announceProvider', onAnn);
-        function fireRequest() {
-          try {
-            window.dispatchEvent(new Event('eip6963:requestProvider'));
-          } catch (e3) {
-            try { window.dispatchEvent(new CustomEvent('eip6963:requestProvider')); } catch (e4) { /* ignore */ }
-          }
-        }
-        fireRequest();
-        setTimeout(fireRequest, 400);
-        setTimeout(function () {
-          window.removeEventListener('eip6963:announceProvider', onAnn);
-          var pick = null;
-          var j;
-          if (preferTalisman && details.length) {
-            for (j = 0; j < details.length; j++) {
-              var inf = details[j].info;
-              var label = ((inf.name || '') + ' ' + (inf.rdns || '')).toLowerCase();
-              if (label.indexOf('talisman') >= 0) {
-                pick = details[j].provider;
-                break;
-              }
-            }
-          }
-          if (!pick && details.length) pick = details[0].provider;
-          resolve({ provider: pick, announced: details });
-        }, 1200);
-      });
-    }
-
-    async function waitForInjectedProvider(maxWaitMs, stepMs) {
-      var deadline = Date.now() + (maxWaitMs || 4000);
-      var step = stepMs || 200;
-      while (Date.now() < deadline) {
-        var p = getInjectedEvmProviderSync();
-        if (p) return p;
-        await new Promise(function (r) { setTimeout(r, step); });
-      }
-      return null;
-    }
-
-    async function resolveEvmProvider(preferTalisman) {
-      var sync = getInjectedEvmProviderSync();
-      if (sync) return sync;
-      sync = await waitForInjectedProvider(3500, 200);
-      if (sync) return sync;
-      var discovered = await discoverEip6963Providers(preferTalisman);
-      return discovered.provider;
-    }
-
-    function stakingGateUpdateSecureContextWarning() {
-      var el = document.getElementById('staking-gate-secure-context-warning');
-      if (el) el.style.display = window.isSecureContext ? 'none' : 'block';
-    }
-
-    function stakingGateCollectDebugLines() {
-      var lines = [];
-      lines.push('secureContext=' + String(window.isSecureContext));
-      if (!window.isSecureContext) {
-        lines.push('NOTE: http://<public-ip> is NOT a secure context — extensions usually skip injection. Use HTTPS or http://127.0.0.1 via SSH -L.');
-      }
-      lines.push('protocol=' + location.protocol + ' host=' + location.host);
-      lines.push('talismanEth=' + (window.talismanEth ? 'yes (request=' + typeof window.talismanEth.request + ')' : 'no'));
-      lines.push('ethereum=' + (window.ethereum ? 'yes' : 'no'));
-      if (window.ethereum && window.ethereum.providers) {
-        lines.push('ethereum.providers.length=' + window.ethereum.providers.length);
-      }
-      lines.push('subwallet.ethereum=' + (window.subwallet && window.subwallet.ethereum ? 'yes' : 'no'));
-      return lines;
-    }
-
-    async function stakingGateShowDebug() {
-      var pre = document.getElementById('staking-gate-debug');
-      if (!pre) return;
-      pre.style.display = 'block';
-      pre.textContent = stakingGateCollectDebugLines().join('\n') + '\n\nProbing EIP-6963 (1.2s)…';
-      var ann = [];
-      function onAnn(ev) {
-        try {
-          if (ev && ev.detail && ev.detail.info) ann.push((ev.detail.info.name || '?') + ' rdns=' + (ev.detail.info.rdns || '?'));
-        } catch (e) { /* ignore */ }
-      }
-      window.addEventListener('eip6963:announceProvider', onAnn);
-      try { window.dispatchEvent(new Event('eip6963:requestProvider')); } catch (e) { /* ignore */ }
-      setTimeout(function () {
-        window.removeEventListener('eip6963:announceProvider', onAnn);
-        pre.textContent =
-          stakingGateCollectDebugLines().join('\n') +
-          '\n\neip6963 wallets (' +
-          ann.length +
-          '):\n' +
-          (ann.length ? ann.join('\n') : '(none — extension may not support EIP-6963 or page is isolated)');
-      }, 1250);
-    }
-
-    async function stakingGateEnsureChain() {
-      const st = await fetch('/api/status').then(function (r) { return r.json(); });
-      var eth = stakingGateRawProvider || await resolveEvmProvider(true);
-      if (!st.ok || st.chain_id == null || !eth) return;
-      var hex = '0x' + BigInt(st.chain_id).toString(16);
-      try {
-        await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
-      } catch (e) {
-        if (e && e.code === 4902) {
-          console.warn('wallet_switchEthereumChain: add network for chainId', st.chain_id);
-        }
-      }
-    }
-
-    async function stakingGateConnectWallet() {
-      if (typeof ethers === 'undefined') {
-        showInlineResult('staking-gate-result', false, 'ethers.js failed to load (check CDN).');
-        return;
-      }
-      showInlineResult('staking-gate-result', false, 'Looking for wallet…');
-      var eth = await resolveEvmProvider(true);
-      if (!eth) {
-        var msg =
-          'No EVM provider after ~5s. If secureContext=false (http:// to a public IP), wallets will not inject — see the red box above: use HTTPS or SSH tunnel to 127.0.0.1. ' +
-          'Otherwise: add an Ethereum account in Talisman, allow the site, click Wallet debug.';
-        showInlineResult('staking-gate-result', false, msg);
-        return;
-      }
-      stakingGateRawProvider = eth;
-      showInlineResult('staking-gate-result', false, 'Connecting…');
-      try {
-        await eth.request({ method: 'eth_requestAccounts' });
-        var provider = new ethers.BrowserProvider(eth);
-        stakingGateSigner = await provider.getSigner();
-        var addr = await stakingGateSigner.getAddress();
-        var el = document.getElementById('staking-gate-wallet-status');
-        if (el) el.textContent = addr;
-        await stakingGateEnsureChain();
-        showInlineResult('staking-gate-result', true, 'Connected: ' + addr);
-      } catch (e) {
-        stakingGateSigner = null;
-        stakingGateRawProvider = null;
-        showInlineResult('staking-gate-result', false, (e.shortMessage || e.message || String(e)));
-      }
-    }
-
-    async function stakingGateGetContract() {
-      var caddr = window.stakeWrapContractAddress;
-      if (!caddr) throw new Error('Click Refresh on Contract config above (need contract address).');
-      if (!stakingGateSigner) throw new Error('Connect owner wallet first.');
-      return new ethers.Contract(caddr, STAKE_WRAP_GATE_ABI, stakingGateSigner);
-    }
-
-    async function clientInitGateHash() {
-      var pw = document.getElementById('staking-gate-init-password');
-      var password = pw && pw.value ? pw.value : '';
-      if (!password) {
-        showInlineResult('staking-gate-result', false, 'Enter a password for the one-time gate hash.');
-        return;
-      }
-      if (typeof ethers === 'undefined') {
-        showInlineResult('staking-gate-result', false, 'ethers.js not loaded.');
-        return;
-      }
-      showInlineResult('staking-gate-result', false, 'Confirm in wallet…');
-      try {
-        await stakingGateEnsureChain();
-        var c = await stakingGateGetContract();
-        var me = (await stakingGateSigner.getAddress()).toLowerCase();
-        var owner = (await c.owner()).toLowerCase();
-        if (owner !== me) throw new Error('Connected account is not contract owner');
-        var hash = ethers.keccak256(ethers.toUtf8Bytes(password));
-        var tx = await c.setStakingGatePasswordHash(hash);
-        showInlineResult('staking-gate-result', false, 'Pending… ' + tx.hash);
-        await tx.wait();
-        showInlineResult('staking-gate-result', true, 'Confirmed. Tx: ' + tx.hash);
-        if (pw) pw.value = '';
-        syncContractGateStateFromApi();
-      } catch (e) {
-        showInlineResult('staking-gate-result', false, (e.shortMessage || e.message || String(e)));
-      }
-    }
-
-    async function clientApplyGateToggle() {
-      var enabled = document.getElementById('staking-gate-enabled-apply').checked;
-      var pwEl = document.getElementById('staking-gate-toggle-password');
-      var password = pwEl && pwEl.value ? pwEl.value : '';
-      if (!password) {
-        showInlineResult('staking-gate-result', false, 'Enter the gate password.');
-        return;
-      }
-      if (typeof ethers === 'undefined') {
-        showInlineResult('staking-gate-result', false, 'ethers.js not loaded.');
-        return;
-      }
-      showInlineResult('staking-gate-result', false, 'Confirm in wallet…');
-      try {
-        await stakingGateEnsureChain();
-        var c = await stakingGateGetContract();
-        var me = (await stakingGateSigner.getAddress()).toLowerCase();
-        var owner = (await c.owner()).toLowerCase();
-        if (owner !== me) throw new Error('Connected account is not contract owner');
-        var tx = await c.setStakingUnstakingEnabled(enabled, password);
-        showInlineResult('staking-gate-result', false, 'Pending… ' + tx.hash);
-        await tx.wait();
-        showInlineResult('staking-gate-result', true, 'Confirmed. Tx: ' + tx.hash);
-        if (pwEl) pwEl.value = '';
-        syncContractGateStateFromApi();
-      } catch (e) {
-        showInlineResult('staking-gate-result', false, (e.shortMessage || e.message || String(e)));
-      }
-    }
-
-    function applyEvmStakingGateUi(j) {
-      if (!j || j.ok !== true) return;
-      window.evmStakingBlocked = j.staking_unstaking_enabled === false;
-      ['btn-evm-stake-submit', 'btn-evm-unstake-submit', 'btn-evm-move-submit', 'btn-stake-all-sn28'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.disabled = window.evmStakingBlocked;
-      });
-      const ban = document.getElementById('evm-staking-gate-banner');
-      if (ban) {
-        if (j.staking_unstaking_enabled === false) {
-          ban.style.display = 'block';
-          ban.textContent = 'Staking / unstaking / move stake are disabled on the contract. You can still use Transfer Stake and Withdraw. Fast Stake / Fast Unstake also require Executor ON when the contract allows staking.';
-        } else {
-          ban.style.display = 'none';
-          ban.textContent = '';
-        }
-      }
-      const chk = document.getElementById('staking-gate-enabled-apply');
-      if (chk && j.staking_unstaking_enabled !== null && j.staking_unstaking_enabled !== undefined) {
-        chk.checked = !!j.staking_unstaking_enabled;
-      }
-      applyFastStakeExecutorUi();
-    }
 
     /** Default true (matches server when executor_enabled.json is missing). */
     window.executorEnabledForFast = true;
 
-    /** Fast Stake / Fast Unstake: only submit actions disabled when contract staking is off OR executor is OFF.
+    /** Fast Stake / Fast Unstake: only submit actions disabled when executor is OFF.
      * Amount presets, inputs, and limit options stay enabled so you can fill the form; Submit still enforces the gate. */
     function applyFastStakeExecutorUi() {
-      const contractOff = window.evmStakingBlocked === true;
       const executorOff = window.executorEnabledForFast === false;
-      const fastBlocked = contractOff || executorOff;
       ['btn-fast-stake', 'btn-fast-unstake', 'btn-fast-stake-all-sn28'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.disabled = fastBlocked;
+        if (el) el.disabled = executorOff;
       });
 
       const exBan = document.getElementById('executor-fast-banner');
       if (exBan) {
-        if (executorOff && !contractOff) {
+        if (executorOff) {
           exBan.style.display = 'block';
           exBan.textContent = 'Fast Stake and Fast Unstake are disabled because Executor is OFF. Turn Executor ON in Settings.';
         } else {
@@ -717,21 +395,9 @@
       }
     }
 
-    function assertEvmStakingAllowed(resultId) {
-      if (window.evmStakingBlocked) {
-        showResult(resultId, false, 'Contract staking/unstaking is disabled — only Transfer Stake and Withdraw are allowed (re-enable in Settings with gate password).');
-        return false;
-      }
-      return true;
-    }
-
     function assertFastStakeUnstakeAllowed(resultId) {
       if (window.executorEnabledForFast === false) {
         showResult(resultId, false, 'Executor is OFF. Turn Executor ON in Settings to use Fast Stake / Fast Unstake.');
-        return false;
-      }
-      if (window.evmStakingBlocked) {
-        showResult(resultId, false, 'Contract staking/unstaking is disabled — Fast Stake / Fast Unstake are not available.');
         return false;
       }
       return true;
@@ -882,7 +548,6 @@
 
     // Restore persisted values as soon as DOM loads
     document.addEventListener("DOMContentLoaded", () => {
-      stakingGateUpdateSecureContextWarning();
       restoreAllInputs();
       setupFieldPersistence();
       toggleStakeLimitOptions(); // show/hide limit options per "Not limited" checkbox
@@ -894,19 +559,13 @@
       restoreActiveTab(); // new for tab persist
       initSubnetButtons();
       var bootExeGen = ++_executorSettingsFetchGen;
-      Promise.all([
-        fetch('/api/contract-config').then(r => r.json()),
-        fetch('/api/executor-enabled').then(r => r.json()),
-      ])
-        .then(function (results) {
-          var j = results[0];
-          var je = results[1];
-          if (j.ok) {
-            if (j.contract) window.stakeWrapContractAddress = j.contract;
-            applyEvmStakingGateUi(j);
-          } else applyFastStakeExecutorUi();
+      fetch('/api/executor-enabled')
+        .then(r => r.json())
+        .then(function (je) {
           if (je.ok && bootExeGen === _executorSettingsFetchGen) {
             applyExecutorUiFromPayload(je);
+          } else {
+            applyFastStakeExecutorUi();
           }
         })
         .catch(function () { applyFastStakeExecutorUi(); });
@@ -1051,7 +710,6 @@
     }
 
     async function postStakeLimitAllSn28() {
-      if (!assertEvmStakingAllowed('special-ops-result')) return;
       showResult('special-ops-result', false, 'Submitting stake-limit (all free → SN28, min tolerance)...');
       try {
         const r = await fetch('/api/stake-limit-all-sn28', {
@@ -1079,7 +737,6 @@
     }
 
     function postStakeOrLimit() {
-      if (!assertEvmStakingAllowed('stake-result')) return;
       const notLimited = document.getElementById('stake-not-limited').checked;
       if (notLimited) {
         postJson('/api/stake', {
@@ -1128,7 +785,6 @@
       }
     }
     function postRemoveStakeOrLimit() {
-      if (!assertEvmStakingAllowed('rs-result')) return;
       const notLimited = document.getElementById('rs-not-limited').checked;
       if (notLimited) {
         const amountValue = document.getElementById('rs-amount').value.trim();
@@ -1152,7 +808,6 @@
       }
     }
     function postRemoveStake() {
-      if (!assertEvmStakingAllowed('rs-result')) return;
       const amountValue = document.getElementById('rs-amount').value.trim();
       const amount = amountValue === '' ? null : parseInt(amountValue, 10);
       postJson('/api/remove-stake', {
@@ -1219,7 +874,6 @@
       }, 'ts-result');
     }
     function postMoveStake() {
-      if (!assertEvmStakingAllowed('ms-result')) return;
       const amountVal = document.getElementById('ms-amount').value.trim();
       postJson('/api/move-stake', {
         origin_hotkey: document.getElementById('ms-origin-hotkey').value.trim(),
@@ -1299,17 +953,6 @@
         netuid: parseInt(document.getElementById('fu-netuid').value, 10),
       }, 'fu-result');
     }
-    /** Fetch contract-config for gate banners / address only; does not repaint Contract config panel. */
-    async function syncContractGateStateFromApi() {
-      try {
-        const r = await fetch('/api/contract-config');
-        const j = await r.json();
-        if (j.ok) {
-          if (j.contract) window.stakeWrapContractAddress = j.contract;
-          applyEvmStakingGateUi(j);
-        }
-      } catch (e) { /* ignore */ }
-    }
 
     async function loadStakeInfo() {
       const container = document.getElementById('stake-info-container');
@@ -1360,18 +1003,14 @@
           html += '<td>' + stake.price_tao.toFixed(4) + '</td>';
           html += '<td style="font-size: 0.75rem; word-break: break-all; max-width: 200px;">' + stake.hotkey_ss58 + '</td>';
           html += '<td>';
-          if (window.evmStakingBlocked) {
-            html += '<span class="hint" style="font-size:0.8rem;">Stake ops off</span>';
-          } else {
-            html += '<button class="unstake-btn" onclick="unstakeFromTable(' + stake.netuid + ', \'' + hotkeyEscaped + '\', ' + stake.stake_alpha_rao + ')">Unstake</button>';
-            var defaultHotkeySS58 = '5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21';
-            if (stake.hotkey_ss58 == defaultHotkeySS58) {
-              var fastOk = window.executorEnabledForFast !== false;
-              if (fastOk) {
-                html += ' <button class="unstake-btn" onclick="fastUnstakeFromTable(' + stake.netuid + ')">Fast Unstake</button>';
-              } else {
-                html += ' <span class="hint" style="font-size:0.8rem;" title="Turn Executor ON in Settings">Fast off</span>';
-              }
+          html += '<button class="unstake-btn" onclick="unstakeFromTable(' + stake.netuid + ', \'' + hotkeyEscaped + '\', ' + stake.stake_alpha_rao + ')">Unstake</button>';
+          var defaultHotkeySS58 = '5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21';
+          if (stake.hotkey_ss58 == defaultHotkeySS58) {
+            var fastOk = window.executorEnabledForFast !== false;
+            if (fastOk) {
+              html += ' <button class="unstake-btn" onclick="fastUnstakeFromTable(' + stake.netuid + ')">Fast Unstake</button>';
+            } else {
+              html += ' <span class="hint" style="font-size:0.8rem;" title="Turn Executor ON in Settings">Fast off</span>';
             }
           }
           html += '</td>';
@@ -1412,7 +1051,7 @@
     }
 
     function fastUnstakeFromTable(netuid) {
-      // postFastUnstake() enforces executor + contract gate; table hides Fast Unstake when executor is OFF
+      // postFastUnstake() enforces executor; table hides Fast Unstake when executor is OFF
       // Switch to Fast Unstake tab (index 3: Stake=0, Unstake=1, Fast Stake=2, Fast Unstake=3)
       activateTabByIndex(3);
       document.getElementById('fu-netuid').value = netuid;
@@ -1439,23 +1078,14 @@
           container.innerHTML = '<div class="result err">' + (j.error || 'Failed to load') + '</div>';
           return;
         }
-        window.stakeWrapContractAddress = j.contract;
         let html = '<div class="wallet-footer-title">Contract</div>';
         html += '<div class="wallet-footer-content">';
         html += '<div><strong>Address:</strong> ' + j.contract + '</div>';
         html += '<div><strong>contractAccountId32:</strong> <code style="word-break: break-all; font-size: 0.8rem;">' + j.contract_account_id32 + '</code></div>';
         html += '<div><strong>stakeInfoBaseFeeRao:</strong> ' + j.stake_info_base_fee_rao + '</div>';
         html += '<div><strong>limitPriceBaseFeeRao:</strong> ' + j.limit_price_base_fee_rao + '</div>';
-        if (j.staking_gate_reads_ok) {
-          html += '<div><strong>Staking / unstaking enabled:</strong> ' + (j.staking_unstaking_enabled ? 'yes' : 'no') + '</div>';
-          html += '<div><strong>Gate password configured (hash on-chain):</strong> ' + (j.staking_gate_configured ? 'yes' : 'no') + '</div>';
-        } else {
-          html += '<div><strong>Staking / unstaking enabled:</strong> <span style="color: var(--muted);">unknown</span> <small class="hint">(RPC failed or old contract — redeploy gate or run <code>npm run compile</code>)</small></div>';
-          html += '<div><strong>Gate password configured:</strong> <span style="color: var(--muted);">unknown</span></div>';
-        }
         html += '</div>';
         container.innerHTML = html;
-        applyEvmStakingGateUi(j);
       } catch (e) {
         container.innerHTML = '<div class="result err">' + String(e) + '</div>';
       }
