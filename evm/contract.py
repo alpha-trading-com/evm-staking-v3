@@ -35,6 +35,21 @@ def load_deployment_info() -> Dict[str, Any]:
     return load_deployment()
 
 
+def load_stake_wrap_artifact(project_root: Optional[str] = None) -> Dict[str, Any]:
+    """Load the full StakeWrap Hardhat artifact (abi + bytecode). Raises FileNotFoundError if missing."""
+    root = project_root or PROJECT_ROOT
+    artifact_path = os.path.join(root, "artifacts", "contracts", "StakeWrap.sol", "StakeWrap.json")
+    if not os.path.exists(artifact_path):
+        raise FileNotFoundError(
+            f"Contract artifact not found at {artifact_path}. "
+            "On the compile machine: npm run compile, then git commit and push "
+            "artifacts/contracts/StakeWrap.sol/StakeWrap.json (and abi/StakeWrap.abi.json). "
+            "On this machine: git pull."
+        )
+    with open(artifact_path, "r") as f:
+        return json.load(f)
+
+
 _abi_cache: Optional[List[Dict]] = None
 
 

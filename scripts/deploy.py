@@ -8,7 +8,6 @@ import os
 import sys
 import json
 from web3 import Web3
-from eth_account import Account
 from dotenv import load_dotenv
 
 # Project root for evm imports
@@ -16,25 +15,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-STAKE_WRAP_ARTIFACT = os.path.join(
-    PROJECT_ROOT, "artifacts", "contracts", "StakeWrap.sol", "StakeWrap.json"
-)
+from evm import connect_w3, load_account, load_stake_wrap_artifact
 
 load_dotenv()
-
-
-def load_contract_abi(artifact_path):
-    """Load contract ABI from Hardhat artifacts."""
-    with open(artifact_path, 'r') as f:
-        artifact = json.load(f)
-    return artifact['abi']
-
-
-def load_contract_bytecode(artifact_path):
-    """Load contract bytecode from Hardhat artifacts."""
-    with open(artifact_path, 'r') as f:
-        artifact = json.load(f)
-    return artifact['bytecode']
 
 
 def deploy_contract(w3, account, contract_abi, contract_bytecode):
@@ -67,40 +50,20 @@ def deploy_contract(w3, account, contract_abi, contract_bytecode):
 
 
 def main():
-    # Load environment variables
-    rpc_url = os.getenv('RPC_URL', 'https://test.finney.opentensor.ai/')
-    private_key = os.getenv('PRIVATE_KEY')
-    
-    if not private_key:
-        raise ValueError("PRIVATE_KEY environment variable is required")
-    
-    # Connect to blockchain
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    if not w3.is_connected():
-        raise ConnectionError(f"Failed to connect to {rpc_url}")
-    
-    print(f"Connected to {rpc_url}")
-    print(f"Chain ID: {w3.eth.chain_id}")
-    
-    # Load account
-    account = Account.from_key(private_key)
+    # Connect to blockchain and load the deploying account (shared evm bootstrap)
+    w3 = connect_w3()
+    print(f"Connected. Chain ID: {w3.eth.chain_id}")
+
+    account = load_account()  # PRIVATE_KEY
     print(f"Deploying from account: {account.address}")
     balance = w3.eth.get_balance(account.address)
     print(f"Account balance: {Web3.from_wei(balance, 'ether')} TAO")
-    
+
     # Load contract artifacts (from repo: compile on build server, or `npm run compile` locally)
-    artifact_path = STAKE_WRAP_ARTIFACT
-    if not os.path.exists(artifact_path):
-        raise FileNotFoundError(
-            f"Contract artifact not found at {artifact_path}. "
-            "On the compile machine: npm run compile, then git commit and push "
-            "artifacts/contracts/StakeWrap.sol/StakeWrap.json (and abi/StakeWrap.abi.json). "
-            "On this machine: git pull."
-        )
-    
-    contract_abi = load_contract_abi(artifact_path)
-    contract_bytecode = load_contract_bytecode(artifact_path)
-    
+    artifact = load_stake_wrap_artifact(PROJECT_ROOT)
+    contract_abi = artifact['abi']
+    contract_bytecode = artifact['bytecode']
+
     # Deploy contract
     contract_address, abi, tx_hash = deploy_contract(
         w3, account, contract_abi, contract_bytecode

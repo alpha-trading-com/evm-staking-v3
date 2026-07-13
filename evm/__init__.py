@@ -18,6 +18,7 @@ from evm.contract import (
     get_stake_wrap_abi,
     load_deployment,
     load_deployment_info,
+    load_stake_wrap_artifact,
 )
 from evm.stake_wrap import (
     CONTRACT_ABI,
@@ -63,6 +64,7 @@ __all__ = [
     "get_stake_wrap_abi",
     "load_deployment",
     "load_deployment_info",
+    "load_stake_wrap_artifact",
     "CONTRACT_ABI",
     "MAX_DELEGATE_BALANCE_RAO",
     "XOR_KEY",

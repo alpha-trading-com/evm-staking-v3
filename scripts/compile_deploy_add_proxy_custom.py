@@ -19,7 +19,6 @@ Usage:
   python3 scripts/compile_deploy_add_proxy_custom.py
 """
 
-import json
 import os
 import subprocess
 import sys
@@ -43,6 +42,7 @@ from evm import (
     h160_to_ss58,
     connect_w3,
     load_account,
+    load_deployment_info,
     resolve_contract_address,
     get_contract,
     is_owner,
@@ -112,9 +112,7 @@ def step_deploy() -> str:
     )
     if r.returncode != 0:
         sys.exit(r.returncode)
-    with open(os.path.join(PROJECT_ROOT, "deployment.json")) as f:
-        data = json.load(f)
-    contract_address = data["contract_address"]
+    contract_address = load_deployment_info()["contract_address"]
     print(f"      Deployed: {contract_address}\n")
     return contract_address
 

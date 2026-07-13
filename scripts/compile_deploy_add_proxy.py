@@ -20,7 +20,6 @@ Usage:
 """
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -40,7 +39,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 from web3 import Web3
 from eth_account import Account
-from evm import h160_to_ss58, connect_w3, load_account, set_executor
+from evm import h160_to_ss58, connect_w3, load_account, load_deployment_info, set_executor
 from utils.proxy_extrinsic import add_proxy_extrinsic
 from bt_utils.constants import (
     DELEGATE_1,
@@ -71,9 +70,7 @@ def step_deploy() -> str:
     )
     if r.returncode != 0:
         sys.exit(r.returncode)
-    with open(os.path.join(PROJECT_ROOT, "deployment.json")) as f:
-        data = json.load(f)
-    contract_address = data["contract_address"]
+    contract_address = load_deployment_info()["contract_address"]
     print(f"      Deployed: {contract_address}\n")
     return contract_address
 
