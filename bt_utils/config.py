@@ -45,9 +45,9 @@ def _require_int_env_rao(name: str, hint: str) -> int:
     return v
 
 
-# Default hotkey (SS58). Overridable via .env; falls back to the built-in default.
-# Mirrors the contract's initial executeHotkey; the on-chain value is authoritative.
-DEFAULT_HOTKEY = os.getenv("DEFAULT_HOTKEY", "5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21").strip()
+# Execute hotkey (SS58). Overridable via .env; falls back to the built-in default.
+# Matches the contract's executeHotkey; the on-chain value is authoritative.
+EXECUTE_HOTKEY = os.getenv("EXECUTE_HOTKEY", "5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21").strip()
 
 # SS58 coldkeys — required in .env (must match StakeWrapConstants).
 STAKE_INFO_DELEGATE = _require_ss58_env("STAKE_INFO_DELEGATE")

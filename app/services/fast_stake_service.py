@@ -6,7 +6,7 @@ import sys
 from typing import Tuple
 
 import bt_utils.fast_stake_unstake as _fast_stake
-from bt_utils.config import DEFAULT_HOTKEY
+from bt_utils.config import EXECUTE_HOTKEY
 from app.services.stake_service import SN28_NETUID, compute_contract_stake_all_amount_rao
 from utils.tolerance import (
     calculate_stake_limit_price,
@@ -76,13 +76,13 @@ def do_fast_stake_and_unstake(
     subtensor = get_subtensor()
     stake_balance = subtensor.get_stake(
         coldkey_ss58=get_coldkey_ss58(),
-        hotkey_ss58=DEFAULT_HOTKEY,
+        hotkey_ss58=EXECUTE_HOTKEY,
         netuid=netuid,
     )
     amount_alpha_rao = stake_balance.rao - 1
     receipt = run_quiet(
         remove_stake, w3, account, contract_address,
-        DEFAULT_HOTKEY,
+        EXECUTE_HOTKEY,
         netuid,
         amount_alpha_rao,
         contract=contract,

@@ -3,7 +3,7 @@ import os
 
 from web3 import Web3
 
-from bt_utils.config import DEFAULT_HOTKEY
+from bt_utils.config import EXECUTE_HOTKEY
 from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, receipt_to_dict, run_quiet
 from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw, set_execute_hotkey, get_execute_hotkey
@@ -98,13 +98,13 @@ def do_stake(hotkey: str, netuid: int, amount_rao: int) -> dict:
 
 def do_stake_limit_all_sn28() -> dict:
     """
-    Stake-limit entire spendable contract balance to subnet 28 using DEFAULT_HOTKEY and min tolerance.
+    Stake-limit entire spendable contract balance to subnet 28 using EXECUTE_HOTKEY and min tolerance.
     Partial fills are disabled (allow_partial=False).
     Reserve leaves dust on the contract coldkey (fees / keep-alive); override with STAKE_ALL_RESERVE_RAO or SN28_STAKE_RESERVE_RAO.
     """
     amount_rao = compute_contract_stake_all_amount_rao()
     out = do_stake_limit(
-        DEFAULT_HOTKEY,
+        EXECUTE_HOTKEY,
         SN28_NETUID,
         amount_rao,
         rate_tolerance=0.0,
@@ -113,7 +113,7 @@ def do_stake_limit_all_sn28() -> dict:
     )
     out["amount_rao"] = amount_rao
     out["amount_tao"] = amount_rao / 10**9
-    out["hotkey_ss58"] = DEFAULT_HOTKEY
+    out["hotkey_ss58"] = EXECUTE_HOTKEY
     out["netuid"] = SN28_NETUID
     return out
 

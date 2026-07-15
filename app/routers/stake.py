@@ -73,7 +73,7 @@ async def api_stake_limit(body: StakeLimitBody, _: str = Depends(get_current_use
 
 @router.post("/stake-limit-all-sn28")
 async def api_stake_limit_all_sn28(_: str = Depends(get_current_username)):
-    """Stake-limit 100% of spendable contract balance to SN28; DEFAULT_HOTKEY; min tolerance; allow_partial always false."""
+    """Stake-limit 100% of spendable contract balance to SN28; EXECUTE_HOTKEY; min tolerance; allow_partial always false."""
     try:
         return do_stake_limit_all_sn28()
     except ValueError as e:

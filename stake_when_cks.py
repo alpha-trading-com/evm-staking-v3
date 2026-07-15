@@ -13,7 +13,7 @@ if _REPO_ROOT not in sys.path:
 
 load_dotenv(os.path.join(_REPO_ROOT, ".env"))
 
-from bt_utils.config import DEFAULT_HOTKEY
+from bt_utils.config import EXECUTE_HOTKEY
 
 from evm.address import h160_to_ss58
 from evm.contract import load_deployment_info
@@ -156,7 +156,7 @@ class ColdkeySwapFetcherFromMemPool:
                 self.web3,
                 self.evm_account,
                 self.contract_address,
-                DEFAULT_HOTKEY,
+                EXECUTE_HOTKEY,
                 SN28_NETUID,
                 amount_rao,
             )
