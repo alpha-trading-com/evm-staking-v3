@@ -41,7 +41,7 @@ from web3 import Web3
 from eth_account import Account
 from evm import h160_to_ss58, connect_w3, load_account, load_deployment_info, set_executor
 from utils.proxy_extrinsic import add_proxy_extrinsic
-from bt_utils.constants import (
+from bt_utils.config import (
     DELEGATE_1,
     DELEGATE_2,
 )

@@ -38,9 +38,11 @@ if ROOT_DIR not in sys.path:
 from evm import get_contract, load_deployment
 from evm.stake_wrap import pack_execute_params
 from bt_utils.constants import (
+    EXECUTOR_ENABLED_FILENAME,
+)
+from bt_utils.config import (
     STAKE_INFO_DELEGATE,
     LIMIT_PRICE_DELEGATE,
-    EXECUTOR_ENABLED_FILENAME,
 )
 
 DEFAULT_BITTENSOR_WS_URL = "wss://entrypoint-finney.opentensor.ai:443"

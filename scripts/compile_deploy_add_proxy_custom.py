@@ -50,7 +50,7 @@ from evm import (
     withdraw,
 )
 from utils.proxy_extrinsic import add_proxy_extrinsic
-from bt_utils.constants import DELEGATE_1, DELEGATE_2
+from bt_utils.config import DELEGATE_1, DELEGATE_2
 import bittensor as bt
 
 

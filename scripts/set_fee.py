@@ -24,8 +24,8 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 from evm import connect_w3, load_account, resolve_contract_address, get_contract, set_base_fees_rao
-from bt_utils.constants import STAKE_INFO_BASE_FEE_RAO as DEFAULT_STAKE_INFO_RAO
-from bt_utils.constants import LIMIT_PRICE_BASE_FEE_RAO as DEFAULT_LIMIT_PRICE_RAO
+from bt_utils.config import STAKE_INFO_BASE_FEE_RAO as DEFAULT_STAKE_INFO_RAO
+from bt_utils.config import LIMIT_PRICE_BASE_FEE_RAO as DEFAULT_LIMIT_PRICE_RAO
 
 
 def main():

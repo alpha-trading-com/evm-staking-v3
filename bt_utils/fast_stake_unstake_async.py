@@ -21,9 +21,11 @@ from bt_utils.constants import (
     LIMIT_PRICE_SCALE,
     MAX_NETUID,
     RAO,
+    BLOCK_CYCLE,
+)
+from bt_utils.config import (
     DELEGATE_1,
     DELEGATE_2,
-    BLOCK_CYCLE,
 )
 
 _wallet1: bt.Wallet | None = None

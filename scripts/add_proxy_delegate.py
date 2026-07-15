@@ -6,7 +6,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from bt_utils.constants import (
+from bt_utils.config import (
     DELEGATE_1,
     DELEGATE_2,
 )

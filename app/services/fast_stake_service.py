@@ -6,7 +6,7 @@ import sys
 from typing import Tuple
 
 import bt_utils.fast_stake_unstake as _fast_stake
-from bt_utils.constants import DEFAULT_HOTKEY
+from bt_utils.config import DEFAULT_HOTKEY
 from app.services.stake_service import SN28_NETUID, compute_contract_stake_all_amount_rao
 from utils.tolerance import (
     calculate_stake_limit_price,

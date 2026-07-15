@@ -3,7 +3,7 @@ import os
 
 from web3 import Web3
 
-from bt_utils.constants import DEFAULT_HOTKEY
+from bt_utils.config import DEFAULT_HOTKEY
 from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, receipt_to_dict, run_quiet
 from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw, set_execute_hotkey, get_execute_hotkey

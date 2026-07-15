@@ -86,7 +86,7 @@ def main():
 
     # Set contract's AccountId32 and base fees (required for execute(); set once after deploy)
     from evm import contract_address_bytes32, set_contract_account_id32, set_base_fees_rao
-    from bt_utils.constants import STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO
+    from bt_utils.config import STAKE_INFO_BASE_FEE_RAO, LIMIT_PRICE_BASE_FEE_RAO
     deployed = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
     contract_account_id32 = contract_address_bytes32(contract_address)
     set_contract_account_id32(w3, account, contract_address, contract_account_id32, contract=deployed)
