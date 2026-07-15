@@ -324,6 +324,13 @@
         <div id="settings-executor-msg" class="hint" style="margin-top: 0.35rem;"></div>
         <div id="settings-executor-result" class="result" style="display: none;"></div>
 
+        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Default hotkey</h3>
+        <small class="hint">Hotkey (SS58) that execute() stakes/unstakes on. Owner only; the signer must be the contract owner.</small>
+        <label>Default hotkey (SS58)</label>
+        <input id="settings-default-hotkey" type="text" placeholder="e.g. 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <button class="submit" onclick="saveDefaultHotkey()" style="margin-top: 0.75rem;">Save default hotkey</button>
+        <div id="settings-default-hotkey-result" class="result" style="display: none;"></div>
+
         <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Contract config</h3>
         <small class="hint">Read-only values from the deployed StakeWrap contract.</small>
         <button type="button" class="refresh-btn" onclick="loadContractConfig()" style="margin-top: 0.5rem;">Refresh</button>
@@ -1091,8 +1098,40 @@
       }
     }
 
+    async function loadDefaultHotkey() {
+      const el = document.getElementById('settings-default-hotkey');
+      if (!el) return;
+      try {
+        const r = await fetch('/api/default-hotkey');
+        const j = await r.json();
+        if (j.ok && j.hotkey_ss58) el.value = j.hotkey_ss58;
+      } catch (e) { /* leave field as-is */ }
+    }
+
+    async function saveDefaultHotkey() {
+      const el = document.getElementById('settings-default-hotkey');
+      const hotkey = el ? el.value.trim() : '';
+      if (!hotkey) { showResult('settings-default-hotkey-result', false, 'Enter an SS58 hotkey.'); document.getElementById('settings-default-hotkey-result').style.display = 'block'; return; }
+      const resultEl = document.getElementById('settings-default-hotkey-result');
+      resultEl.style.display = 'block';
+      showResult('settings-default-hotkey-result', false, 'Submitting...');
+      try {
+        const r = await fetch('/api/default-hotkey', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hotkey }),
+        });
+        const j = await r.json();
+        if (j.ok) showResult('settings-default-hotkey-result', true, j.receipt != null ? JSON.stringify(j.receipt, null, 2) : (j.message || 'OK'));
+        else showResult('settings-default-hotkey-result', false, j.error || JSON.stringify(j));
+      } catch (e) {
+        showResult('settings-default-hotkey-result', false, String(e));
+      }
+    }
+
     async function loadSettings() {
       var gen = ++_executorSettingsFetchGen;
+      loadDefaultHotkey();
       try {
         const [rt, re] = await Promise.all([
           fetch('/api/tolerance-offset'),

@@ -11,6 +11,7 @@ from app.schemas import (
     TransferStakeBody,
     MoveStakeBody,
     WithdrawBody,
+    SetDefaultHotkeyBody,
 )
 from app.services.stake_service import (
     do_stake,
@@ -21,12 +22,32 @@ from app.services.stake_service import (
     do_transfer_stake,
     do_move_stake,
     do_withdraw,
+    do_set_default_hotkey,
+    get_current_default_hotkey,
     resolve_remove_stake_amount,
     resolve_remove_stake_limit_amounts,
     resolve_move_stake_amount,
 )
 
 router = APIRouter(prefix="/api", tags=["stake"])
+
+
+@router.get("/default-hotkey")
+async def api_get_default_hotkey(_: str = Depends(get_current_username)):
+    """Return the hotkey execute() currently uses (bytes32 hex + SS58)."""
+    try:
+        return get_current_default_hotkey()
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@router.put("/default-hotkey")
+async def api_set_default_hotkey(body: SetDefaultHotkeyBody, _: str = Depends(get_current_username)):
+    """Owner-only: set the hotkey execute() uses. Signer must be the contract owner."""
+    try:
+        return do_set_default_hotkey(body.hotkey)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
 
 @router.post("/stake")

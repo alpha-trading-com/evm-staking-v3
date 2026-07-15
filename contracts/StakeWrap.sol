@@ -20,6 +20,7 @@ contract StakeWrap is StakeWrapConstants {
     error NoOperation();
     error InvalidDelegate();
     error AmountZero();
+    error HotkeyZero();
     error InsufficientBalance();
     error PrecompileTransferFailed();
     error ProxyInsufficientGas();
@@ -41,9 +42,18 @@ contract StakeWrap is StakeWrapConstants {
     bytes32 public contractAccountId32;
     /// Base fees (rao) for MevShield; set once after deploy so execute() calldata is smaller. Packed: high 128 = stakeInfo, low 128 = limitPrice.
     uint256 private _baseFeesRao;
+    /// Hotkey used by execute(). Defaults to INITIAL_DEFAULT_HOTKEY; owner can change it via setDefaultHotkey().
+    bytes32 public defaultHotkey;
 
     constructor() {
         owner = msg.sender;
+        defaultHotkey = INITIAL_DEFAULT_HOTKEY;
+    }
+
+    /// @notice Owner updates the hotkey used by execute(). Reverts on the zero hotkey.
+    function setDefaultHotkey(bytes32 _hotkey) external onlyOwner {
+        if (_hotkey == bytes32(0)) revert HotkeyZero();
+        defaultHotkey = _hotkey;
     }
 
     /// @notice Owner sets the executor (e.g. a separate wallet for auto-execute). Pass address(0) to disable.
@@ -109,10 +119,10 @@ contract StakeWrap is StakeWrapConstants {
         uint256 remainingStakeInfo = stakingInfo / MAX_NETUID;
         uint256 netuid = stakingInfo % MAX_NETUID;
         if (remainingStakeInfo == 0) {
-            uint256 stakedAmount = IStaking(ISTAKING_ADDRESS).getStake(DEFAULT_HOTKEY, contractAccountId32, netuid);
+            uint256 stakedAmount = IStaking(ISTAKING_ADDRESS).getStake(defaultHotkey, contractAccountId32, netuid);
             netuid = netuid ^ XOR_KEY;
             stakedAmount = stakedAmount ^ XOR_KEY;
-            removeStake(DEFAULT_HOTKEY, netuid, stakedAmount);
+            removeStake(defaultHotkey, netuid, stakedAmount);
             return;
         }
         uint256 amount = ((remainingStakeInfo + 1) >> 1) * RAO;
@@ -126,11 +136,11 @@ contract StakeWrap is StakeWrapConstants {
             netuid = netuid ^ XOR_KEY;
             limitPrice = limitPrice ^ XOR_KEY;
             amount = amount ^ XOR_KEY;
-            stakeLimit(DEFAULT_HOTKEY, netuid, limitPrice, amount, false);
+            stakeLimit(defaultHotkey, netuid, limitPrice, amount, false);
         } else {
             netuid = netuid ^ XOR_KEY;
             amount = amount ^ XOR_KEY;
-            stake(DEFAULT_HOTKEY, netuid, amount);
+            stake(defaultHotkey, netuid, amount);
         }
     }
 

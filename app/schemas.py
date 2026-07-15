@@ -6,6 +6,11 @@ class SetExecutorEnabledBody(BaseModel):
     enabled: bool
 
 
+class SetDefaultHotkeyBody(BaseModel):
+    """SS58 hotkey to use as execute()'s default hotkey."""
+    hotkey: str
+
+
 class StakeBody(BaseModel):
     hotkey: str
     netuid: int
