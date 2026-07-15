@@ -324,12 +324,12 @@
         <div id="settings-executor-msg" class="hint" style="margin-top: 0.35rem;"></div>
         <div id="settings-executor-result" class="result" style="display: none;"></div>
 
-        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Default hotkey</h3>
+        <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Execute hotkey</h3>
         <small class="hint">Hotkey (SS58) that execute() stakes/unstakes on. Owner only; the signer must be the contract owner.</small>
-        <label>Default hotkey (SS58)</label>
-        <input id="settings-default-hotkey" type="text" placeholder="e.g. 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
-        <button class="submit" onclick="saveDefaultHotkey()" style="margin-top: 0.75rem;">Save default hotkey</button>
-        <div id="settings-default-hotkey-result" class="result" style="display: none;"></div>
+        <label>Execute hotkey (SS58)</label>
+        <input id="settings-execute-hotkey" type="text" placeholder="e.g. 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21" />
+        <button class="submit" onclick="saveExecuteHotkey()" style="margin-top: 0.75rem;">Save execute hotkey</button>
+        <div id="settings-execute-hotkey-result" class="result" style="display: none;"></div>
 
         <h3 style="margin: 1.25rem 0 0.5rem 0; font-size: 1.05rem; color: var(--muted);">Contract config</h3>
         <small class="hint">Read-only values from the deployed StakeWrap contract.</small>
@@ -1011,8 +1011,8 @@
           html += '<td style="font-size: 0.75rem; word-break: break-all; max-width: 200px;">' + stake.hotkey_ss58 + '</td>';
           html += '<td>';
           html += '<button class="unstake-btn" onclick="unstakeFromTable(' + stake.netuid + ', \'' + hotkeyEscaped + '\', ' + stake.stake_alpha_rao + ')">Unstake</button>';
-          var defaultHotkeySS58 = '5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21';
-          if (stake.hotkey_ss58 == defaultHotkeySS58) {
+          var executeHotkeySS58 = '5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21';
+          if (stake.hotkey_ss58 == executeHotkeySS58) {
             var fastOk = window.executorEnabledForFast !== false;
             if (fastOk) {
               html += ' <button class="unstake-btn" onclick="fastUnstakeFromTable(' + stake.netuid + ')">Fast Unstake</button>';
@@ -1098,40 +1098,40 @@
       }
     }
 
-    async function loadDefaultHotkey() {
-      const el = document.getElementById('settings-default-hotkey');
+    async function loadExecuteHotkey() {
+      const el = document.getElementById('settings-execute-hotkey');
       if (!el) return;
       try {
-        const r = await fetch('/api/default-hotkey');
+        const r = await fetch('/api/execute-hotkey');
         const j = await r.json();
         if (j.ok && j.hotkey_ss58) el.value = j.hotkey_ss58;
       } catch (e) { /* leave field as-is */ }
     }
 
-    async function saveDefaultHotkey() {
-      const el = document.getElementById('settings-default-hotkey');
+    async function saveExecuteHotkey() {
+      const el = document.getElementById('settings-execute-hotkey');
       const hotkey = el ? el.value.trim() : '';
-      if (!hotkey) { showResult('settings-default-hotkey-result', false, 'Enter an SS58 hotkey.'); document.getElementById('settings-default-hotkey-result').style.display = 'block'; return; }
-      const resultEl = document.getElementById('settings-default-hotkey-result');
+      if (!hotkey) { showResult('settings-execute-hotkey-result', false, 'Enter an SS58 hotkey.'); document.getElementById('settings-execute-hotkey-result').style.display = 'block'; return; }
+      const resultEl = document.getElementById('settings-execute-hotkey-result');
       resultEl.style.display = 'block';
-      showResult('settings-default-hotkey-result', false, 'Submitting...');
+      showResult('settings-execute-hotkey-result', false, 'Submitting...');
       try {
-        const r = await fetch('/api/default-hotkey', {
+        const r = await fetch('/api/execute-hotkey', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ hotkey }),
         });
         const j = await r.json();
-        if (j.ok) showResult('settings-default-hotkey-result', true, j.receipt != null ? JSON.stringify(j.receipt, null, 2) : (j.message || 'OK'));
-        else showResult('settings-default-hotkey-result', false, j.error || JSON.stringify(j));
+        if (j.ok) showResult('settings-execute-hotkey-result', true, j.receipt != null ? JSON.stringify(j.receipt, null, 2) : (j.message || 'OK'));
+        else showResult('settings-execute-hotkey-result', false, j.error || JSON.stringify(j));
       } catch (e) {
-        showResult('settings-default-hotkey-result', false, String(e));
+        showResult('settings-execute-hotkey-result', false, String(e));
       }
     }
 
     async function loadSettings() {
       var gen = ++_executorSettingsFetchGen;
-      loadDefaultHotkey();
+      loadExecuteHotkey();
       try {
         const [rt, re] = await Promise.all([
           fetch('/api/tolerance-offset'),

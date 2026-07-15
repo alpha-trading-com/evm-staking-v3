@@ -6,7 +6,7 @@ from web3 import Web3
 from bt_utils.constants import DEFAULT_HOTKEY
 from app.globals import get_coldkey_ss58, get_subtensor
 from app.services.evm_service import get_w3_account_contract, receipt_to_dict, run_quiet
-from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw, set_default_hotkey, get_default_hotkey
+from evm import stake, stake_limit, remove_stake, remove_stake_limit, transfer_stake, move_stake, withdraw, set_execute_hotkey, get_execute_hotkey
 from evm.address import account_id_to_ss58
 from utils.tolerance import calculate_stake_limit_price, calculate_unstake_limit_price
 
@@ -70,10 +70,10 @@ def resolve_move_stake_amount(
     return int(amount_tao * 10**9)
 
 
-def get_current_default_hotkey() -> dict:
-    """Read the contract's current default hotkey, returned as both bytes32 hex and SS58."""
+def get_current_execute_hotkey() -> dict:
+    """Read the contract's current execute hotkey, returned as both bytes32 hex and SS58."""
     w3, _account, contract_address, contract = get_w3_account_contract()
-    hotkey_bytes32 = get_default_hotkey(w3, contract_address, contract=contract)
+    hotkey_bytes32 = get_execute_hotkey(w3, contract_address, contract=contract)
     return {
         "ok": True,
         "hotkey_hex": "0x" + hotkey_bytes32.hex(),
@@ -81,12 +81,12 @@ def get_current_default_hotkey() -> dict:
     }
 
 
-def do_set_default_hotkey(hotkey: str) -> dict:
-    """Owner-only: update the default hotkey used by execute(). `hotkey` is an SS58 address."""
+def do_set_execute_hotkey(hotkey: str) -> dict:
+    """Owner-only: update the execute hotkey used by execute(). `hotkey` is an SS58 address."""
     w3, account, contract_address, contract = get_w3_account_contract()
-    receipt = run_quiet(set_default_hotkey, w3, account, contract_address, hotkey, contract=contract)
+    receipt = run_quiet(set_execute_hotkey, w3, account, contract_address, hotkey, contract=contract)
     if receipt is None:
-        raise RuntimeError("setDefaultHotkey did not complete. Ensure the signer is the contract owner.")
+        raise RuntimeError("setExecuteHotkey did not complete. Ensure the signer is the contract owner.")
     return {"ok": True, "receipt": receipt_to_dict(receipt), "hotkey_ss58": hotkey}
 
 

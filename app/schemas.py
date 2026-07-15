@@ -6,7 +6,7 @@ class SetExecutorEnabledBody(BaseModel):
     enabled: bool
 
 
-class SetDefaultHotkeyBody(BaseModel):
+class SetExecuteHotkeyBody(BaseModel):
     """SS58 hotkey to use as execute()'s default hotkey."""
     hotkey: str
 

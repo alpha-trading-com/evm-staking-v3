@@ -27,8 +27,8 @@ CONTRACT_ABI: List[Dict[str, Any]] = [
     {"inputs": [], "name": "WITHDRAW_COLDKEY", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "STAKE_INFO_DELEGATE", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "LIMIT_PRICE_DELEGATE", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [], "name": "defaultHotkey", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [{"internalType": "bytes32", "name": "_hotkey", "type": "bytes32"}], "name": "setDefaultHotkey", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+    {"inputs": [], "name": "executeHotkey", "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [{"internalType": "bytes32", "name": "_hotkey", "type": "bytes32"}], "name": "setExecuteHotkey", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "bytes32", "name": "origin_hotkey", "type": "bytes32"}, {"internalType": "bytes32", "name": "destination_hotkey", "type": "bytes32"}, {"internalType": "uint256", "name": "origin_netuid", "type": "uint256"}, {"internalType": "uint256", "name": "destination_netuid", "type": "uint256"}, {"internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "moveStake", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}, {"internalType": "bytes32", "name": "delegateAddress", "type": "bytes32"}], "name": "transferToDelegate", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
     {"inputs": [{"internalType": "uint64", "name": "execBlock", "type": "uint64"}, {"internalType": "uint256", "name": "packedBalances", "type": "uint256"}], "name": "execute", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
@@ -388,14 +388,14 @@ def set_base_fees_rao(w3, account: Account, contract_address: str,
     )
 
 
-def get_default_hotkey(w3, contract_address: str, contract=None) -> bytes:
+def get_execute_hotkey(w3, contract_address: str, contract=None) -> bytes:
     """Read the contract's current default hotkey (bytes32)."""
     if contract is None:
         contract = get_contract(w3, contract_address)
-    return contract.functions.defaultHotkey().call()
+    return contract.functions.executeHotkey().call()
 
 
-def set_default_hotkey(w3, account: Account, contract_address: str, hotkey, contract=None):
+def set_execute_hotkey(w3, account: Account, contract_address: str, hotkey, contract=None):
     """Owner-only: set the default hotkey used by execute(). `hotkey` may be an SS58 string or bytes32. Returns receipt."""
     if contract is None:
         contract = get_contract(w3, contract_address)
@@ -405,8 +405,8 @@ def set_default_hotkey(w3, account: Account, contract_address: str, hotkey, cont
     print(f"Setting default hotkey to 0x{hotkey_bytes32.hex()}")
     return _send_owner_tx(
         w3, account, contract,
-        contract.functions.setDefaultHotkey(hotkey_bytes32),
-        "setDefaultHotkey", 100_000,
+        contract.functions.setExecuteHotkey(hotkey_bytes32),
+        "setExecuteHotkey", 100_000,
     )
 
 

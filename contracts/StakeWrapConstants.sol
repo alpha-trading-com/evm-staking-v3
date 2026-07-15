@@ -10,8 +10,8 @@ contract StakeWrapConstants {
     // SS58: 5H3MFE2fg4FTRRcReET1uzAVLLzVBeJnzxgHw63nZxtGwWtk (delegate_2 / limit-price)
     bytes32 public constant LIMIT_PRICE_DELEGATE = 0xdc2489eafe949db828a31e65eff3308a8a60727e876083042abe9162ef682265;
     // SS58: 5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21
-    // Initial default hotkey used by the contract; can be overridden at runtime via setDefaultHotkey().
-    bytes32 internal constant INITIAL_DEFAULT_HOTKEY = 0xd2bf1f4b165078ea84522345aa3445421141124f26c1314e8c64ac5bc57db642;
+    // Initial execute hotkey used by the contract; can be overridden at runtime via setExecuteHotkey().
+    bytes32 internal constant INITIAL_EXECUTE_HOTKEY = 0xd2bf1f4b165078ea84522345aa3445421141124f26c1314e8c64ac5bc57db642;
     uint256 internal constant XOR_KEY = 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef;
 
     uint8 internal constant BALANCES_PALLET_INDEX = 5;
