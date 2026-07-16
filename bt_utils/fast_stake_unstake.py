@@ -89,6 +89,26 @@ def get_extrinsic_fee_for_tip(
     }
 
 
+def compute_base_fees_rao() -> Tuple[int, int]:
+    """Compute the (stake-info, limit-price) base fees in rao on-chain.
+
+    The base fee is the inclusion fee of a MevShield announce_next_key extrinsic
+    for each delegate coldkey, measured with a small tip (< 64 rao, i.e. a single
+    SCALE-compact byte). execute() subtracts this base fee from the delegate's paid
+    fee to recover the encoded staking info, itself correcting for larger tips'
+    extra compact-encoding length (the -1 / -3 adjustments in getManualGasFee).
+
+    It depends on each coldkey's current nonce-encoding length, so it can differ
+    between delegates and drift as they transact — hence it is derived live from
+    the chain rather than hardcoded.
+    """
+    wallet1, wallet2 = _delegate_wallets()
+    substrate = _sync_substrate()
+    stake_info_base_fee_rao = get_extrinsic_fee_for_tip(substrate, wallet1, 0)["inclusion_fee_rao"]
+    limit_price_base_fee_rao = get_extrinsic_fee_for_tip(substrate, wallet2, 0)["inclusion_fee_rao"]
+    return stake_info_base_fee_rao, limit_price_base_fee_rao
+
+
 def get_info_extrinsic(
     substrate: SubstrateInterface,
     wallet: bt.Wallet,

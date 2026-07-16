@@ -2,8 +2,9 @@
 Configurable values (deployment-specific, sourced from the environment / .env).
 
 Kept separate from bt_utils.constants, which holds immutable protocol constants.
-Delegate coldkeys and wallet names must match the deployed contract; base fees
-and the default hotkey are tunable per deployment.
+Delegate coldkeys and wallet names must match the deployed contract; the default
+hotkey is tunable per deployment. The MevShield base fees are not configured here:
+they are computed live from the chain (bt_utils.fast_stake_unstake.compute_base_fees_rao).
 """
 import os
 
@@ -31,20 +32,6 @@ def _require_env_str(name: str, hint: str) -> str:
     return str(raw).strip()
 
 
-def _require_int_env_rao(name: str, hint: str) -> int:
-    """Required integer fee in rao from environment or .env."""
-    raw = os.getenv(name)
-    if raw is None or not str(raw).strip():
-        raise RuntimeError(f"{name} is not set. Add it to .env ({hint}).")
-    try:
-        v = int(str(raw).strip(), 10)
-    except ValueError as e:
-        raise RuntimeError(f"{name} must be an integer (rao), got {raw!r}") from e
-    if v < 0:
-        raise RuntimeError(f"{name} must be non-negative, got {v}")
-    return v
-
-
 # Execute hotkey (SS58). Overridable via .env; falls back to the built-in default.
 # Matches the contract's executeHotkey; the on-chain value is authoritative.
 EXECUTE_HOTKEY = os.getenv("EXECUTE_HOTKEY", "5Gq2gs4ft5dhhjbHabvVbAhjMCV2RgKmVJKAFCUWiirbRT21").strip()
@@ -63,12 +50,5 @@ DELEGATE_2 = _require_env_str(
     "wallet name for limit-price delegate; SS58 must match LIMIT_PRICE_DELEGATE",
 )
 
-# MevShield announce_next_key tips (rao) — required in .env (e.g. 105612 / 105611 for ~0.1 TAO scale).
-STAKE_INFO_BASE_FEE_RAO = _require_int_env_rao(
-    "STAKE_INFO_BASE_FEE_RAO",
-    "integer rao; tip for stake-info execute path",
-)
-LIMIT_PRICE_BASE_FEE_RAO = _require_int_env_rao(
-    "LIMIT_PRICE_BASE_FEE_RAO",
-    "integer rao; tip for limit-price execute path",
-)
+# MevShield base fees (rao) are computed live from the chain per delegate coldkey,
+# not configured here. See bt_utils.fast_stake_unstake.compute_base_fees_rao().

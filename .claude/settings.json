@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in ['bt_utils/config.py','bt_utils/fast_stake_unstake.py','scripts/set_fee.py','scripts/deploy.py']]; print\\('syntax OK'\\)\")"
+    ]
+  }
+}

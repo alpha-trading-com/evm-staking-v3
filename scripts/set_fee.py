@@ -6,10 +6,9 @@ Requires: PRIVATE_KEY (owner), RPC_URL.
 
   python scripts/set_fee.py
   python scripts/set_fee.py --stake-info 105612 --limit-price 105611
-  export STAKE_INFO_BASE_FEE_RAO=105612 LIMIT_PRICE_BASE_FEE_RAO=105611; python scripts/set_fee.py
 
-If --stake-info / --limit-price are not set, uses env STAKE_INFO_BASE_FEE_RAO and LIMIT_PRICE_BASE_FEE_RAO,
-or falls back to bt_utils.constants values.
+If --stake-info / --limit-price are not given, each base fee is computed live from
+the chain (bt_utils.fast_stake_unstake.compute_base_fees_rao).
 """
 
 import argparse
@@ -24,22 +23,23 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 from evm import connect_w3, load_account, resolve_contract_address, get_contract, set_base_fees_rao
-from bt_utils.config import STAKE_INFO_BASE_FEE_RAO as DEFAULT_STAKE_INFO_RAO
-from bt_utils.config import LIMIT_PRICE_BASE_FEE_RAO as DEFAULT_LIMIT_PRICE_RAO
+from bt_utils.fast_stake_unstake import compute_base_fees_rao
 
 
 def main():
     parser = argparse.ArgumentParser(description="Set contract base fees in rao (owner only)")
-    parser.add_argument("--stake-info", type=int, default=None, metavar="RAO", help="Stake-info base fee (rao)")
-    parser.add_argument("--limit-price", type=int, default=None, metavar="RAO", help="Limit-price base fee (rao)")
+    parser.add_argument("--stake-info", type=int, default=None, metavar="RAO", help="Stake-info base fee (rao); default: computed on-chain")
+    parser.add_argument("--limit-price", type=int, default=None, metavar="RAO", help="Limit-price base fee (rao); default: computed on-chain")
     args = parser.parse_args()
 
     stake_info_rao = args.stake_info
-    if stake_info_rao is None:
-        stake_info_rao = int(os.getenv("STAKE_INFO_BASE_FEE_RAO", str(DEFAULT_STAKE_INFO_RAO)))
     limit_price_rao = args.limit_price
-    if limit_price_rao is None:
-        limit_price_rao = int(os.getenv("LIMIT_PRICE_BASE_FEE_RAO", str(DEFAULT_LIMIT_PRICE_RAO)))
+    if stake_info_rao is None or limit_price_rao is None:
+        computed_stake_info_rao, computed_limit_price_rao = compute_base_fees_rao()
+        if stake_info_rao is None:
+            stake_info_rao = computed_stake_info_rao
+        if limit_price_rao is None:
+            limit_price_rao = computed_limit_price_rao
 
     try:
         w3 = connect_w3()

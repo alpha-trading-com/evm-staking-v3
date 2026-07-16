@@ -31,7 +31,7 @@ Other `artifacts/` and `cache/` stay **gitignored**.
 
 1. Clone or `git pull` (must include `StakeWrap.json` above).
 2. Python venv + deps (e.g. `pip install -r requirements.txt` if you use one).
-3. Configure `.env`: `PRIVATE_KEY`, `RPC_URL`, and any `bt_utils` / app env vars your `deploy.py` path needs (`STAKE_INFO_BASE_FEE_RAO`, delegates, etc.).
+3. Configure `.env`: `PRIVATE_KEY`, `RPC_URL`, and any `bt_utils` / app env vars your `deploy.py` path needs (delegates, delegate coldkey passwords, etc.). `deploy.py` computes the base fees on-chain from the delegate coldkeys, so their passwords (`DELEGATE_1_PASSWORD`, `DELEGATE_2_PASSWORD`) must be available.
 4. From repo root:
    ```bash
    python3 scripts/deploy.py
